@@ -1,0 +1,6 @@
+mlartifacts
+mlruns
+__pycache__/
+*.pyc
+cache/
+word_topic

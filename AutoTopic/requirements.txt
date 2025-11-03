@@ -1,0 +1,37 @@
+# Core ML/NLP Libraries
+bertopic>=0.17.0
+sentence-transformers>=2.2.0
+umap-learn>=0.5.4
+hdbscan>=0.8.33
+scikit-learn>=1.3.0
+
+# Topic Modeling & NLP
+gensim>=4.3.0
+spacy>=3.7.0
+pymorphy3>=2.0.0
+
+# Data Processing
+pandas>=2.0.0
+pyyaml>=6.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+emoji>=2.8.0
+
+# Optimization & Experiment Tracking
+optuna>=3.0.0
+mlflow>=2.8.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+wordcloud>=1.9.0
+
+# Web Interface
+streamlit>=1.28.0
+
+# Utilities
+loguru>=0.7.0
+
+# PyTorch (for sentence-transformers, install separately based on CUDA/CPU)
+# For CPU: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# For CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118

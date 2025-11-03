@@ -1,0 +1,41 @@
+data:
+  input_file: "data/raw_texts.csv"
+  output_file: "data/topics.csv"
+  text_column: "content"
+
+cleaning:
+  remove_html: true
+  remove_emojis: true
+  stopwords: ["и", "в", "на", "это"]
+
+normalization:
+  language: "ru"  # ru / en / multi
+  lemmatize: true
+
+filtering:
+  min_length: 5
+  drop_links: true
+
+embedding:
+  model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  batch_size: 32
+  device: "cuda"
+
+topic_modeling:
+  n_gram_range: [1, 2]
+  min_topic_size: 15
+  umap_n_neighbors: 40
+  hdbscan_min_cluster_size: 15
+  nr_topics: 60
+  umap_min_dist: 0.56
+  random_state: 42
+  top_n_words: 12
+  vectorizer:
+    min_df: 3
+    max_df: 0.89
+  language_mode: mixed  # ru_only | mixed
+
+tuning:
+  enabled: true
+  n_trials: 30
+  timeout: null
