@@ -1,0 +1,7 @@
+.vscode
+*.csv
+*.xls
+*.zip
+*.json
+
+catboost_info

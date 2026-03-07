@@ -1,0 +1,9 @@
+.vscode
+*.csv
+*.xls
+*.zip
+*.json
+
+./catboost_info
+./ranklng_logs
+./Fold*
