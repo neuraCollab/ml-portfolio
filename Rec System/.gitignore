@@ -1,8 +1,0 @@
-.vscode
-*.csv
-*.xls
-*.zip
-*.json
-
-catboost_info
-ranking_logs
