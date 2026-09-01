@@ -26,7 +26,17 @@ from app.core.config import (
     GRPC_WORKER_ADDRESS,
     REPO_ROOT,
 )
-from app.schemas.cassandra_grpc import CassandraGrpcStatus, ClassDistributionEntry, DatasetInfo, GrpcLogEntry
+from app.schemas.cassandra_grpc import (
+    CassandraGrpcStatus,
+    ClassDistributionEntry,
+    ClassSupport,
+    ConfusionMatrixEntry,
+    DatasetInfo,
+    GrpcLogEntry,
+    PredictResult,
+    TrainJobStatus,
+    TrainMetrics,
+)
 from app.services.cassandra_grpc_ingestion import stratified_sample
 
 import ml_worker_pb2
@@ -211,5 +221,148 @@ def get_dataset_info() -> DatasetInfo:
         if total == 0:
             raise CassandraGrpcError("No data ingested yet -- call ingest_if_needed() first.")
         return _dataset_info_from_cassandra(session, total)
+    finally:
+        cluster.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Training job tracker -- same single-slot background-thread + polling
+# pattern as autotopic_service.py's full-dataset pipeline job.
+# ---------------------------------------------------------------------------
+_train_lock = threading.Lock()
+_train_state: dict[str, Any] = {"status": "idle", "startedAt": None, "finishedAt": None, "error": None, "result": None}
+
+
+def get_train_status() -> TrainJobStatus:
+    with _train_lock:
+        return TrainJobStatus(**_train_state)
+
+
+def start_training(sample_size: int) -> TrainJobStatus:
+    with _train_lock:
+        if _train_state["status"] == "running":
+            raise CassandraGrpcError("A training run is already in progress -- poll GET /api/cassandra-grpc/train/status.")
+        _train_state.update(status="running", startedAt=time.time(), finishedAt=None, error=None, result=None)
+        snapshot = TrainJobStatus(**_train_state)
+
+    thread = threading.Thread(target=_run_training, args=(sample_size,), daemon=True)
+    thread.start()
+    return snapshot
+
+
+def _run_training(sample_size: int) -> None:
+    start = time.time()
+    try:
+        ingest_if_needed()
+        with _grpc_channel() as channel:
+            stub = ml_worker_pb2_grpc.MLWorkerStub(channel)
+            resp = stub.Train(ml_worker_pb2.TrainRequest(sample_size=sample_size), timeout=300)
+        latency_ms = (time.time() - start) * 1000
+
+        if not resp.success:
+            _log_grpc_call("Train", "FAILED_PRECONDITION", latency_ms, resp.message)
+            raise CassandraGrpcError(resp.message or "Training failed on the worker")
+        _log_grpc_call("Train", "OK", latency_ms, resp.message)
+
+        metrics = TrainMetrics(
+            numClasses=resp.num_classes,
+            trainRows=resp.train_rows,
+            testRows=resp.test_rows,
+            accuracy=resp.accuracy,
+            macroPrecision=resp.macro_precision,
+            macroRecall=resp.macro_recall,
+            macroF1=resp.macro_f1,
+            microPrecision=resp.micro_precision,
+            microRecall=resp.micro_recall,
+            microF1=resp.micro_f1,
+            trainingTimeSeconds=resp.training_time_seconds,
+            topClasses=[
+                ClassSupport(topicId=c.topic_id, topicName=c.topic_name, support=c.support)
+                for c in resp.top_classes
+            ],
+            confusionMatrix=[
+                ConfusionMatrixEntry(trueTopicId=e.true_topic_id, predictedTopicId=e.predicted_topic_id, count=e.count)
+                for e in resp.confusion_matrix
+            ],
+            trainedAt=datetime.now(timezone.utc).isoformat(),
+        )
+        _record_training_run(sample_size, metrics)
+
+        with _train_lock:
+            _train_state.update(status="completed", finishedAt=time.time(), error=None, result=metrics)
+    except grpc.RpcError as exc:
+        logger.exception("Training gRPC call failed")
+        detail = exc.details() if hasattr(exc, "details") else str(exc)
+        with _train_lock:
+            _train_state.update(status="failed", finishedAt=time.time(), error=str(detail))
+    except Exception as exc:
+        logger.exception("Training failed")
+        with _train_lock:
+            _train_state.update(status="failed", finishedAt=time.time(), error=str(exc))
+
+
+def _record_training_run(sample_size: int, metrics: TrainMetrics) -> None:
+    cluster, session = _connect_cassandra()
+    try:
+        session.execute(
+            f"INSERT INTO {KEYSPACE}.training_runs "
+            "(id, sample_size, num_classes, accuracy, macro_precision, macro_recall, macro_f1, "
+            "micro_precision, micro_recall, micro_f1, training_time_seconds, trained_at) "
+            "VALUES (now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, toTimestamp(now()))",
+            (
+                sample_size, metrics.numClasses, metrics.accuracy, metrics.macroPrecision, metrics.macroRecall,
+                metrics.macroF1, metrics.microPrecision, metrics.microRecall, metrics.microF1,
+                metrics.trainingTimeSeconds,
+            ),
+        )
+    finally:
+        cluster.shutdown()
+
+
+def get_latest_metrics() -> TrainMetrics | None:
+    with _train_lock:
+        return _train_state["result"]
+
+
+def predict(text: str) -> PredictResult:
+    start_pre = time.time()
+    cleaned = text.strip()
+    preprocessing_ms = (time.time() - start_pre) * 1000
+
+    start_grpc = time.time()
+    try:
+        with _grpc_channel() as channel:
+            stub = ml_worker_pb2_grpc.MLWorkerStub(channel)
+            resp = stub.Predict(ml_worker_pb2.PredictRequest(text=cleaned), timeout=10)
+    except grpc.RpcError as exc:
+        latency_ms = (time.time() - start_grpc) * 1000
+        detail = exc.details() if hasattr(exc, "details") else str(exc)
+        status_name = "FAILED_PRECONDITION" if "FAILED_PRECONDITION" in str(exc) else "UNAVAILABLE"
+        _log_grpc_call("Predict", status_name, latency_ms, str(detail))
+        raise CassandraGrpcError(str(detail))
+
+    grpc_roundtrip_ms = (time.time() - start_grpc) * 1000
+    _log_grpc_call("Predict", "OK", grpc_roundtrip_ms, f"topic_id={resp.topic_id}")
+    _log_prediction(cleaned, resp, grpc_roundtrip_ms)
+
+    return PredictResult(
+        topicId=resp.topic_id,
+        topicName=resp.topic_name,
+        confidence=resp.confidence,
+        preprocessingTimeMs=round(preprocessing_ms, 3),
+        grpcRoundtripMs=round(grpc_roundtrip_ms, 2),
+        note="Served by the grpc-worker container's TF-IDF + LogisticRegression model over a real gRPC call.",
+    )
+
+
+def _log_prediction(text: str, resp, latency_ms: float) -> None:
+    cluster, session = _connect_cassandra()
+    try:
+        session.execute(
+            f"INSERT INTO {KEYSPACE}.predictions "
+            "(id, input_text, predicted_topic_id, predicted_topic_name, confidence, latency_ms, created_at) "
+            "VALUES (now(), %s, %s, %s, %s, %s, toTimestamp(now()))",
+            (text, resp.topic_id, resp.topic_name, resp.confidence, latency_ms),
+        )
     finally:
         cluster.shutdown()
