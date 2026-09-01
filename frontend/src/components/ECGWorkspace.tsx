@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 type Mode = 'demo' | 'live';
+type LiveStatusKind = 'connecting' | 'streaming' | 'noHardware' | 'streamingData' | 'unreachable';
 
 export const ECGWorkspace: React.FC = () => {
   const { t } = useTranslation();
@@ -33,7 +34,11 @@ export const ECGWorkspace: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  // The live-status text is derived at render time (see liveStatusText below)
+  // rather than stored pre-translated, so that a language switch retranslates
+  // it immediately without needing to tear down and reopen the WebSocket.
+  const [liveStatusKind, setLiveStatusKind] = useState<LiveStatusKind | null>(null);
+  const [liveStatusRawMessage, setLiveStatusRawMessage] = useState<string | null>(null);
   const [liveHardware, setLiveHardware] = useState<boolean | null>(null);
   const [liveLeads, setLiveLeads] = useState<Record<string, number[]>>({});
   const wsRef = useRef<WebSocket | null>(null);
@@ -61,7 +66,8 @@ export const ECGWorkspace: React.FC = () => {
       wsRef.current = null;
       return;
     }
-    setLiveStatus(t('ecg.workspace.liveConnectingStatus'));
+    setLiveStatusKind('connecting');
+    setLiveStatusRawMessage(null);
     setLiveHardware(null);
     setLiveLeads({});
     let receivedAnyMessage = false;
@@ -70,11 +76,20 @@ export const ECGWorkspace: React.FC = () => {
         receivedAnyMessage = true;
         if (data.type === 'status') {
           setLiveHardware(data.hardwareAvailable);
-          setLiveStatus(data.message ?? (data.hardwareAvailable ? t('ecg.workspace.liveStreamingStatus') : t('ecg.workspace.liveNoHardwareStatus')));
+          if (data.message) {
+            // Server-supplied diagnostic text (e.g. a serial-port error) --
+            // shown verbatim, not translated client-side.
+            setLiveStatusRawMessage(data.message);
+            setLiveStatusKind(null);
+          } else {
+            setLiveStatusRawMessage(null);
+            setLiveStatusKind(data.hardwareAvailable ? 'streaming' : 'noHardware');
+          }
           return;
         }
         setLiveHardware(true);
-        setLiveStatus(t('ecg.workspace.liveStreamingDataStatus'));
+        setLiveStatusRawMessage(null);
+        setLiveStatusKind('streamingData');
         setLiveLeads((prev) => {
           const next: Record<string, number[]> = {};
           for (const lead of ECG_LEAD_NAMES) {
@@ -91,13 +106,34 @@ export const ECGWorkspace: React.FC = () => {
         // the generic "unreachable" message if we never got anything at all.
         if (!receivedAnyMessage) {
           setLiveHardware(false);
-          setLiveStatus(t('ecg.workspace.liveUnreachableStatus'));
+          setLiveStatusRawMessage(null);
+          setLiveStatusKind('unreachable');
         }
       }
     );
     wsRef.current = ws;
     return () => ws.close();
+    // Intentionally keyed on `mode` only: this effect owns the WebSocket
+    // connection lifecycle. It must NOT re-run on language change, or every
+    // language switch while live would tear down and reopen the connection
+    // (openEcgLiveSocket() below creates a brand-new WebSocket each time this
+    // effect runs), which would interrupt a real hardware stream. Instead,
+    // the displayed status text is re-derived from `liveStatusKind` at render
+    // time via `t()` in `liveStatusText` below, so it retranslates on
+    // language change without touching the connection.
   }, [mode]);
+
+  const liveStatusText = useMemo(() => {
+    if (liveStatusRawMessage) return liveStatusRawMessage;
+    switch (liveStatusKind) {
+      case 'connecting': return t('ecg.workspace.liveConnectingStatus');
+      case 'streaming': return t('ecg.workspace.liveStreamingStatus');
+      case 'noHardware': return t('ecg.workspace.liveNoHardwareStatus');
+      case 'streamingData': return t('ecg.workspace.liveStreamingDataStatus');
+      case 'unreachable': return t('ecg.workspace.liveUnreachableStatus');
+      default: return null;
+    }
+  }, [liveStatusKind, liveStatusRawMessage, t]);
 
   const hasLiveData = Object.values(liveLeads).some((arr) => arr.length > 1);
 
@@ -164,7 +200,7 @@ export const ECGWorkspace: React.FC = () => {
                 <ECGChart leads={liveLeads} samplingRateHz={100} selectedLead={selectedLead} />
               </div>
             ) : (
-              <EmptyState icon={Radio} title={t('ecg.workspace.liveWaitingTitle')} detail={liveStatus ?? t('ecg.workspace.liveConnectingDetail')} />
+              <EmptyState icon={Radio} title={t('ecg.workspace.liveWaitingTitle')} detail={liveStatusText ?? t('ecg.workspace.liveConnectingDetail')} />
             )}
           </div>
           <div className="lg:col-span-4 space-y-6">
@@ -173,7 +209,7 @@ export const ECGWorkspace: React.FC = () => {
                 <Radio className={`w-4 h-4 ${liveHardware ? 'text-emerald-400' : 'text-amber-400'}`} />
                 <span>{t('ecg.workspace.hardwareStatusLabel')}</span>
               </div>
-              <p className="text-xs text-slate-400">{liveStatus ?? t('ecg.workspace.liveConnectingStatus')}</p>
+              <p className="text-xs text-slate-400">{liveStatusText ?? t('ecg.workspace.liveConnectingStatus')}</p>
               {liveHardware === false && (
                 <p className="text-[11px] text-slate-500 border-t border-slate-800 pt-3">
                   {t('ecg.workspace.liveExpectedPrefix')}<span className="font-mono">raspberry-pi-ecg/README.md</span>{t('ecg.workspace.liveExpectedSuffix')}
