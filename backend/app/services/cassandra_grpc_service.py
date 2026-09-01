@@ -59,10 +59,14 @@ class CassandraGrpcError(Exception):
 
 def _connect_cassandra():
     cluster = Cluster([CASSANDRA_HOST])
-    session = cluster.connect()
-    for stmt in _SCHEMA_STATEMENTS:
-        session.execute(stmt)
-    session.set_keyspace(KEYSPACE)
+    try:
+        session = cluster.connect()
+        for stmt in _SCHEMA_STATEMENTS:
+            session.execute(stmt)
+        session.set_keyspace(KEYSPACE)
+    except Exception as exc:
+        cluster.shutdown()
+        raise CassandraGrpcError(f"Cassandra unreachable at {CASSANDRA_HOST}: {exc}")
     return cluster, session
 
 
