@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LucideIcon, Info, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface MetricCardProps {
   label: string;
@@ -20,6 +21,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   label, value, unit, detail, tooltip, icon: Icon, color = 'text-indigo-400', loading, error,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1">
@@ -34,7 +36,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
               type="button"
               onClick={() => setExpanded((v) => !v)}
               className="text-slate-600 hover:text-slate-300 transition"
-              aria-label={`About ${label}`}
+              aria-label={t('common.shared.aboutLabel', { label })}
             >
               <Info className="w-3 h-3" />
             </button>
@@ -48,7 +50,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       ) : error ? (
         <div className="flex items-center gap-1.5 text-xs text-red-400">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>Not available</span>
+          <span>{t('common.shared.notAvailable')}</span>
         </div>
       ) : (
         <div className={`text-2xl font-bold font-mono ${color}`}>

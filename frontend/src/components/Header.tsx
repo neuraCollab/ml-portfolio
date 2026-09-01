@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActiveTab } from '../types';
 import { Sparkles, Car, Layers, Github, BookOpen, Activity, HeartPulse, Network } from 'lucide-react';
+import { useTranslation } from '../i18n/I18nContext';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -8,6 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
+  const { t, language, setLanguage } = useTranslation();
   return (
     <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-slate-100 text-base sm:text-lg tracking-tight truncate">ML Portfolio Workspace</h1>
+                <h1 className="font-bold text-slate-100 text-base sm:text-lg tracking-tight truncate">{t('common.header.brandTitle')}</h1>
                 <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
                   v2.4 Production
                 </span>
@@ -42,8 +44,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <Sparkles className="w-4 h-4 text-indigo-300" />
-              <span className="hidden sm:inline">AutoTopic (NLP)</span>
-              <span className="sm:hidden">AutoTopic</span>
+              <span className="hidden sm:inline">{t('common.header.nav.autotopicFull')}</span>
+              <span className="sm:hidden">{t('common.header.nav.autotopicShort')}</span>
             </button>
 
             <button
@@ -55,8 +57,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <Car className="w-4 h-4 text-emerald-300" />
-              <span className="hidden sm:inline">RL Car Autopilot (CV)</span>
-              <span className="sm:hidden">Autopilot</span>
+              <span className="hidden sm:inline">{t('common.header.nav.autopilotFull')}</span>
+              <span className="sm:hidden">{t('common.header.nav.autopilotShort')}</span>
             </button>
 
             <button
@@ -68,8 +70,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <HeartPulse className="w-4 h-4 text-rose-300" />
-              <span className="hidden sm:inline">ECG Edge AI</span>
-              <span className="sm:hidden">ECG</span>
+              <span className="hidden sm:inline">{t('common.header.nav.ecgFull')}</span>
+              <span className="sm:hidden">{t('common.header.nav.ecgShort')}</span>
             </button>
 
             <button
@@ -81,8 +83,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <Network className="w-4 h-4 text-cyan-300" />
-              <span className="hidden sm:inline">Cassandra gRPC ML</span>
-              <span className="sm:hidden">Cassandra</span>
+              <span className="hidden sm:inline">{t('common.header.nav.cassandraGrpcFull')}</span>
+              <span className="sm:hidden">{t('common.header.nav.cassandraGrpcShort')}</span>
             </button>
 
             <button
@@ -94,15 +96,39 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Overview & Docs</span>
+              <span className="hidden sm:inline">{t('common.header.nav.overview')}</span>
             </button>
           </nav>
+
+          {/* Language switcher (always visible, including mobile) */}
+          <div className="flex items-center justify-center sm:justify-start">
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                  language === 'en' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t('common.header.languageSwitcher.en')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('ru')}
+                className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                  language === 'ru' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t('common.header.languageSwitcher.ru')}
+              </button>
+            </div>
+          </div>
 
           {/* Repository Links & Status */}
           <div className="hidden lg:flex items-center space-x-3">
             <div className="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
               <Activity className="w-3.5 h-3.5 animate-pulse" />
-              <span>Container Ready</span>
+              <span>{t('common.header.containerReady')}</span>
             </div>
 
             <a
@@ -112,8 +138,29 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               className="flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 transition"
             >
               <Github className="w-4 h-4" />
-              <span>Source Repo</span>
+              <span>{t('common.header.sourceRepo')}</span>
             </a>
+
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                  language === 'en' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t('common.header.languageSwitcher.en')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('ru')}
+                className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                  language === 'ru' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t('common.header.languageSwitcher.ru')}
+              </button>
+            </div>
           </div>
 
         </div>
