@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AutoTopicResults } from '../../types';
 import { MetricCard } from '../shared/MetricCard';
+import { useTranslation } from '../../i18n/I18nContext';
 import {
   BarChart2, Tag, Zap, Sparkles, CheckCircle2, CircleDashed, Files, Star,
   FileText, Search,
@@ -18,6 +19,7 @@ interface ResultsPanelProps {
 }
 
 export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHeading }) => {
+  const { t } = useTranslation();
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [searchDocFilter, setSearchDocFilter] = useState('');
   const [docTopicFilter, setDocTopicFilter] = useState<number | 'all'>('all');
@@ -34,7 +36,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
 
   const activeTopicObj = useMemo(() => {
     if (selectedTopicId === null) return results.topics[0] || null;
-    return results.topics.find((t) => t.id === selectedTopicId) || results.topics[0] || null;
+    return results.topics.find((topic) => topic.id === selectedTopicId) || results.topics[0] || null;
   }, [selectedTopicId, results.topics]);
 
   return (
@@ -42,48 +44,48 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
       {/* Key Quality Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricCard
-          label="Documents Analyzed"
+          label={t('autotopic.resultsPanel.metrics.documentsAnalyzedLabel')}
           value={results.metrics.documentsAnalyzed}
           icon={Files}
           color="text-sky-400"
-          tooltip="Number of input documents that survived cleaning/normalization/filtering and were actually fed into BERTopic."
+          tooltip={t('autotopic.resultsPanel.metrics.documentsAnalyzedTooltip')}
         />
         <MetricCard
-          label="Discovered Topics"
+          label={t('autotopic.resultsPanel.metrics.discoveredTopicsLabel')}
           value={results.metrics.nTopics}
           icon={Tag}
           color="text-amber-400"
-          detail="Excludes noise (-1)"
-          tooltip="Number of distinct topic clusters HDBSCAN found, not counting the -1 'noise' bucket."
+          detail={t('autotopic.resultsPanel.metrics.discoveredTopicsDetail')}
+          tooltip={t('autotopic.resultsPanel.metrics.discoveredTopicsTooltip')}
         />
         <MetricCard
-          label="Outliers"
+          label={t('autotopic.resultsPanel.metrics.outliersLabel')}
           value={results.metrics.outlierCount}
           unit={`(${results.metrics.outlierPercentage}%)`}
           icon={CircleDashed}
           color="text-slate-400"
-          tooltip="Documents HDBSCAN could not confidently assign to any topic (topic id -1). A high outlier rate usually means the corpus is small, noisy, or too varied for the current min_topic_size/umap_n_neighbors settings."
+          tooltip={t('autotopic.resultsPanel.metrics.outliersTooltip')}
         />
         <MetricCard
-          label="Coherence (c_uci)"
+          label={t('autotopic.resultsPanel.metrics.coherenceLabel')}
           value={results.metrics.coherenceUci}
           icon={Zap}
           color="text-indigo-400"
-          tooltip="Gensim c_uci coherence: how semantically related the top words within each topic are, based on how often they co-occur in the corpus. Higher is better; can be negative on small corpora."
+          tooltip={t('autotopic.resultsPanel.metrics.coherenceTooltip')}
         />
         <MetricCard
-          label="Diversity"
+          label={t('autotopic.resultsPanel.metrics.diversityLabel')}
           value={results.metrics.diversity}
           icon={Sparkles}
           color="text-purple-400"
-          tooltip="Fraction of unique words across all topics' top keywords. 1.0 means no word is reused between topics (maximally distinct topics)."
+          tooltip={t('autotopic.resultsPanel.metrics.diversityTooltip')}
         />
         <MetricCard
-          label="Composite Score"
+          label={t('autotopic.resultsPanel.metrics.compositeScoreLabel')}
           value={results.metrics.compositeScore}
           icon={CheckCircle2}
           color="text-emerald-400"
-          tooltip="coherence_uci + 0.2 x diversity -- the same objective AutoTopic's own Optuna tuning (pipeline/optuna_tune.py) optimizes for."
+          tooltip={t('autotopic.resultsPanel.metrics.compositeScoreTooltip')}
         />
       </div>
 
@@ -93,9 +95,9 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
               <BarChart2 className="w-4 h-4 text-indigo-400" />
-              <span>Topic Size Distribution (HDBSCAN Clusters)</span>
+              <span>{t('autotopic.resultsPanel.topicSizeChart.heading')}</span>
             </h3>
-            <p className="text-xs text-slate-400">Number of unstructured log documents assigned per topic</p>
+            <p className="text-xs text-slate-400">{t('autotopic.resultsPanel.topicSizeChart.subheading')}</p>
           </div>
         </div>
 
@@ -109,8 +111,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
                 labelStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
               />
               <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {results.topics.map((t, idx) => (
-                  <Cell key={`cell-${idx}`} fill={t.color} />
+                {results.topics.map((topic, idx) => (
+                  <Cell key={`cell-${idx}`} fill={topic.color} />
                 ))}
               </Bar>
             </BarChart>
@@ -123,7 +125,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
             <Tag className="w-4 h-4 text-purple-400" />
-            <span>Topic Keyword Representations (c-TF-IDF)</span>
+            <span>{t('autotopic.resultsPanel.keywords.heading')}</span>
           </h3>
         </div>
 
@@ -136,7 +138,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
                 setSelectedTopicId(topic.id);
                 setDocTopicFilter(topic.id);
               }}
-              title="Show this topic's documents in the table below"
+              title={t('autotopic.resultsPanel.keywords.topicButtonTitle')}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition flex items-center space-x-2 ${
                 activeTopicObj?.id === topic.id
                   ? 'bg-slate-800 border-slate-600 text-white shadow'
@@ -144,7 +146,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: topic.color }} />
-              <span>Topic {topic.id}: {topic.name}</span>
+              <span>{t('autotopic.resultsPanel.keywords.topicLabel', { id: topic.id, name: topic.name })}</span>
               <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400">
                 {topic.count}
               </span>
@@ -156,8 +158,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         {activeTopicObj && (
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
             <div className="flex justify-between items-center text-xs font-mono text-slate-400">
-              <span>Selected Topic #{activeTopicObj.id} ({activeTopicObj.percentage}% of corpus)</span>
-              <span className="text-indigo-400">{activeTopicObj.keywords.length} Key Terms</span>
+              <span>{t('autotopic.resultsPanel.keywords.selectedTopicSummary', { id: activeTopicObj.id, percentage: activeTopicObj.percentage })}</span>
+              <span className="text-indigo-400">{t('autotopic.resultsPanel.keywords.keyTermsCount', { count: activeTopicObj.keywords.length })}</span>
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
@@ -182,7 +184,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
               <div className="pt-3 border-t border-slate-800 space-y-2">
                 <div className="flex items-center space-x-1.5 text-[11px] font-mono text-slate-500 uppercase">
                   <Star className="w-3 h-3 text-amber-400" />
-                  <span>Representative documents (closest to topic centroid, via BERTopic)</span>
+                  <span>{t('autotopic.resultsPanel.keywords.representativeDocsHeading')}</span>
                 </div>
                 {activeTopicObj.representativeDocs.map((doc, i) => (
                   <p key={i} className="text-xs text-slate-300 font-mono bg-slate-900 rounded-lg px-3 py-2 border border-slate-800/80">
@@ -201,9 +203,9 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
               <Zap className="w-4 h-4 text-amber-400" />
-              <span>Optuna Hyperparameter Tuning History</span>
+              <span>{t('autotopic.resultsPanel.optuna.heading')}</span>
             </h3>
-            <p className="text-xs text-slate-400">Tracking Composite Score = Coherence (c_uci) + 0.2 × Diversity</p>
+            <p className="text-xs text-slate-400">{t('autotopic.resultsPanel.optuna.subheading')}</p>
           </div>
         </div>
 
@@ -217,15 +219,14 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
                 />
-                <Line type="monotone" dataKey="compositeScore" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Composite Score" />
-                <Line type="monotone" dataKey="coherenceUci" stroke="#6366f1" strokeWidth={1.5} dot={false} name="Coherence (c_uci)" />
+                <Line type="monotone" dataKey="compositeScore" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name={t('autotopic.resultsPanel.optuna.compositeScoreSeriesName')} />
+                <Line type="monotone" dataKey="coherenceUci" stroke="#6366f1" strokeWidth={1.5} dot={false} name={t('autotopic.resultsPanel.optuna.coherenceSeriesName')} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         ) : (
           <div className="h-24 flex items-center justify-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-            Optuna tuning isn't run inline in this live demo (20+ BERTopic trials would be too slow
-            for a request/response cycle) -- it's run offline via <code className="text-slate-400">main.py</code>.
+            {t('autotopic.resultsPanel.optuna.emptyStatePrefix')}<code className="text-slate-400">main.py</code>{t('autotopic.resultsPanel.optuna.emptyStateSuffix')}
           </div>
         )}
       </div>
@@ -235,7 +236,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
             <FileText className="w-4 h-4 text-indigo-400" />
-            <span>{documentsHeading ?? `Classified Log Documents (${filteredDocs.length} items)`}</span>
+            <span>{documentsHeading ?? t('autotopic.resultsPanel.documentsTable.headingDefault', { count: filteredDocs.length })}</span>
           </h3>
 
           <div className="flex items-center space-x-2">
@@ -245,7 +246,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
                 type="text"
                 value={searchDocFilter}
                 onChange={(e) => setSearchDocFilter(e.target.value)}
-                placeholder="Search logs..."
+                placeholder={t('autotopic.resultsPanel.documentsTable.searchPlaceholder')}
                 className="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -257,10 +258,10 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
               }
               className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none"
             >
-              <option value="all">All Topics</option>
-              {results.topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  Topic #{t.id}: {t.name}
+              <option value="all">{t('autotopic.resultsPanel.documentsTable.allTopicsOption')}</option>
+              {results.topics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {t('autotopic.resultsPanel.documentsTable.topicOption', { id: topic.id, name: topic.name })}
                 </option>
               ))}
             </select>
@@ -272,16 +273,16 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800 sticky top-0 z-10">
               <tr>
-                <th className="py-2.5 px-3">Doc ID</th>
-                <th className="py-2.5 px-3">Raw Log Text</th>
-                <th className="py-2.5 px-3">Cleaned Output</th>
-                <th className="py-2.5 px-3">Topic</th>
-                <th className="py-2.5 px-3">Confidence</th>
+                <th className="py-2.5 px-3">{t('autotopic.resultsPanel.documentsTable.colDocId')}</th>
+                <th className="py-2.5 px-3">{t('autotopic.resultsPanel.documentsTable.colRawLogText')}</th>
+                <th className="py-2.5 px-3">{t('autotopic.resultsPanel.documentsTable.colCleanedOutput')}</th>
+                <th className="py-2.5 px-3">{t('autotopic.resultsPanel.documentsTable.colTopic')}</th>
+                <th className="py-2.5 px-3">{t('autotopic.resultsPanel.documentsTable.colConfidence')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {filteredDocs.map((doc) => {
-                const topicObj = results.topics.find((t) => t.id === doc.topicId);
+                const topicObj = results.topics.find((topic) => topic.id === doc.topicId);
                 return (
                   <tr key={doc.id} className="hover:bg-slate-800/40 transition">
                     <td className="py-2 px-3 text-slate-500 text-[10px]">{doc.id}</td>
@@ -300,7 +301,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
                           borderColor: (topicObj?.color || '#64748b') + '40',
                         }}
                       >
-                        #{doc.topicId}: {topicObj?.name || 'Noise'}
+                        #{doc.topicId}: {topicObj?.name || t('autotopic.resultsPanel.documentsTable.noiseFallback')}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-slate-400">{doc.confidence}</td>

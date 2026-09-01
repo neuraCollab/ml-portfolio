@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   AutoTopicConfig,
   AutoTopicDatasetInfo,
@@ -14,6 +14,7 @@ import {
   startFullPipeline, getFullPipelineStatus, ApiError,
 } from '../api/client';
 import { ResultsPanel } from './autotopic/ResultsPanel';
+import { useTranslation } from '../i18n/I18nContext';
 import {
   Sparkles,
   Play,
@@ -33,14 +34,6 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 
-const PIPELINE_STEPS = [
-  'Stage 1: Text Cleaning (HTML, Emojis, LLM prefixes)',
-  'Stage 2: Lemmatization (pymorphy3 ru / spaCy en)',
-  'Stage 3: Embedding Computation (SentenceTransformers MiniLM-L12)',
-  'Stage 4: UMAP Dimensionality Reduction & HDBSCAN Clustering',
-  'Stage 5: c-TF-IDF Topic Representations & Metric Calculation',
-];
-
 const EMPTY_RESULTS: AutoTopicResults = {
   metrics: {
     documentsAnalyzed: 0, nTopics: 0, outlierCount: 0, outlierPercentage: 0,
@@ -52,6 +45,17 @@ const EMPTY_RESULTS: AutoTopicResults = {
 };
 
 export const AutoTopicWorkspace: React.FC = () => {
+  const { t } = useTranslation();
+  const PIPELINE_STEPS = useMemo(
+    () => [
+      t('autotopic.pipeline.stage1'),
+      t('autotopic.pipeline.stage2'),
+      t('autotopic.pipeline.stage3'),
+      t('autotopic.pipeline.stage4'),
+      t('autotopic.pipeline.stage5'),
+    ],
+    [t]
+  );
   const [config, setConfig] = useState<AutoTopicConfig>(DEFAULT_CONFIG);
   const [rawLogs, setRawLogs] = useState<string[]>(SAMPLE_LOG_TEXTS);
   const [customText, setCustomText] = useState('');
@@ -88,7 +92,7 @@ export const AutoTopicWorkspace: React.FC = () => {
   useEffect(() => {
     getAutoTopicDatasetInfo()
       .then(setDatasetInfo)
-      .catch((err) => setDatasetInfoError(err instanceof ApiError ? err.message : 'Could not reach the backend.'));
+      .catch((err) => setDatasetInfoError(err instanceof ApiError ? err.message : t('autotopic.errors.backendUnreachable')));
   }, []);
 
   useEffect(() => {
@@ -99,7 +103,7 @@ export const AutoTopicWorkspace: React.FC = () => {
         return res.json();
       })
       .then(setStaticFullPipelineResults)
-      .catch(() => setStaticFullPipelineError('Could not load the static full-dataset results snapshot.'));
+      .catch(() => setStaticFullPipelineError(t('autotopic.errors.staticResultsLoadFailed')));
   }, []);
 
   const pollFullPipeline = () => {
@@ -139,7 +143,7 @@ export const AutoTopicWorkspace: React.FC = () => {
       setFullPipelineStatus(s);
       pollFullPipeline();
     } catch (err) {
-      setFullPipelineError(err instanceof ApiError ? err.message : 'Could not start the full pipeline.');
+      setFullPipelineError(err instanceof ApiError ? err.message : t('autotopic.errors.fullPipelineStartFailed'));
     }
   };
 
@@ -166,7 +170,7 @@ export const AutoTopicWorkspace: React.FC = () => {
       setNote(newResults.note ?? null);
       setHasRun(true);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Unexpected error running the pipeline.';
+      const message = err instanceof ApiError ? err.message : t('autotopic.errors.pipelineRunFailed');
       setError(message);
     } finally {
       if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
@@ -213,13 +217,13 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 text-indigo-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
               <Sparkles className="w-4 h-4" />
-              <span>AutoTopic Pipeline Engine</span>
+              <span>{t('autotopic.banner.eyebrow')}</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Automatic Unstructured Text Log Topic Analysis
+              {t('autotopic.banner.title')}
             </h2>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              Combines SentenceTransformers embeddings, UMAP dimensionality reduction, HDBSCAN clustering, and c-TF-IDF with Optuna hyperparameter optimization.
+              {t('autotopic.banner.description')}
             </p>
           </div>
 
@@ -232,12 +236,12 @@ export const AutoTopicWorkspace: React.FC = () => {
               {isProcessing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Processing Pipeline...</span>
+                  <span>{t('autotopic.banner.processingLabel')}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-white" />
-                  <span>{csvFile ? `Analyze ${csvFile.name}` : 'Execute BERTopic Pipeline'}</span>
+                  <span>{csvFile ? t('autotopic.banner.analyzeFileLabel', { fileName: csvFile.name }) : t('autotopic.banner.executeButtonLabel')}</span>
                 </>
               )}
             </button>
@@ -247,7 +251,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-xl transition text-sm font-medium"
             >
               <Download className="w-4 h-4" />
-              <span>Export JSON</span>
+              <span>{t('autotopic.banner.exportJsonButton')}</span>
             </button>
           </div>
         </div>
@@ -265,7 +269,7 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="mt-4 pt-4 border-t border-red-500/20 flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div className="text-sm text-red-300">
-              <span className="font-semibold">Pipeline failed: </span>
+              <span className="font-semibold">{t('autotopic.banner.pipelineFailedPrefix')}</span>
               {error}
             </div>
           </div>
@@ -284,12 +288,13 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="mt-4 pt-4 border-t border-emerald-500/20 flex items-start space-x-3">
             <Database className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-300">
-              These results are from a real random sample of{' '}
-              <span className="font-mono text-emerald-400">{results.datasetInfo.sampledRows}</span> of{' '}
-              <span className="font-mono text-emerald-400">{results.datasetInfo.totalRows?.toLocaleString()}</span>{' '}
-              rows loaded from{' '}
-              <span className="font-mono text-slate-400">{results.datasetInfo.resolvedPath}</span> -- not the
-              bundled demo sample.
+              {t('autotopic.banner.datasetProvenance.prefix')}
+              <span className="font-mono text-emerald-400">{results.datasetInfo.sampledRows}</span>
+              {t('autotopic.banner.datasetProvenance.middle')}
+              <span className="font-mono text-emerald-400">{results.datasetInfo.totalRows?.toLocaleString()}</span>
+              {t('autotopic.banner.datasetProvenance.rowsLoadedFrom')}
+              <span className="font-mono text-slate-400">{results.datasetInfo.resolvedPath}</span>
+              {t('autotopic.banner.datasetProvenance.suffix')}
             </div>
           </div>
         )}
@@ -306,14 +311,14 @@ export const AutoTopicWorkspace: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <Sliders className="w-4 h-4 text-indigo-400" />
-                <span>Text Cleaning Stage</span>
+                <span>{t('autotopic.config.cleaningHeading')}</span>
               </div>
               <span className="text-xs text-slate-500 font-mono">stages/cleaning.py</span>
             </div>
 
             <div className="space-y-3 text-xs">
               <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">Remove HTML tags</span>
+                <span className="text-slate-300">{t('autotopic.config.removeHtmlLabel')}</span>
                 <input
                   type="checkbox"
                   checked={config.removeHtml}
@@ -323,7 +328,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               </label>
 
               <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">Strip Emojis & Symbols</span>
+                <span className="text-slate-300">{t('autotopic.config.removeEmojisLabel')}</span>
                 <input
                   type="checkbox"
                   checked={config.removeEmojis}
@@ -333,7 +338,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               </label>
 
               <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">Clean Code & SQL snippets</span>
+                <span className="text-slate-300">{t('autotopic.config.removeCodeLabel')}</span>
                 <input
                   type="checkbox"
                   checked={config.removeCode}
@@ -343,7 +348,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               </label>
 
               <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">Filter LLM model prefixes</span>
+                <span className="text-slate-300">{t('autotopic.config.removeLlmPrefixLabel')}</span>
                 <input
                   type="checkbox"
                   checked={config.removeLlmPrefix}
@@ -359,7 +364,7 @@ export const AutoTopicWorkspace: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <Settings2 className="w-4 h-4 text-purple-400" />
-                <span>BERTopic & Optuna Config</span>
+                <span>{t('autotopic.config.bertopicHeading')}</span>
               </div>
               <span className="text-xs text-slate-500 font-mono">config.yaml</span>
             </div>
@@ -397,7 +402,7 @@ export const AutoTopicWorkspace: React.FC = () => {
 
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-slate-400">Top-N Keywords per Topic</span>
+                  <span className="text-slate-400">{t('autotopic.config.topNWordsLabel')}</span>
                   <span className="font-mono text-indigo-400 font-bold">{config.topNWords}</span>
                 </div>
                 <input
@@ -411,15 +416,15 @@ export const AutoTopicWorkspace: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-slate-400 block mb-1">Language Mode</span>
+                <span className="text-slate-400 block mb-1">{t('autotopic.config.languageModeLabel')}</span>
                 <select
                   value={config.languageMode}
                   onChange={(e) => setConfig({ ...config, languageMode: e.target.value as any })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:border-indigo-500"
                 >
-                  <option value="mixed">Mixed (Ru & En - Multilingual MiniLM)</option>
-                  <option value="ru">Russian Only (pymorphy3)</option>
-                  <option value="en">English Only (spaCy)</option>
+                  <option value="mixed">{t('autotopic.config.languageModeMixed')}</option>
+                  <option value="ru">{t('autotopic.config.languageModeRu')}</option>
+                  <option value="en">{t('autotopic.config.languageModeEn')}</option>
                 </select>
               </div>
             </div>
@@ -429,10 +434,10 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
               <Upload className="w-4 h-4 text-indigo-400" />
-              <span>Upload Your Own CSV</span>
+              <span>{t('autotopic.upload.heading')}</span>
             </div>
             <p className="text-xs text-slate-400">
-              Needs a <code className="text-slate-300">log_text</code> column. Leave empty to use the {rawLogs.length} bundled sample log lines below.
+              {t('autotopic.upload.helpPrefix')}<code className="text-slate-300">log_text</code>{t('autotopic.upload.helpSuffix', { count: rawLogs.length })}
             </p>
             <input
               type="file"
@@ -444,7 +449,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               <div className="flex items-center justify-between text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
                 <span className="text-slate-300 truncate">{csvFile.name}</span>
                 <button onClick={() => setCsvFile(null)} className="text-slate-500 hover:text-slate-300">
-                  Clear
+                  {t('autotopic.upload.clearButton')}
                 </button>
               </div>
             )}
@@ -454,13 +459,13 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
               <Database className="w-4 h-4 text-emerald-400" />
-              <span>Real Dataset (parquet)</span>
+              <span>{t('autotopic.dataset.heading')}</span>
             </div>
 
             {datasetInfoError ? (
               <p className="text-xs text-red-400">{datasetInfoError}</p>
             ) : !datasetInfo ? (
-              <p className="text-xs text-slate-500">Checking dataset location...</p>
+              <p className="text-xs text-slate-500">{t('autotopic.dataset.checkingLocation')}</p>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-start gap-1.5 text-xs">
@@ -471,26 +476,27 @@ export const AutoTopicWorkspace: React.FC = () => {
                   )}
                   <span className="text-slate-300">
                     {datasetInfo.exists
-                      ? `Found -- ${datasetInfo.totalRows?.toLocaleString() ?? '?'} real rows.`
-                      : 'Not found at the configured location.'}
+                      ? t('autotopic.dataset.foundRows', { count: datasetInfo.totalRows?.toLocaleString() ?? '?' })
+                      : t('autotopic.dataset.notFound')}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 font-mono break-all">
                   {datasetInfo.resolvedPath}
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Location is set by the <code className="text-slate-400">AUTOTOPIC_DATA_URL</code> env
-                  var (backend/.env.example) -- currently{' '}
-                  <span className="font-mono text-slate-400">{datasetInfo.configuredLocation}</span>, a local
-                  path. <span className="text-amber-400">Replace it with your Google Drive link once uploaded</span>{' '}
-                  -- see <code className="text-slate-400">AutoTopic/data/README.md</code>.
+                  {t('autotopic.dataset.envVarNote.prefix')}<code className="text-slate-400">AUTOTOPIC_DATA_URL</code>
+                  {t('autotopic.dataset.envVarNote.middle')}
+                  <span className="font-mono text-slate-400">{datasetInfo.configuredLocation}</span>
+                  {t('autotopic.dataset.envVarNote.localPathSuffix')}
+                  <span className="text-amber-400">{t('autotopic.dataset.envVarNote.replaceHint')}</span>
+                  {t('autotopic.dataset.envVarNote.seeSuffix')}<code className="text-slate-400">AutoTopic/data/README.md</code>.
                 </p>
               </div>
             )}
 
             <div>
               <div className="flex justify-between mb-1 text-xs">
-                <span className="text-slate-400">Sample size (random, real rows)</span>
+                <span className="text-slate-400">{t('autotopic.dataset.sampleSizeLabel')}</span>
                 <span className="font-mono text-emerald-400 font-bold">{datasetSampleSize}</span>
               </div>
               <input
@@ -509,7 +515,7 @@ export const AutoTopicWorkspace: React.FC = () => {
               disabled={isProcessing || !datasetInfo?.exists}
               className="w-full py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-medium rounded-xl transition"
             >
-              Run BERTopic on real dataset sample
+              {t('autotopic.dataset.runOnDatasetButton')}
             </button>
           </div>
 
@@ -517,14 +523,14 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
               <FileText className="w-4 h-4 text-emerald-400" />
-              <span>Add Custom Log Document</span>
+              <span>{t('autotopic.customLog.heading')}</span>
             </div>
 
             <form onSubmit={handleAddCustomLog} className="space-y-3">
               <textarea
                 value={customText}
                 onChange={(e) => setCustomText(e.target.value)}
-                placeholder="Paste one or more log lines, one per line (e.g. 'Error 500: Database connection pool exhausted...')"
+                placeholder={t('autotopic.customLog.placeholder')}
                 className="w-full h-24 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
               />
               <button
@@ -532,7 +538,7 @@ export const AutoTopicWorkspace: React.FC = () => {
                 disabled={!customText.trim()}
                 className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition"
               >
-                + Add to Sample Set ({rawLogs.length} docs, re-run to re-cluster)
+                {t('autotopic.customLog.addButton', { count: rawLogs.length })}
               </button>
             </form>
           </div>
@@ -544,17 +550,16 @@ export const AutoTopicWorkspace: React.FC = () => {
           {isProcessing ? (
             <div className="bg-slate-900 border border-dashed border-indigo-500/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
-              <h3 className="text-slate-300 font-semibold">Running the real pipeline...</h3>
+              <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.runningHeading')}</h3>
               <p className="text-xs text-slate-500 max-w-sm">{activeStep}</p>
             </div>
           ) : !hasRun ? (
             <div className="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
               <Sparkles className="w-8 h-8 text-slate-600" />
-              <h3 className="text-slate-300 font-semibold">No results yet</h3>
+              <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.noResultsHeading')}</h3>
               <p className="text-xs text-slate-500 max-w-sm">
-                Click <span className="text-indigo-400 font-medium">Execute BERTopic Pipeline</span> to run the
-                real cleaning &rarr; embedding &rarr; UMAP/HDBSCAN &rarr; c-TF-IDF pipeline on the {rawLogs.length}{' '}
-                bundled sample log lines (or your uploaded CSV).
+                {t('autotopic.demo.noResultsPrefix')}<span className="text-indigo-400 font-medium">{t('autotopic.banner.executeButtonLabel')}</span>
+                {t('autotopic.demo.noResultsSuffix', { count: rawLogs.length })}
               </p>
             </div>
           ) : (
@@ -574,23 +579,20 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
               <Globe2 className="w-4 h-4" />
-              <span>Full Dataset Pipeline</span>
+              <span>{t('autotopic.fullPipeline.eyebrow')}</span>
             </div>
             <h2 className="text-xl font-bold text-white tracking-tight">
-              Run the Real Pipeline on the Whole Dataset
+              {t('autotopic.fullPipeline.title')}
             </h2>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              Same real cleaning &rarr; lemmatization &rarr; filtering &rarr; embedding &rarr; UMAP/HDBSCAN &rarr;
-              c-TF-IDF pipeline as above, but over every real row in{' '}
+              {t('autotopic.fullPipeline.descriptionPrefix')}
               {datasetInfo ? (
                 <span className="font-mono text-emerald-400">{datasetInfo.resolvedPath}</span>
               ) : (
-                'the configured dataset'
-              )}{' '}
-              instead of a capped sample -- matching how <code className="text-slate-400">AutoTopic/main.py</code>{' '}
-              trains on the full corpus. This is a genuinely long CPU job (embeddings alone take roughly
-              45-75 minutes on ~370k rows, plus clustering time on top), so it runs as a background job you
-              can leave running and check back on.
+                t('autotopic.fullPipeline.configuredDatasetFallback')
+              )}
+              {t('autotopic.fullPipeline.descriptionMiddle')}<code className="text-slate-400">AutoTopic/main.py</code>
+              {t('autotopic.fullPipeline.descriptionSuffix')}
             </p>
           </div>
           <button
@@ -601,12 +603,12 @@ export const AutoTopicWorkspace: React.FC = () => {
             {fullPipelineStatus?.status === 'running' ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Running...</span>
+                <span>{t('autotopic.fullPipeline.runningButton')}</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 fill-white" />
-                <span>Run Full Pipeline (Whole Dataset)</span>
+                <span>{t('autotopic.fullPipeline.runButton')}</span>
               </>
             )}
           </button>
@@ -623,9 +625,9 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="pt-4 border-t border-emerald-500/20 space-y-3">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-slate-300">
-                {fullPipelineStatus.status === 'running' && (fullPipelineStatus.stage ?? 'Working...')}
-                {fullPipelineStatus.status === 'completed' && 'Completed'}
-                {fullPipelineStatus.status === 'failed' && 'Failed'}
+                {fullPipelineStatus.status === 'running' && (fullPipelineStatus.stage ?? t('autotopic.fullPipeline.workingFallback'))}
+                {fullPipelineStatus.status === 'completed' && t('autotopic.fullPipeline.completedStatus')}
+                {fullPipelineStatus.status === 'failed' && t('autotopic.fullPipeline.failedStatus')}
               </span>
               {fullPipelineStatus.progressPercent != null && (
                 <span className="text-emerald-400">{fullPipelineStatus.progressPercent.toFixed(0)}%</span>
@@ -641,13 +643,13 @@ export const AutoTopicWorkspace: React.FC = () => {
             )}
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-slate-400 font-mono">
               {fullPipelineStatus.totalRows != null && (
-                <span>Total rows: {fullPipelineStatus.totalRows.toLocaleString()}</span>
+                <span>{t('autotopic.fullPipeline.totalRows', { count: fullPipelineStatus.totalRows.toLocaleString() })}</span>
               )}
               {fullPipelineStatus.survivingRows != null && (
-                <span>Surviving: {fullPipelineStatus.survivingRows.toLocaleString()}</span>
+                <span>{t('autotopic.fullPipeline.surviving', { count: fullPipelineStatus.survivingRows.toLocaleString() })}</span>
               )}
               {fullPipelineStatus.elapsedSeconds != null && (
-                <span>Elapsed: {(fullPipelineStatus.elapsedSeconds / 60).toFixed(1)} min</span>
+                <span>{t('autotopic.fullPipeline.elapsed', { minutes: (fullPipelineStatus.elapsedSeconds / 60).toFixed(1) })}</span>
               )}
             </div>
             {fullPipelineStatus.status === 'failed' && fullPipelineStatus.error && (
@@ -673,34 +675,36 @@ export const AutoTopicWorkspace: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
               <ClipboardCheck className="w-4 h-4" />
-              <span>Results</span>
+              <span>{t('autotopic.staticResults.eyebrow')}</span>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Real Full-Dataset Pipeline Results</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('autotopic.staticResults.title')}</h2>
               <p className="text-sm text-slate-400 max-w-3xl mt-1">
                 {effectiveResults ? (
                   <>
                     {isLive
-                      ? 'Results from the job you just ran above, over every real row in '
-                      : 'A saved snapshot of a real run of the full pipeline above, over every real row in '}
-                    <span className="font-mono text-emerald-400">{effectiveResults.datasetInfo?.resolvedPath}</span>{' '}
-                    -- {effectiveResults.metrics.documentsAnalyzed.toLocaleString()} real documents
-                    clustered into {effectiveResults.metrics.nTopics} real topics.
-                    {!isLive && ' Visible immediately, no need to run the (~45-70 minute) job yourself.'}
+                      ? t('autotopic.staticResults.liveResultsPrefix')
+                      : t('autotopic.staticResults.snapshotResultsPrefix')}
+                    <span className="font-mono text-emerald-400">{effectiveResults.datasetInfo?.resolvedPath}</span>
+                    {t('autotopic.staticResults.documentsClusteredSuffix', {
+                      docCount: effectiveResults.metrics.documentsAnalyzed.toLocaleString(),
+                      topicCount: effectiveResults.metrics.nTopics,
+                    })}
+                    {!isLive && t('autotopic.staticResults.visibleImmediatelyNote')}
                   </>
                 ) : (
-                  'A saved snapshot of a real full-dataset pipeline run -- visible immediately, no need to run the (~45-70 minute) job yourself.'
+                  t('autotopic.staticResults.noResultsDescription')
                 )}
               </p>
             </div>
             {staticFullPipelineError && !effectiveResults ? (
               <p className="text-xs text-red-400">{staticFullPipelineError}</p>
             ) : !effectiveResults ? (
-              <p className="text-xs text-slate-500">Loading saved results...</p>
+              <p className="text-xs text-slate-500">{t('autotopic.staticResults.loadingSnapshot')}</p>
             ) : (
               <ResultsPanel
                 results={effectiveResults}
-                documentsHeading={`Classified Log Documents (random preview of ${effectiveResults.documents.length})`}
+                documentsHeading={t('autotopic.staticResults.documentsHeadingPreview', { count: effectiveResults.documents.length })}
               />
             )}
           </div>
