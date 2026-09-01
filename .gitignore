@@ -1,0 +1,17 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Backend adapter side-effects when run outside Docker (see pipeline/cache.py, pipeline/viz.py)
+cache/
+word_topic/
+
+# OS / editor
+.DS_Store

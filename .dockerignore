@@ -1,0 +1,12 @@
+.git
+.claude
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc
+AutoTopic/cache
+AutoTopic/mlruns
+AutoTopic/mlartifacts
+AutoTopic/word_topic
+backend/.venv
+*.zip

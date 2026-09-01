@@ -1,0 +1,52 @@
+{
+  "undistort": {
+    "imageWidth": 1242,
+    "imageHeight": 375,
+    "processingTimeMs": 3.194,
+    "note": "Runs the project's real undistort_image() (cv2.getOptimalNewCameraMatrix + cv2.undistort) with these K/D parameters, on a bundled sample frame standing in for a raw KITTI camera frame (the raw dataset isn't bundled in this repo). Compare against the original to see the lens correction."
+  },
+  "lidar": {
+    "pointsGenerated": 400,
+    "pointsInFrame": 354,
+    "nearestDistanceM": 5.34,
+    "warningActive": true,
+    "warningThresholdM": 10.0,
+    "processingTimeMs": 1.351,
+    "seed": 7,
+    "numPointsRequested": 400,
+    "note": "Runs the project's real velo_to_cam() + project_to_image() functions on a synthetic point cloud (the raw Velodyne .bin scans aren't bundled in this repo), overlaid on the same sample frame. nearestDistanceM is the real Euclidean distance (from synthetic_point_cloud()'s own sensor-frame coordinates) to the closest of the points that actually project into the visible camera frame -- not a mocked value."
+  },
+  "policy": {
+    "inputState": {
+      "speed": 15.0,
+      "yawRate": 0.0,
+      "nearestObstacleDist": 25.0,
+      "laneOffset": 0.0
+    },
+    "action": {
+      "steering": 0.029749512672424316,
+      "throttle": 0.49595099687576294,
+      "brake": 0.487531840801239
+    },
+    "modelSource": "pretrained-sac",
+    "modelName": "SAC (Stable-Baselines3, MultiInputPolicy, custom CNN+MLP extractor)",
+    "observationShape": "image: (3, 84, 84) uint8, vector: (6,) float32",
+    "clipped": {
+      "steering": false,
+      "throttle": false,
+      "brake": false
+    },
+    "inferenceTimeMs": 16.655,
+    "note": "Real forward pass through the pretrained SAC policy committed under models/, using the bundled sample frame as the image observation (the trained model expects an 84x84 RGB crop + a 6-value sensor vector; the raw KITTI dataset needed to feed it a real frame per step isn't bundled in this repo)."
+  },
+  "calibration": {
+    "fx": 959.7,
+    "fy": 956.9,
+    "cx": 696.0,
+    "cy": 224.2,
+    "k1": -0.369,
+    "k2": 0.196,
+    "p1": 0.0001,
+    "p2": 0.0002
+  }
+}

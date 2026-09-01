@@ -1,0 +1,25 @@
+{
+  "ecg_id": 11332,
+  "filename": "records100/11000/11332_lr",
+  "labels": {
+    "is_sinus_rhythm": 1,
+    "is_afib": 0,
+    "is_aflt": 0,
+    "is_pac": 0,
+    "is_pvc": 0,
+    "is_svt": 0,
+    "is_sinus_arrhythmia": 0,
+    "has_1avb": 0,
+    "has_2avb": 0,
+    "has_3avb": 0,
+    "has_rbbb": 0,
+    "has_lbbb": 0,
+    "has_irbbb": 0,
+    "has_ilbbb": 0,
+    "has_lafb": 0,
+    "has_lpfb": 0,
+    "has_wpw": 0,
+    "has_bigeminy": 0,
+    "has_trigeminy": 0
+  }
+}

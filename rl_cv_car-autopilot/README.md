@@ -1,39 +1,70 @@
-## RL Car Autopilot on KITTI (Anomaly Detection & Sensor Fusion Playground)
+## RL Car Autopilot on KITTI (Sensor Fusion & Reinforcement Learning Playground)
 
-Этот проект демонстрирует мои навыки работы с сырыми данными датасетов автономного вождения (KITTI), обработку многомодальных данных (камера, LiDAR, IMU/GPS), калибровку и проекцию облака точек на изображение, а также построение среды `Gym` и обучение агентa с `Stable-Baselines3` (SAC/DDPG) на комбинированных наблюдениях (изображение + числовой вектор).
+## Overview
 
-Основной код: `anomaly_detection.py`.
+This project demonstrates end-to-end work with raw autonomous-driving sensor data (the KITTI
+dataset): multi-modal data handling (camera, LiDAR, IMU/GPS), camera calibration and 3D-to-2D
+LiDAR point projection, and building a custom `Gym` environment to train a reinforcement-learning
+agent (`Stable-Baselines3` SAC/DDPG) on combined observations (an image crop plus a numeric
+sensor vector).
 
-### Что здесь реализовано
-- **Загрузка и распаковка данных**: автодетект `.zip` рядом со скриптом и распаковка.
-- **Работа с изображениями KITTI**: чтение кадров камер, преобразование BGR→RGB, базовая визуализация.
-- **Сбор датасета изображений**: агрегация из папок `image_00`, `image_01`, ... в единый `numpy` массив.
-- **Парсинг OXTS (IMU/GPS)**: чтение формата и таймстемпов, сбор в `pandas.DataFrame` со структурированными ключами.
-- **Чтение LiDAR (Velodyne)**: распаковка `*.bin`, сбор поскана и BEV-визуализация.
-- **Tracklets (аннотации объектов)**: парсинг `tracklet_labels.xml` в табличный вид.
-- **Парсинг калибровок**: `calib_cam_to_cam.txt`, `calib_velo_to_cam.txt`, `calib_imu_to_velо.txt`; построение матриц и полных `Tr` (4x4).
-- **Undistort изображений**: удаление дисторсии по параметрам камеры.
+Main script: `anomaly_detection.py`.
 
-![изображение без дисторсии](undistorted_image.png)
+### What's implemented
+- **Data loading/extraction**: auto-detects a `.zip` next to the script and extracts it.
+- **KITTI camera images**: reads camera frames, converts BGR->RGB, basic visualization.
+- **Image dataset assembly**: aggregates frames from `image_00`, `image_01`, ... into a single
+  `numpy` array.
+- **OXTS (IMU/GPS) parsing**: reads the KITTI OXTS text format and timestamps into a structured
+  `pandas.DataFrame`.
+- **LiDAR (Velodyne) reading**: unpacks `*.bin` point-cloud scans and renders a bird's-eye-view
+  (BEV) visualization.
+- **Tracklets (object annotations)**: parses `tracklet_labels.xml` into a tabular form.
+- **Calibration parsing**: `calib_cam_to_cam.txt`, `calib_velo_to_cam.txt`,
+  `calib_imu_to_velo.txt`; builds the rotation/translation matrices and the full 4x4 `Tr`
+  transform.
+- **Image undistortion**: removes lens distortion given the camera's intrinsic/distortion
+  parameters.
 
-- **Проекция LiDAR→камера**: преобразование в координаты камеры и проекция в пиксели с помощью `P_rect`.
-- **Среда `Gym`**: `KITTICarEnv` c мультимодальным наблюдением: `image` (84x84x3) + `vector` (скорость, yaw, геометрия ближайшей цели и т.д.).
-- **Вознаграждение**: простой shaping (скорость в диапазоне, штраф за резкий руль, опасную близость, высокую угловую скорость).
-- **Модель RL**: `SAC` с `MultiInputPolicy` и кастомным `CombinedExtractor` (CNN для изображения + MLP для вектора).
-- **Инференс/рендер**: онлайн-рендер с проекцией LiDAR-точек на кадр; режим FullHD-видео.
+![undistorted image](undistorted_image.png)
 
-### Навыки, показанные проектом
-- **Компьютерное зрение и сенсорный фьюжн**: OpenCV, работа с калибровками, проекция 3D→2D, undistort.
-- **Обработка данных**: `numpy`, `pandas`, парсинг XML/текстов форматов KITTI, синхронизация по таймстемпам.
-- **RL инженерия**: проектирование наблюдений/действий, вознаграждения, интеграция со `Stable-Baselines3` (SAC/DDPG), `Gym` API.
-- **Инфраструктура экспериментов**: визуализация BEV/оверлея LiDAR, рендер видео, разметка треклетов.
+- **LiDAR -> camera projection**: transforms LiDAR points into camera coordinates and projects
+  them to pixel space via the rectified projection matrix `P_rect`.
+- **`Gym` environment**: `KITTICarEnv` with a multi-modal observation -- `image` (84x84x3) +
+  `vector` (speed, yaw rate, geometry of the nearest target, etc.).
+- **Reward shaping**: a simple reward that rewards staying in a target speed range and
+  penalizes harsh steering, dangerous proximity to obstacles, and high angular velocity.
+- **RL model**: `SAC` with `MultiInputPolicy` and a custom `CombinedExtractor` (a CNN branch for
+  the image, an MLP branch for the vector).
+- **Inference/render**: an online renderer that overlays projected LiDAR points on the camera
+  frame; a Full-HD video export mode.
+
+### Skills demonstrated
+- **Computer vision & sensor fusion**: OpenCV, camera calibration handling, 3D->2D projection,
+  lens undistortion.
+- **Data engineering**: `numpy`/`pandas`, parsing KITTI's XML/text formats, timestamp
+  synchronization across sensors.
+- **RL engineering**: observation/action space design, reward shaping, integration with
+  `Stable-Baselines3` (SAC/DDPG) via the `Gym` API.
+- **Experiment tooling**: BEV/LiDAR-overlay visualization, video rendering, tracklet labeling.
+
+## Tech Stack
+
+| Category | Library / Tool |
+|---|---|
+| Computer vision | OpenCV (`cv2`) |
+| Data processing | NumPy, pandas, `xml.etree` |
+| RL framework | OpenAI Gym (`gym`), Stable-Baselines3 (SAC, DDPG) |
+| Deep learning | PyTorch (`torch`, `torch.nn`) -- custom CNN+MLP feature extractor |
+| Visualization | Matplotlib |
+| Dataset | KITTI Raw (camera, Velodyne LiDAR, OXTS IMU/GPS, tracklet annotations) |
 
 ---
 
-## Быстрый старт
+## Quick Start
 
-### 1) Зависимости
-Рекомендуется Python 3.10–3.11.
+### 1) Dependencies
+Python 3.10-3.11 is recommended.
 
 ```bash
 python -m venv .venv
@@ -42,12 +73,14 @@ python -m pip install --upgrade pip
 pip install numpy opencv-python matplotlib pandas gym==0.26.2 gym-notices torch torchvision torchaudio stable-baselines3[extra]
 ```
 
-Примечания:
-- Для CUDA установите совместимые версии `torch` согласно инструкции PyTorch.
-- Если у вас Gym v1+, убедитесь, что версия совместима со Stable-Baselines3 (в проекте используется API Gym v0.26+).
+Notes:
+- For CUDA, install a matching `torch` build per the official PyTorch instructions.
+- If you have Gym v1+, make sure it's compatible with your Stable-Baselines3 version (this
+  project targets the Gym v0.26+ API).
 
-### 2) Данные KITTI
-Скачайте KITTI Raw data (сцену `2011_09_26_drive_0001_sync`) и файлы калибровок. Структура, ожидаемая скриптом:
+### 2) KITTI data
+Download the KITTI Raw dataset (scene `2011_09_26_drive_0001_sync`) and its calibration files.
+Expected directory layout:
 
 ```
 ./2011_09_26/
@@ -64,51 +97,50 @@ pip install numpy opencv-python matplotlib pandas gym==0.26.2 gym-notices torch 
     tracklet_labels.xml
 ```
 
-Альтернатива: положите `.zip` с этой структурой рядом с `anomaly_detection.py` — скрипт сам распакует в текущую папку.
+Alternative: place a `.zip` with this structure next to `anomaly_detection.py` -- the script
+will extract it into the current directory automatically.
 
-### 3) Запуск обучения + рендера
-
-```bash
-python anomaly_detection.py
-```
-
-Скрипт:
-- загрузит данные и калибровки;
-- построит `KITTICarEnv`;
-- запустит короткое обучение `SAC` (~1000 шагов в примере);
-- выполнит rollout с рендером и проекцией LiDAR-точек на изображение.
-
-Если хотите только тест предобученной модели (и запись видео FullHD), используйте встроенную функцию `test_trained_model` в конце файла. По умолчанию:
+### 3) Run training + render
 
 ```bash
 python anomaly_detection.py
 ```
 
-Сменить пути модели/нормализации/видео можно в параметрах вызова `test_trained_model(...)`.
+The script will:
+- load the data and calibration files;
+- build the `KITTICarEnv`;
+- run a short `SAC` training loop (~1000 steps in the example);
+- run a rollout with rendering and LiDAR-point projection overlaid on the image.
+
+To only test a pretrained model (and export a Full-HD video), use the `test_trained_model`
+function defined at the end of the file -- adjust the model/normalization/video paths in its
+call arguments.
 
 ---
 
-## Ключевые компоненты (коротко)
-- `create_image_dataset` — агрегирует кадры камер в `numpy` массив.
-- Парсинг `oxts`: строит `DataFrame` с физическими величинами и таймстемпами.
-- Парсинг LiDAR `*.bin` в массивы `N x 4 (x,y,z,intensity)` и BEV-плоттер.
-- `parse_calib_*` — читают калибровки, собирают `R`, `T`, `P_rect`, строят `Tr (4x4)`.
-- `undistort_image` — удаление дисторсии по `K` и `D`.
-- `velo_to_cam` и `project_to_image` — проекция точек лидара на изображение.
-- `KITTICarEnv` — среда с наблюдением `[image, vector]`, простым вознаграждением и рендером оверлея.
-- `CustomCombinedExtractor` — CNN+MLP экстрактор для `MultiInputPolicy` (`SAC`).
+## Key Components (at a glance)
+- `create_image_dataset` -- aggregates camera frames into a `numpy` array.
+- OXTS parsing -- builds a `DataFrame` of physical quantities with timestamps.
+- LiDAR `*.bin` parsing -- into `N x 4 (x, y, z, intensity)` arrays, plus a BEV plotter.
+- `parse_calib_*` -- reads calibration files, assembles `R`, `T`, `P_rect`, and the 4x4 `Tr`.
+- `undistort_image` -- removes lens distortion given `K` and `D`.
+- `velo_to_cam` and `project_to_image` -- project LiDAR points onto the camera image.
+- `KITTICarEnv` -- the environment with `[image, vector]` observations, a simple reward, and
+  an overlay renderer.
+- `CustomCombinedExtractor` -- the CNN+MLP feature extractor used by `SAC`'s `MultiInputPolicy`.
 
 ---
 
-## Типичные проблемы и решения
-- "File not found": проверьте пути к `2011_09_26/...` и файлам `calib_*.txt`.
-- OpenCV highgui окна не открываются: запускайте локально (не в headless-среде) или закомментируйте `imshow` и используйте сохранение кадров/видео.
-- Несоответствие версий Gym/SB3: используйте Gym 0.26.x и актуальную SB3 (`[extra]`).
-- CUDA/torch: подберите версии из таблицы совместимости PyTorch.
+## Common Issues
+- "File not found": check the paths to `2011_09_26/...` and the `calib_*.txt` files.
+- OpenCV `highgui` windows won't open: run locally (not in a headless environment), or comment
+  out `imshow` calls and save frames/video to disk instead.
+- Gym/SB3 version mismatch: use Gym 0.26.x with a compatible, current Stable-Baselines3
+  (`[extra]`).
+- CUDA/torch: pick versions from PyTorch's official compatibility matrix.
 
 ---
 
-## Лицензия данных
-KITTI Raw принадлежит создателям датасета и распространяется на их условиях. Этот репозиторий содержит только код; данные вы скачиваете отдельно из официальных источников.
-
-
+## Data License
+KITTI Raw belongs to its dataset authors and is distributed under their terms. This repository
+contains only code -- the dataset itself must be downloaded separately from the official source.

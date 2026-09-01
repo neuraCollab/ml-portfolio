@@ -1,0 +1,8 @@
+{
+  "name": "ML Portfolio: AutoTopic & RL Autopilot",
+  "description": "Interactive demonstration workspace for NLP AutoTopic modeling and RL/CV Car Autopilot with KITTI sensor fusion",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

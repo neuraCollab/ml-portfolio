@@ -1,0 +1,41 @@
+# Web framework
+fastapi>=0.110,<0.116
+uvicorn[standard]>=0.29,<0.35
+python-multipart>=0.0.9
+pydantic>=2.6,<3.0
+
+# Shared numeric stack (pinned <2 for bertopic/umap/hdbscan compatibility)
+numpy>=1.24,<2.0
+pandas>=2.0.0
+pyarrow>=14.0.0
+
+# AutoTopic pipeline (reused from ../AutoTopic)
+bertopic>=0.17.0
+sentence-transformers>=2.2.0
+umap-learn>=0.5.4
+hdbscan>=0.8.33
+scikit-learn>=1.3.0
+gensim>=4.3.0
+spacy>=3.7.0
+pymorphy3>=2.0.0
+pymorphy3-dicts-ru>=2.4.417127.4579844
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+emoji>=2.8.0
+loguru>=0.7.0
+pyyaml>=6.0
+
+# Autopilot CV + pretrained policy (reused from ../rl_cv_car-autopilot)
+# stable-baselines3/gymnasium pinned to match rl_cv_car-autopilot/system_info.txt
+# (the version the pretrained models/*.pth state dicts were saved with) --
+# SB3's default network architecture has changed across versions in the past,
+# and we reconstruct the policy module by hand (see policy_inference.py)
+# rather than SAC.load(), so an exact match matters here.
+opencv-python-headless>=4.9.0
+torch==2.5.1
+stable-baselines3==2.6.0
+gymnasium==1.1.1
+
+# ECG Edge AI (reused from ../raspberry-pi-ecg, adapted from neuraCollab/rasbery-pi-5-ECG)
+scipy>=1.11.0
+pyserial>=3.5

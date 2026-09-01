@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 cache/
 word_topic
+
+# Large raw datasets -- too big for git, fetched separately. See data/README.md.
+data/raw/
