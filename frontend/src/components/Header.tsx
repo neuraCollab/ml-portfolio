@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab } from '../types';
-import { Sparkles, Car, Layers, Github, BookOpen, Activity, HeartPulse } from 'lucide-react';
+import { Sparkles, Car, Layers, Github, BookOpen, Activity, HeartPulse, Network } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -70,6 +70,19 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               <HeartPulse className="w-4 h-4 text-rose-300" />
               <span className="hidden sm:inline">ECG Edge AI</span>
               <span className="sm:hidden">ECG</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cassandragrpc')}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
+                activeTab === 'cassandragrpc'
+                  ? 'bg-gradient-to-r from-cyan-600 to-sky-700 text-white shadow-md shadow-cyan-500/25'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              <Network className="w-4 h-4 text-cyan-300" />
+              <span className="hidden sm:inline">Cassandra gRPC ML</span>
+              <span className="sm:hidden">Cassandra</span>
             </button>
 
             <button
