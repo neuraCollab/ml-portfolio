@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { RotateCcw } from 'lucide-react';
 import { ECG_LEAD_NAMES, EcgLeadName } from '../../types';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface ECGChartProps {
   leads: Record<string, number[]>;
@@ -29,28 +30,29 @@ const SingleLead: React.FC<{
   name: string; data: { t: number; v: number }[]; height: number; showAxis: boolean; zoomable?: boolean;
 }> = ({ name, data, height, showAxis, zoomable }) => {
   const [brushKey, setBrushKey] = useState(0);
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs font-mono text-slate-400">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: LEAD_COLORS[name] }} />
-          Lead {name}
+          {t('ecg.chart.leadLabel', { name })}
         </span>
         {zoomable && (
           <button
             onClick={() => setBrushKey((k) => k + 1)}
             className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300"
-            title="Reset zoom/pan"
+            title={t('ecg.chart.resetZoomTitle')}
           >
-            <RotateCcw className="w-3 h-3" /> Reset view
+            <RotateCcw className="w-3 h-3" /> {t('ecg.chart.resetViewButton')}
           </button>
         )}
       </div>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 8, left: showAxis ? 0 : -30, bottom: 0 }}>
-            <XAxis dataKey="t" stroke="#64748b" tick={showAxis ? { fill: '#94a3b8', fontSize: 10 } : false} height={showAxis ? 20 : 4} label={showAxis ? { value: 'seconds', position: 'insideBottomRight', fill: '#64748b', fontSize: 10, offset: -2 } : undefined} />
+            <XAxis dataKey="t" stroke="#64748b" tick={showAxis ? { fill: '#94a3b8', fontSize: 10 } : false} height={showAxis ? 20 : 4} label={showAxis ? { value: t('ecg.chart.secondsAxisLabel'), position: 'insideBottomRight', fill: '#64748b', fontSize: 10, offset: -2 } : undefined} />
             <YAxis stroke="#64748b" tick={showAxis ? { fill: '#94a3b8', fontSize: 10 } : false} width={showAxis ? 36 : 4} domain={['auto', 'auto']} />
             <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} labelFormatter={(v) => `${v}s`} />
             <Line type="monotone" dataKey="v" stroke={LEAD_COLORS[name]} strokeWidth={1.5} dot={false} isAnimationActive={false} />

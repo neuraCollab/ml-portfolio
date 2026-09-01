@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { EcgClassPrediction } from '../../types';
 import { CLASS_LABELS } from '../../data/ecgLabels';
 import { formatProbability } from '../../utils/formatProbability';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface ProbabilityBarChartProps {
   predictions: Record<string, EcgClassPrediction>;
@@ -19,6 +20,7 @@ const MIN_PLOTTABLE = 1e-20;
 
 export const ProbabilityBarChart: React.FC<ProbabilityBarChartProps> = ({ predictions }) => {
   const [showAll, setShowAll] = useState(false);
+  const { t } = useTranslation();
 
   const rows = useMemo(() => {
     const all = Object.entries(predictions)
@@ -53,7 +55,7 @@ export const ProbabilityBarChart: React.FC<ProbabilityBarChartProps> = ({ predic
               contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
               formatter={(_value: number, _name: string, item: any) => [
                 formatProbability(item.payload.probability),
-                'Raw model probability',
+                t('ecg.probabilityChart.rawProbabilityTooltipLabel'),
               ]}
             />
             <Bar dataKey="plotValue" radius={[0, 4, 4, 0]}>
@@ -69,15 +71,13 @@ export const ProbabilityBarChart: React.FC<ProbabilityBarChartProps> = ({ predic
           onClick={() => setShowAll((v) => !v)}
           className="text-[11px] text-rose-400 hover:text-rose-300"
         >
-          {showAll ? `Show top ${TOP_N_DEFAULT} only` : `Show all ${total} classes`}
+          {showAll
+            ? t('ecg.probabilityChart.showTopNButton', { n: TOP_N_DEFAULT })
+            : t('ecg.probabilityChart.showAllButton', { n: total })}
         </button>
       )}
       <p className="text-[10px] text-slate-500">
-        Red bars are "predicted" (above that class's own calibrated decision threshold); grey bars
-        are below it. Axis is log-scaled -- these are the real raw sigmoid outputs of the ECGNet
-        model, which are all far below 1 and span many orders of magnitude, so a linear 0-100% axis
-        would flatten every bar to zero. Thresholds are tuned per class on held-out data, not a flat
-        0.5 (see raspberry-pi-ecg/data/README.md).
+        {t('ecg.probabilityChart.logScaleExplanationNote')}
       </p>
     </div>
   );

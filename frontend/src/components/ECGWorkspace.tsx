@@ -11,6 +11,7 @@ import { SignalStatus } from './ecg/SignalStatus';
 import { SignalMetricsPanel } from './ecg/SignalMetricsPanel';
 import { EvaluationPanel } from './ecg/EvaluationPanel';
 import { StaticResultsSection } from './ecg/StaticResultsSection';
+import { useTranslation } from '../i18n/I18nContext';
 import {
   HeartPulse, Play, Upload, Radio, FlaskConical, ShieldAlert,
   Cpu, Waves, Sliders, Info, ChevronDown, ChevronUp, ClipboardCheck,
@@ -19,6 +20,7 @@ import {
 type Mode = 'demo' | 'live';
 
 export const ECGWorkspace: React.FC = () => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('demo');
   const [source, setSource] = useState<'sample' | 'synthetic' | 'public'>('sample');
   const [heartRate, setHeartRate] = useState(72);
@@ -43,7 +45,7 @@ export const ECGWorkspace: React.FC = () => {
       const res = uploadFile ? await analyzeEcgUpload(uploadFile) : await runEcgDemo(source, heartRate);
       setResult(res);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'ECG analysis request failed.');
+      setError(err instanceof ApiError ? err.message : t('ecg.workspace.analysisErrorFallback'));
     } finally {
       setLoading(false);
     }
@@ -59,7 +61,7 @@ export const ECGWorkspace: React.FC = () => {
       wsRef.current = null;
       return;
     }
-    setLiveStatus('Connecting...');
+    setLiveStatus(t('ecg.workspace.liveConnectingStatus'));
     setLiveHardware(null);
     setLiveLeads({});
     let receivedAnyMessage = false;
@@ -68,11 +70,11 @@ export const ECGWorkspace: React.FC = () => {
         receivedAnyMessage = true;
         if (data.type === 'status') {
           setLiveHardware(data.hardwareAvailable);
-          setLiveStatus(data.message ?? (data.hardwareAvailable ? 'Streaming' : 'No hardware detected'));
+          setLiveStatus(data.message ?? (data.hardwareAvailable ? t('ecg.workspace.liveStreamingStatus') : t('ecg.workspace.liveNoHardwareStatus')));
           return;
         }
         setLiveHardware(true);
-        setLiveStatus('Streaming live sensor data');
+        setLiveStatus(t('ecg.workspace.liveStreamingDataStatus'));
         setLiveLeads((prev) => {
           const next: Record<string, number[]> = {};
           for (const lead of ECG_LEAD_NAMES) {
@@ -89,7 +91,7 @@ export const ECGWorkspace: React.FC = () => {
         // the generic "unreachable" message if we never got anything at all.
         if (!receivedAnyMessage) {
           setLiveHardware(false);
-          setLiveStatus('Could not reach the backend WebSocket endpoint. Is the backend running?');
+          setLiveStatus(t('ecg.workspace.liveUnreachableStatus'));
         }
       }
     );
@@ -114,24 +116,20 @@ export const ECGWorkspace: React.FC = () => {
         <div className="relative z-10 space-y-3">
           <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider">
             <HeartPulse className="w-4 h-4" />
-            <span>ECG Edge AI</span>
+            <span>{t('ecg.workspace.eyebrow')}</span>
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Raspberry Pi 5 ECG Monitor & Rhythm Classifier</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">{t('ecg.workspace.title')}</h2>
           <p className="text-sm text-slate-300 max-w-2xl">
-            Two AD8232 + Arduino Nano units stream raw ECG to a Raspberry Pi 5, which reconstructs
-            the standard 6-lead frontal ECG (I, II, III, aVR, aVL, aVF) via Einthoven's/Goldberger's
-            equations and classifies 19 rhythm/conduction patterns with a local, CPU-only PyTorch
-            model trained on PTB-XL.
+            {t('ecg.workspace.description')}
           </p>
           <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-400 pt-1">
-            <span className="flex items-center gap-1.5"><Waves className="w-3.5 h-3.5 text-rose-400" /> AD8232 &rarr; Arduino Nano &rarr; Pi 5</span>
-            <span className="flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-rose-400" /> Filter &rarr; Lead reconstruction &rarr; ECGNet &rarr; Prediction</span>
+            <span className="flex items-center gap-1.5"><Waves className="w-3.5 h-3.5 text-rose-400" /> {t('ecg.workspace.hardwarePipelineLabel')}</span>
+            <span className="flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-rose-400" /> {t('ecg.workspace.modelPipelineLabel')}</span>
           </div>
 
           <div className="flex items-start gap-2 text-[11px] text-amber-300/90 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2 mt-2">
             <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>Research/education prototype, not a certified medical device. Model output is a
-              classification, not a medical diagnosis -- it must not be used for clinical decisions.</span>
+            <span>{t('ecg.workspace.disclaimerText')}</span>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
@@ -142,7 +140,7 @@ export const ECGWorkspace: React.FC = () => {
               }`}
             >
               <FlaskConical className="w-4 h-4" />
-              <span>Demo Mode</span>
+              <span>{t('ecg.workspace.demoModeButton')}</span>
             </button>
             <button
               onClick={() => setMode('live')}
@@ -151,7 +149,7 @@ export const ECGWorkspace: React.FC = () => {
               }`}
             >
               <Radio className="w-4 h-4" />
-              <span>Live Hardware</span>
+              <span>{t('ecg.workspace.liveHardwareButton')}</span>
             </button>
           </div>
         </div>
@@ -166,21 +164,19 @@ export const ECGWorkspace: React.FC = () => {
                 <ECGChart leads={liveLeads} samplingRateHz={100} selectedLead={selectedLead} />
               </div>
             ) : (
-              <EmptyState icon={Radio} title="Waiting for hardware" detail={liveStatus ?? 'Connecting to the live WebSocket endpoint...'} />
+              <EmptyState icon={Radio} title={t('ecg.workspace.liveWaitingTitle')} detail={liveStatus ?? t('ecg.workspace.liveConnectingDetail')} />
             )}
           </div>
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <Radio className={`w-4 h-4 ${liveHardware ? 'text-emerald-400' : 'text-amber-400'}`} />
-                <span>Hardware Status</span>
+                <span>{t('ecg.workspace.hardwareStatusLabel')}</span>
               </div>
-              <p className="text-xs text-slate-400">{liveStatus ?? 'Connecting...'}</p>
+              <p className="text-xs text-slate-400">{liveStatus ?? t('ecg.workspace.liveConnectingStatus')}</p>
               {liveHardware === false && (
                 <p className="text-[11px] text-slate-500 border-t border-slate-800 pt-3">
-                  This is expected in the portfolio deployment -- the backend container has no AD8232/Arduino
-                  attached. On a real Raspberry Pi 5 with both sensors plugged in, this same endpoint streams
-                  live readings (see <span className="font-mono">raspberry-pi-ecg/README.md</span>). Try Demo Mode instead.
+                  {t('ecg.workspace.liveExpectedPrefix')}<span className="font-mono">raspberry-pi-ecg/README.md</span>{t('ecg.workspace.liveExpectedSuffix')}
                 </p>
               )}
             </div>
@@ -194,7 +190,7 @@ export const ECGWorkspace: React.FC = () => {
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                   <Sliders className="w-4 h-4 text-rose-400" />
-                  <span>Input</span>
+                  <span>{t('ecg.workspace.inputHeading')}</span>
                 </div>
               </div>
 
@@ -203,34 +199,33 @@ export const ECGWorkspace: React.FC = () => {
                   onClick={() => { setUploadFile(null); setSource('sample'); }}
                   className={`py-2 rounded-xl border font-medium transition ${!uploadFile && source === 'sample' ? 'bg-rose-500/20 border-rose-500/40 text-rose-300' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
                 >
-                  Recorded sample
+                  {t('ecg.workspace.sourceRecordedSample')}
                 </button>
                 <button
                   onClick={() => { setUploadFile(null); setSource('synthetic'); }}
                   className={`py-2 rounded-xl border font-medium transition ${!uploadFile && source === 'synthetic' ? 'bg-rose-500/20 border-rose-500/40 text-rose-300' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
                 >
-                  Synthetic
+                  {t('ecg.workspace.sourceSynthetic')}
                 </button>
                 <button
                   onClick={() => { setUploadFile(null); setSource('public'); }}
-                  title="A real, public, de-identified record from PTB-XL (PhysioNet, CC-BY 4.0) with real ground-truth labels"
+                  title={t('ecg.workspace.sourcePublicTitle')}
                   className={`py-2 rounded-xl border font-medium transition ${!uploadFile && source === 'public' ? 'bg-rose-500/20 border-rose-500/40 text-rose-300' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
                 >
-                  Public PTB-XL example
+                  {t('ecg.workspace.sourcePublicLabel')}
                 </button>
               </div>
 
               {!uploadFile && source === 'public' && (
                 <p className="text-[10px] text-slate-500">
-                  A real, public, de-identified ECG record from PTB-XL (PhysioNet, CC-BY 4.0) with
-                  real ground-truth labels -- see raspberry-pi-ecg/data/README.md.
+                  {t('ecg.workspace.sourcePublicDetail')}
                 </p>
               )}
 
               {!uploadFile && source === 'synthetic' && (
                 <div>
                   <div className="flex justify-between mb-1 text-xs">
-                    <span className="text-slate-400">Heart rate</span>
+                    <span className="text-slate-400">{t('ecg.workspace.heartRateLabel')}</span>
                     <span className="font-mono text-rose-400 font-bold">{heartRate} bpm</span>
                   </div>
                   <input type="range" min={40} max={180} value={heartRate} onChange={(e) => setHeartRate(Number(e.target.value))} className="w-full accent-rose-500 bg-slate-800" />
@@ -238,18 +233,18 @@ export const ECGWorkspace: React.FC = () => {
               )}
 
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <p className="text-xs text-slate-400">Or upload your own recording:</p>
+                <p className="text-xs text-slate-400">{t('ecg.workspace.uploadPrompt')}</p>
                 <input
                   type="file"
                   accept=".npy"
                   onChange={handleFileChange}
                   className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:text-xs hover:file:bg-slate-700"
                 />
-                <p className="text-[10px] text-slate-500">Needs shape (1000, 6) or (6, 1000).</p>
+                <p className="text-[10px] text-slate-500">{t('ecg.workspace.uploadShapeHint')}</p>
                 {uploadFile && (
                   <div className="flex items-center justify-between text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
                     <span className="text-slate-300 truncate">{uploadFile.name}</span>
-                    <button onClick={() => setUploadFile(null)} className="text-slate-500 hover:text-slate-300">Clear</button>
+                    <button onClick={() => setUploadFile(null)} className="text-slate-500 hover:text-slate-300">{t('ecg.workspace.clearButton')}</button>
                   </div>
                 )}
               </div>
@@ -260,7 +255,7 @@ export const ECGWorkspace: React.FC = () => {
                 className="w-full flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-medium rounded-xl shadow-lg shadow-rose-500/25 transition disabled:opacity-50"
               >
                 {uploadFile ? <Upload className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
-                <span>{loading ? 'Running...' : uploadFile ? `Analyze ${uploadFile.name}` : 'Run Analysis'}</span>
+                <span>{loading ? t('ecg.workspace.runningButton') : uploadFile ? t('ecg.workspace.analyzeButton', { filename: uploadFile.name }) : t('ecg.workspace.runAnalysisButton')}</span>
               </button>
             </div>
 
@@ -268,14 +263,14 @@ export const ECGWorkspace: React.FC = () => {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
                 <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm pb-2 border-b border-slate-800">
                   <Info className="w-4 h-4 text-rose-400" />
-                  <span>Technical Details</span>
+                  <span>{t('ecg.workspace.technicalDetailsHeading')}</span>
                 </div>
                 <dl className="text-xs space-y-1.5 font-mono">
-                  <div className="flex justify-between"><dt className="text-slate-500">Model</dt><dd className="text-slate-300">ECGNet (Conv1d x4 + FC)</dd></div>
-                  <div className="flex justify-between"><dt className="text-slate-500">Trained on</dt><dd className="text-slate-300">PTB-XL (~21.8k records)</dd></div>
-                  <div className="flex justify-between"><dt className="text-slate-500">Input shape</dt><dd className="text-slate-300">(1, 6, 1000)</dd></div>
-                  <div className="flex justify-between"><dt className="text-slate-500">Preprocessing</dt><dd className="text-slate-300">0.5-40Hz bandpass + z-score</dd></div>
-                  <div className="flex justify-between"><dt className="text-slate-500">Device</dt><dd className="text-slate-300">CPU (TorchScript)</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">{t('ecg.workspace.modelFieldLabel')}</dt><dd className="text-slate-300">{t('ecg.workspace.modelFieldValue')}</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">{t('ecg.workspace.trainedOnFieldLabel')}</dt><dd className="text-slate-300">{t('ecg.workspace.trainedOnFieldValue')}</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">{t('ecg.workspace.inputShapeFieldLabel')}</dt><dd className="text-slate-300">{t('ecg.workspace.inputShapeFieldValue')}</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">{t('ecg.workspace.preprocessingFieldLabel')}</dt><dd className="text-slate-300">{t('ecg.workspace.preprocessingFieldValue')}</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">{t('ecg.workspace.deviceFieldLabel')}</dt><dd className="text-slate-300">{t('ecg.workspace.deviceFieldValue')}</dd></div>
                 </dl>
               </div>
             )}
@@ -284,16 +279,16 @@ export const ECGWorkspace: React.FC = () => {
           {/* Right: visualization + results */}
           <div className="lg:col-span-8 space-y-6">
             {loading ? (
-              <LoadingState title="Running the ECG pipeline..." detail="Bandpass filter -> z-score -> ECGNet forward pass" accent="indigo" />
+              <LoadingState title={t('ecg.workspace.pipelineLoadingTitle')} detail={t('ecg.workspace.pipelineLoadingDetail')} accent="indigo" />
             ) : error ? (
               <ErrorState message={error} />
             ) : !result ? (
-              <EmptyState icon={HeartPulse} title="No analysis yet" detail="Click Run Analysis to process a sample ECG through the real preprocessing and model pipeline." />
+              <EmptyState icon={HeartPulse} title={t('ecg.workspace.noAnalysisTitle')} detail={t('ecg.workspace.noAnalysisDetail')} />
             ) : (
               <>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-base font-bold text-slate-100">ECG Visualization</h3>
+                    <h3 className="text-base font-bold text-slate-100">{t('ecg.workspace.visualizationHeading')}</h3>
                     <SignalStatus result={result} />
                   </div>
 
@@ -305,34 +300,34 @@ export const ECGWorkspace: React.FC = () => {
                           key={s}
                           onClick={() => setStage(s)}
                           title={
-                            s === 'raw' ? 'Signal before any preprocessing' :
-                            s === 'filtered' ? '0.5-40Hz Butterworth bandpass applied, not yet normalized' :
-                            'Bandpass + per-lead z-score -- exactly what the model sees'
+                            s === 'raw' ? t('ecg.workspace.stageRawTitle') :
+                            s === 'filtered' ? t('ecg.workspace.stageFilteredTitle') :
+                            t('ecg.workspace.stageProcessedTitle')
                           }
                           className={`px-3 py-1 rounded-lg font-medium capitalize transition ${
                             stage === s ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'
                           }`}
                         >
-                          {s}
+                          {s === 'raw' ? t('ecg.workspace.stageRaw') : s === 'filtered' ? t('ecg.workspace.stageFiltered') : t('ecg.workspace.stageProcessed')}
                         </button>
                       ))}
                     </div>
                   </div>
                   <ECGChart leads={displayedLeads} samplingRateHz={result.samplingRateHz} selectedLead={selectedLead} />
                   <p className="text-[10px] text-slate-500">
-                    {stage === 'raw' && 'Signal as received, before any processing.'}
-                    {stage === 'filtered' && 'After the real 0.5-40Hz Butterworth bandpass filter -- baseline drift and high-frequency noise removed, amplitude not yet normalized.'}
-                    {stage === 'processed' && 'After bandpass + per-lead z-score normalization -- this is the exact array fed into ECGNet.'}
+                    {stage === 'raw' && t('ecg.workspace.stageRawDescription')}
+                    {stage === 'filtered' && t('ecg.workspace.stageFilteredDescription')}
+                    {stage === 'processed' && t('ecg.workspace.stageProcessedDescription')}
                   </p>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <h3 className="text-base font-bold text-slate-100 mb-4">Signal Metrics</h3>
+                  <h3 className="text-base font-bold text-slate-100 mb-4">{t('ecg.workspace.signalMetricsHeading')}</h3>
                   <SignalMetricsPanel result={result} />
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <h3 className="text-base font-bold text-slate-100 mb-4">Model Result</h3>
+                  <h3 className="text-base font-bold text-slate-100 mb-4">{t('ecg.workspace.modelResultHeading')}</h3>
                   <InferenceResult result={result} />
                 </div>
 
@@ -341,7 +336,7 @@ export const ECGWorkspace: React.FC = () => {
                     onClick={() => setShowEvaluation((v) => !v)}
                     className="w-full flex items-center justify-between text-base font-bold text-slate-100"
                   >
-                    <span className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-rose-400" /> Evaluation (real metrics on a labeled dataset)</span>
+                    <span className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-rose-400" /> {t('ecg.workspace.evaluationToggleLabel')}</span>
                     {showEvaluation ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </button>
                   {showEvaluation && <div className="mt-4"><EvaluationPanel /></div>}

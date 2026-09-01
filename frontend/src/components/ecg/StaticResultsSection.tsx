@@ -5,6 +5,7 @@ import { ECGChart } from './ECGChart';
 import { ECG_LEAD_NAMES } from '../../types';
 import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info, Camera } from 'lucide-react';
 import { formatProbability } from '../../utils/formatProbability';
+import { useTranslation } from '../../i18n/I18nContext';
 
 const HARDWARE_IMAGE_PATH = 'static-results/ecg/hardware.jpg';
 
@@ -46,6 +47,7 @@ const notableClasses = data.evaluation.perClass.filter(
 );
 
 export const StaticResultsSection: React.FC = () => {
+  const { t } = useTranslation();
   const gtEntries = Object.entries(data.publicExample.groundTruthLabels).filter(
     ([name, isPositive]) => isPositive || !data.publicExample.groundTruthCorrect[name]
   );
@@ -56,15 +58,14 @@ export const StaticResultsSection: React.FC = () => {
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
       <div className="flex items-center gap-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider">
         <ClipboardCheck className="w-4 h-4" />
-        <span>Results</span>
+        <span>{t('ecg.staticResults.eyebrow')}</span>
       </div>
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Real Model Results</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.staticResults.title')}</h2>
         <p className="text-sm text-slate-400 max-w-3xl mt-1">
-          A saved, real run of the backend model against the PTB-XL public example and the bundled
-          61-record labeled evaluation set (PhysioNet, CC-BY 4.0) -- see{' '}
-          <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code> for exact provenance.
-          Visible immediately, no need to run the interactive demo above.
+          {t('ecg.staticResults.descriptionPrefix')}
+          <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code>
+          {t('ecg.staticResults.descriptionSuffix')}
         </p>
       </div>
 
@@ -73,12 +74,12 @@ export const StaticResultsSection: React.FC = () => {
           the real photo at frontend/public/static-results/ecg/hardware.jpg
           and it appears automatically, no code change needed. */}
       <div className="space-y-2">
-        <div className="text-sm font-semibold text-slate-200">Hardware Setup</div>
+        <div className="text-sm font-semibold text-slate-200">{t('ecg.staticResults.hardwareSetupHeading')}</div>
         <div className="max-w-md">
           {!hardwareImageFailed ? (
             <img
               src={hardwareImageSrc}
-              alt="Raspberry Pi 5 ECG hardware setup: AD8232 sensors, Arduino Nano units, and Raspberry Pi 5"
+              alt={t('ecg.staticResults.hardwareImageAlt')}
               className="w-full h-auto rounded-xl border border-slate-800 object-cover"
               onError={() => setHardwareImageFailed(true)}
             />
@@ -86,75 +87,75 @@ export const StaticResultsSection: React.FC = () => {
             <div className="aspect-video rounded-xl border border-dashed border-slate-700 bg-slate-950 flex flex-col items-center justify-center text-center p-4 gap-2">
               <Camera className="w-6 h-6 text-slate-600" />
               <p className="text-xs text-slate-500">
-                Real hardware photo not yet added.
+                {t('ecg.staticResults.hardwarePlaceholderLine1')}
                 <br />
-                Drop an image at <code className="text-slate-400">frontend/public/{HARDWARE_IMAGE_PATH}</code>.
+                {t('ecg.staticResults.hardwarePlaceholderLine2Prefix')}<code className="text-slate-400">frontend/public/{HARDWARE_IMAGE_PATH}</code>{t('ecg.staticResults.hardwarePlaceholderLine2Suffix')}
               </p>
             </div>
           )}
         </div>
         <p className="text-[10px] text-slate-500">
-          The AD8232 + Arduino Nano + Raspberry Pi 5 rig described above, in the real world.
+          {t('ecg.staticResults.hardwareCaption')}
         </p>
       </div>
 
       {/* Evaluation metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
-          label="Hamming Accuracy"
+          label={t('ecg.staticResults.hammingAccuracyLabel')}
           value={`${(data.evaluation.hammingAccuracy * 100).toFixed(1)}%`}
           icon={Target}
           color="text-rose-300"
-          tooltip="Fraction of individual label predictions correct across all 19 classes x 61 samples."
+          tooltip={t('ecg.staticResults.hammingAccuracyTooltip')}
         />
         <MetricCard
-          label="Micro Precision"
+          label={t('ecg.staticResults.microPrecisionLabel')}
           value={`${(data.evaluation.microPrecision * 100).toFixed(1)}%`}
           icon={Target}
           color="text-rose-300"
-          tooltip="Precision pooling true/false positives across all 19 classes."
+          tooltip={t('ecg.staticResults.microPrecisionTooltip')}
         />
         <MetricCard
-          label="Micro Recall"
+          label={t('ecg.staticResults.microRecallLabel')}
           value={`${(data.evaluation.microRecall * 100).toFixed(1)}%`}
           icon={Target}
           color="text-rose-300"
-          tooltip="Recall pooling true/false negatives across all 19 classes."
+          tooltip={t('ecg.staticResults.microRecallTooltip')}
         />
         <MetricCard
-          label="Micro F1"
+          label={t('ecg.staticResults.microF1Label')}
           value={data.evaluation.microF1.toFixed(3)}
           icon={Target}
           color="text-rose-300"
-          tooltip="Harmonic mean of micro precision and micro recall."
+          tooltip={t('ecg.staticResults.microF1Tooltip')}
         />
         <MetricCard
-          label="Subset Accuracy"
+          label={t('ecg.staticResults.subsetAccuracyLabel')}
           value={`${(data.evaluation.subsetAccuracy * 100).toFixed(1)}%`}
           icon={Target}
           color="text-rose-300"
-          tooltip="Fraction of samples where ALL 19 predicted labels exactly match ground truth (strict)."
+          tooltip={t('ecg.staticResults.subsetAccuracyTooltip')}
         />
       </div>
 
       {/* Confusion matrix */}
       <div>
         <h3 className="text-sm font-bold text-slate-100 mb-2">
-          Confusion Matrix (per class, {data.evaluation.numSamples}-record evaluation set)
+          {t('ecg.staticResults.confusionMatrixHeading', { count: data.evaluation.numSamples })}
         </h3>
         <div className="overflow-x-auto rounded-xl border border-slate-800">
           <table className="w-full text-left text-[11px] text-slate-300 min-w-[560px]">
             <thead className="bg-slate-950 text-slate-400 font-mono uppercase border-b border-slate-800">
               <tr>
-                <th className="py-2 px-3">Class</th>
-                <th className="py-2 px-3">Support</th>
-                <th className="py-2 px-3">TP</th>
-                <th className="py-2 px-3">FP</th>
-                <th className="py-2 px-3">FN</th>
-                <th className="py-2 px-3">TN</th>
-                <th className="py-2 px-3">Precision</th>
-                <th className="py-2 px-3">Recall</th>
-                <th className="py-2 px-3">F1</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableClassHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableSupportHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableTpHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableFpHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableFnHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableTnHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tablePrecisionHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableRecallHeader')}</th>
+                <th className="py-2 px-3">{t('ecg.staticResults.tableF1Header')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -178,9 +179,10 @@ export const StaticResultsSection: React.FC = () => {
           <p className="text-[10px] text-slate-500 mt-1.5 flex items-start gap-1">
             <Info className="w-3 h-3 shrink-0 mt-0.5" />
             <span>
-              Only classes with real support or a real false positive in this 61-record set are shown
-              (the remaining {data.evaluation.perClass.length - notableClasses.length} of{' '}
-              {data.evaluation.numClasses} classes have zero examples here).
+              {t('ecg.staticResults.notableClassesNote', {
+                remaining: data.evaluation.perClass.length - notableClasses.length,
+                total: data.evaluation.numClasses,
+              })}
             </span>
           </p>
         )}
@@ -191,18 +193,18 @@ export const StaticResultsSection: React.FC = () => {
         <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
             <HeartPulse className="w-4 h-4 text-rose-400" />
-            <span>Example Prediction (real public PTB-XL record)</span>
+            <span>{t('ecg.staticResults.examplePredictionHeading')}</span>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] text-slate-500 font-mono uppercase">Top classification</div>
+              <div className="text-[10px] text-slate-500 font-mono uppercase">{t('ecg.staticResults.topClassificationLabel')}</div>
               <div className="text-base font-bold text-rose-300">{data.publicExample.topLabel}</div>
             </div>
             <div className="text-right">
               <div className="text-xl font-bold font-mono text-rose-400">
                 {formatProbability(data.publicExample.topProbability)}
               </div>
-              <div className="text-[10px] text-slate-500">raw model probability</div>
+              <div className="text-[10px] text-slate-500">{t('ecg.staticResults.rawProbabilityLabel')}</div>
             </div>
           </div>
           <div className="space-y-1.5 pt-2 border-t border-slate-800">
@@ -216,39 +218,38 @@ export const StaticResultsSection: React.FC = () => {
                     <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   )}
                   <span className="text-slate-300 font-mono truncate">{name}</span>
-                  <span className="text-slate-500">({isPositive ? 'true' : 'false'})</span>
+                  <span className="text-slate-500">({isPositive ? t('ecg.staticResults.trueLabel') : t('ecg.staticResults.falseLabel')})</span>
                 </div>
               );
             })}
           </div>
           <p className="text-[10px] text-slate-500 border-t border-slate-800 pt-2">
-            Real ground-truth labels from PTB-XL, compared against this model's calibrated per-class
-            predictions. {data.publicExample.rPeaks.peakCount} R-peaks detected,{' '}
-            {data.publicExample.rPeaks.heartRateBpm?.toFixed(1)} bpm estimated -- inference took{' '}
-            {data.publicExample.inferenceTimeMs} ms.
+            {t('ecg.staticResults.groundTruthCaption', {
+              peakCount: data.publicExample.rPeaks.peakCount,
+              bpm: data.publicExample.rPeaks.heartRateBpm?.toFixed(1) ?? '--',
+              ms: data.publicExample.inferenceTimeMs,
+            })}
           </p>
         </div>
 
         <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 space-y-2">
-          <div className="text-sm font-semibold text-slate-200">Static ECG Waveform (processed, all 6 leads)</div>
+          <div className="text-sm font-semibold text-slate-200">{t('ecg.staticResults.staticWaveformHeading')}</div>
           <ECGChart leads={data.publicExample.processedLeads} samplingRateHz={data.publicExample.samplingRateHz} selectedLead="all" />
           <p className="text-[10px] text-slate-500">
-            {ECG_LEAD_NAMES.length}-lead frontal ECG after the real 0.5-40Hz bandpass + per-lead z-score
-            preprocessing -- exactly what the model saw.
+            {t('ecg.staticResults.staticWaveformCaption', { leadCount: ECG_LEAD_NAMES.length })}
           </p>
         </div>
       </div>
 
       <p className="text-xs text-slate-400 border-t border-slate-800 pt-4">
-        <strong className="text-slate-300">What this demonstrates:</strong> real accuracy/precision/recall/F1
-        and a real per-class confusion matrix, computed by running the actual ECGNet model on real,
-        labeled, public ECG data -- not synthetic or fabricated numbers. Performance is honestly uneven
-        across classes (e.g. strong on sinus rhythm, weaker on rarer conditions with little support in
-        this small evaluation set), which is disclosed rather than hidden; see{' '}
-        <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code> for the full calibration
-        methodology. Every number above came from one real run of{' '}
-        <code className="text-slate-500">POST /api/ecg/demo</code> and{' '}
-        <code className="text-slate-500">/evaluate-bundled</code>.
+        <strong className="text-slate-300">{t('ecg.staticResults.demonstratesLabel')}</strong>
+        {t('ecg.staticResults.demonstratesBodyPrefix')}
+        <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code>
+        {t('ecg.staticResults.demonstratesBodyMiddle')}
+        <code className="text-slate-500">POST /api/ecg/demo</code>
+        {t('ecg.staticResults.demonstratesBodyMiddle2')}
+        <code className="text-slate-500">/evaluate-bundled</code>
+        {t('ecg.staticResults.demonstratesBodySuffix')}
       </p>
     </div>
   );
