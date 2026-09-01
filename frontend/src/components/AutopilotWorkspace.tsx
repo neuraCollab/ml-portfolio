@@ -14,6 +14,7 @@ import {
 import { runUndistort, runLidarOverlay, predictAction, ApiError, UndistortResponse, LidarOverlayResponse, PredictActionResponse } from '../api/client';
 import { MetricCard } from './shared/MetricCard';
 import { StaticResultsSection } from './autopilot/StaticResultsSection';
+import { useTranslation, TranslationKey } from '../i18n/I18nContext';
 import {
   Car,
   Play,
@@ -46,7 +47,14 @@ import {
   CartesianGrid,
 } from 'recharts';
 
+const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
+  steering: 'autopilot.actionLabels.steering',
+  throttle: 'autopilot.actionLabels.throttle',
+  brake: 'autopilot.actionLabels.brake',
+};
+
 export const AutopilotWorkspace: React.FC = () => {
+  const { t } = useTranslation();
   const [frameIdx, setFrameIdx] = useState(0);
   const [isPlayingSequence, setIsPlayingSequence] = useState(false);
   const [isUndistorted, setIsUndistorted] = useState(true);
@@ -93,7 +101,7 @@ export const AutopilotWorkspace: React.FC = () => {
     try {
       setUndistortResult(await runUndistort(calib));
     } catch (err) {
-      setUndistortError(err instanceof ApiError ? err.message : 'Undistort request failed.');
+      setUndistortError(err instanceof ApiError ? err.message : t('autopilot.cvColumn.undistortErrorFallback'));
     } finally {
       setUndistortLoading(false);
     }
@@ -106,7 +114,7 @@ export const AutopilotWorkspace: React.FC = () => {
       setLidarResult(await runLidarOverlay(calib, numLidarPoints, lidarPointSize));
       setShowLidarOverlay(true);
     } catch (err) {
-      setLidarError(err instanceof ApiError ? err.message : 'LiDAR overlay request failed.');
+      setLidarError(err instanceof ApiError ? err.message : t('autopilot.cvColumn.lidarErrorFallback'));
     } finally {
       setLidarLoading(false);
     }
@@ -125,7 +133,7 @@ export const AutopilotWorkspace: React.FC = () => {
       });
       setPolicyResult(res);
     } catch (err) {
-      setPolicyError(err instanceof ApiError ? err.message : 'Policy prediction request failed.');
+      setPolicyError(err instanceof ApiError ? err.message : t('autopilot.policyColumn.policyErrorFallback'));
     } finally {
       setPolicyLoading(false);
     }
@@ -159,7 +167,7 @@ export const AutopilotWorkspace: React.FC = () => {
 
     if (stepLog.penalty) {
       setPenaltyFeed((prev) => [
-        `[Frame #${currentFrame.frameId}] ${stepLog.penalty}`,
+        t('autopilot.safetyLog.feedEntry', { frameId: currentFrame.frameId, message: stepLog.penalty as string }),
         ...prev.slice(0, 15),
       ]);
     }
@@ -264,15 +272,23 @@ export const AutopilotWorkspace: React.FC = () => {
 
     ctx.fillStyle = '#f8fafc';
     ctx.font = 'bold 11px monospace';
-    ctx.fillText(`KITTI CAM 00 | FR #${currentFrame.frameId}`, 25, 32);
+    ctx.fillText(t('autopilot.cameraView.hudCamLabel', { frameId: currentFrame.frameId }), 25, 32);
     ctx.fillStyle = '#60a5fa';
-    ctx.fillText(`SPEED (vf): ${currentFrame.vf.toFixed(1)} m/s`, 25, 48);
+    ctx.fillText(t('autopilot.cameraView.hudSpeedLabel', { value: currentFrame.vf.toFixed(1) }), 25, 48);
     ctx.fillStyle = '#a78bfa';
-    ctx.fillText(`YAW RATE: ${currentFrame.yaw.toFixed(3)} rad/s`, 25, 64);
+    ctx.fillText(t('autopilot.cameraView.hudYawRateLabel', { value: currentFrame.yaw.toFixed(3) }), 25, 64);
     ctx.fillStyle = isUndistorted ? '#34d399' : '#f87171';
-    ctx.fillText(`LENS: ${isUndistorted ? 'UNDISTORTED' : 'DISTORTED (RAW)'}`, 25, 80);
+    ctx.fillText(
+      t('autopilot.cameraView.hudLensLabel', {
+        state: isUndistorted
+          ? t('autopilot.cameraView.hudLensUndistorted')
+          : t('autopilot.cameraView.hudLensDistorted'),
+      }),
+      25,
+      80
+    );
 
-  }, [frameIdx, isUndistorted, currentFrame]);
+  }, [frameIdx, isUndistorted, currentFrame, t]);
 
   // Render Bird's Eye View (BEV) LiDAR Canvas
   useEffect(() => {
@@ -361,19 +377,17 @@ export const AutopilotWorkspace: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
               <Car className="w-4 h-4" />
-              <span>RL & Computer Vision Car Autopilot</span>
+              <span>{t('autopilot.banner.eyebrow')}</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              KITTI Sensor Fusion & SAC/DDPG Autopilot Policy
+              {t('autopilot.banner.title')}
             </h2>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              Processes 60 FPS camera streams, Velodyne 3D LiDAR point clouds, OXTS GPS/IMU telemetry, and tracklets into a custom Gym Environment (<span className="font-mono text-emerald-400">KITTICarEnv</span>).
+              {t('autopilot.banner.descriptionPrefix')}<span className="font-mono text-emerald-400">KITTICarEnv</span>{t('autopilot.banner.descriptionSuffix')}
             </p>
             <p className="text-[11px] text-amber-300/80 mt-2 flex items-center gap-1.5">
               <AlertTriangle className="w-3 h-3" />
-              The drive sequence, telemetry and reward curve below are illustrative example data
-              (the raw KITTI dataset isn't bundled in this repo) -- see "Live Backend Demo" for real
-              project code running against a bundled sample frame and the actual pretrained policy.
+              {t('autopilot.banner.illustrativeNote')}
             </p>
           </div>
 
@@ -385,12 +399,12 @@ export const AutopilotWorkspace: React.FC = () => {
               {isPlayingSequence ? (
                 <>
                   <Pause className="w-4 h-4 fill-white" />
-                  <span>Pause KITTI Stream</span>
+                  <span>{t('autopilot.banner.pauseStreamButton')}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-white" />
-                  <span>Stream KITTI Drive</span>
+                  <span>{t('autopilot.banner.streamDriveButton')}</span>
                 </>
               )}
             </button>
@@ -403,7 +417,7 @@ export const AutopilotWorkspace: React.FC = () => {
               }`}
             >
               <Eye className="w-4 h-4" />
-              <span>{isUndistorted ? 'Lens: Undistorted' : 'Lens: Raw Distortion'}</span>
+              <span>{isUndistorted ? t('autopilot.banner.lensUndistorted') : t('autopilot.banner.lensRaw')}</span>
             </button>
           </div>
         </div>
@@ -412,12 +426,12 @@ export const AutopilotWorkspace: React.FC = () => {
       {/* Frame Scrubber & Timeline Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <span className="text-xs font-mono text-slate-400">Sequence:</span>
+          <span className="text-xs font-mono text-slate-400">{t('autopilot.timeline.sequenceLabel')}</span>
           <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
             2011_09_26_drive_0001_sync
           </span>
           <span className="text-xs font-mono text-slate-500">
-            Frame #{currentFrame.frameId} / {KITTI_FRAMES_DATA.length - 1}
+            {t('autopilot.timeline.frameCounter', { frameId: currentFrame.frameId, total: KITTI_FRAMES_DATA.length - 1 })}
           </span>
         </div>
 
@@ -447,9 +461,9 @@ export const AutopilotWorkspace: React.FC = () => {
               <div className="flex items-center justify-between text-xs font-mono text-slate-300">
                 <span className="flex items-center space-x-1.5 text-slate-200 font-semibold">
                   <Radio className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Front Camera 00 (RGB)</span>
+                  <span>{t('autopilot.cameraView.heading')}</span>
                 </span>
-                <span className="text-[10px] text-slate-500">P_rect_00 Projected</span>
+                <span className="text-[10px] text-slate-500">{t('autopilot.cameraView.subheading')}</span>
               </div>
               <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-[4/3]">
                 <canvas
@@ -466,9 +480,9 @@ export const AutopilotWorkspace: React.FC = () => {
               <div className="flex items-center justify-between text-xs font-mono text-slate-300">
                 <span className="flex items-center space-x-1.5 text-slate-200 font-semibold">
                   <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Velodyne LiDAR BEV (3D Cloud)</span>
+                  <span>{t('autopilot.lidarView.heading')}</span>
                 </span>
-                <span className="text-[10px] text-slate-500">{currentFrame.lidarPointsCount} pts</span>
+                <span className="text-[10px] text-slate-500">{t('autopilot.lidarView.pointsCount', { count: currentFrame.lidarPointsCount })}</span>
               </div>
               <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-[4/3]">
                 <canvas
@@ -486,46 +500,46 @@ export const AutopilotWorkspace: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Vehicle Speed (vf)</span>
+                <span>{t('autopilot.telemetry.vehicleSpeedLabel')}</span>
                 <Gauge className="w-3.5 h-3.5 text-emerald-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-emerald-400">
                 {(currentFrame.vf * 3.6).toFixed(1)} <span className="text-xs text-slate-500">km/h</span>
               </div>
-              <p className="text-[10px] text-slate-500">{currentFrame.vf.toFixed(1)} m/s (OXTS)</p>
+              <p className="text-[10px] text-slate-500">{t('autopilot.telemetry.vehicleSpeedCaption', { value: currentFrame.vf.toFixed(1) })}</p>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Yaw Rate (ω)</span>
+                <span>{t('autopilot.telemetry.yawRateLabel')}</span>
                 <Compass className="w-3.5 h-3.5 text-indigo-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-indigo-400">
                 {currentFrame.yaw.toFixed(3)} <span className="text-xs text-slate-500">rad/s</span>
               </div>
-              <p className="text-[10px] text-slate-500">Angular velocity</p>
+              <p className="text-[10px] text-slate-500">{t('autopilot.telemetry.yawRateCaption')}</p>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Nearest Obstacle</span>
+                <span>{t('autopilot.telemetry.nearestObstacleLabel')}</span>
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-amber-400">
                 {Math.min(...currentFrame.tracklets.map((t) => t.distance)).toFixed(1)} <span className="text-xs text-slate-500">m</span>
               </div>
-              <p className="text-[10px] text-slate-500">Preceding vehicle headway</p>
+              <p className="text-[10px] text-slate-500">{t('autopilot.telemetry.nearestObstacleCaption')}</p>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Gym Step Reward</span>
+                <span>{t('autopilot.telemetry.gymStepRewardLabel')}</span>
                 <Zap className="w-3.5 h-3.5 text-teal-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-teal-400">
                 {currentReward.toFixed(3)}
               </div>
-              <p className="text-[10px] text-slate-500">Cumulative: {cumulativeReward.toFixed(2)}</p>
+              <p className="text-[10px] text-slate-500">{t('autopilot.telemetry.cumulativeCaption', { value: cumulativeReward.toFixed(2) })}</p>
             </div>
           </div>
 
@@ -535,9 +549,9 @@ export const AutopilotWorkspace: React.FC = () => {
               <div>
                 <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
                   <Activity className="w-4 h-4 text-emerald-400" />
-                  <span>RL Agent Step Reward & Headway Distance</span>
+                  <span>{t('autopilot.rewardChart.heading')}</span>
                 </h3>
-                <p className="text-xs text-slate-400">Calculated by KITTICarEnv.calculate_reward() in real time</p>
+                <p className="text-xs text-slate-400">{t('autopilot.rewardChart.subheading')}</p>
               </div>
             </div>
 
@@ -548,8 +562,8 @@ export const AutopilotWorkspace: React.FC = () => {
                   <XAxis dataKey="step" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                   <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
-                  <Line type="monotone" dataKey="reward" stroke="#10b981" strokeWidth={2} dot={false} name="Reward" />
-                  <Line type="monotone" dataKey="nearestObstacleDist" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="Obstacle Headway (m)" />
+                  <Line type="monotone" dataKey="reward" stroke="#10b981" strokeWidth={2} dot={false} name={t('autopilot.rewardChart.rewardSeriesName')} />
+                  <Line type="monotone" dataKey="nearestObstacleDist" stroke="#f59e0b" strokeWidth={1.5} dot={false} name={t('autopilot.rewardChart.obstacleHeadwaySeriesName')} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -565,7 +579,7 @@ export const AutopilotWorkspace: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
-                <span>Policy & Action Space</span>
+                <span>{t('autopilot.policyPanel.heading')}</span>
               </div>
               <span className="text-xs text-slate-500 font-mono">SAC / DDPG</span>
             </div>
@@ -582,7 +596,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   }`}
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span>SAC Pretrained</span>
+                  <span>{t('autopilot.policyPanel.sacPretrainedButton')}</span>
                 </button>
 
                 <button
@@ -594,14 +608,14 @@ export const AutopilotWorkspace: React.FC = () => {
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>Manual Override</span>
+                  <span>{t('autopilot.policyPanel.manualOverrideButton')}</span>
                 </button>
               </div>
 
               {/* Action Values Gauge */}
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Steering (-1..1):</span>
+                  <span className="text-slate-400">{t('autopilot.policyPanel.steeringRangeLabel')}</span>
                   <span className="text-emerald-400 font-bold">{activeAction.steering}</span>
                 </div>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -612,7 +626,7 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
 
                 <div className="flex justify-between pt-1">
-                  <span className="text-slate-400">Throttle (0..1):</span>
+                  <span className="text-slate-400">{t('autopilot.policyPanel.throttleRangeLabel')}</span>
                   <span className="text-teal-400 font-bold">{activeAction.throttle}</span>
                 </div>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -623,7 +637,7 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
 
                 <div className="flex justify-between pt-1">
-                  <span className="text-slate-400">Brake (0..1):</span>
+                  <span className="text-slate-400">{t('autopilot.policyPanel.brakeRangeLabel')}</span>
                   <span className="text-red-400 font-bold">{activeAction.brake}</span>
                 </div>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -638,7 +652,7 @@ export const AutopilotWorkspace: React.FC = () => {
               {!usePretrainedPolicy && (
                 <div className="space-y-3 pt-2 text-xs">
                   <div>
-                    <span className="text-slate-400 block mb-1">Manual Steering: {manualAction.steering}</span>
+                    <span className="text-slate-400 block mb-1">{t('autopilot.policyPanel.manualSteeringLabel', { value: manualAction.steering })}</span>
                     <input
                       type="range"
                       min="-1"
@@ -651,7 +665,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block mb-1">Manual Throttle: {manualAction.throttle}</span>
+                    <span className="text-slate-400 block mb-1">{t('autopilot.policyPanel.manualThrottleLabel', { value: manualAction.throttle })}</span>
                     <input
                       type="range"
                       min="0"
@@ -672,14 +686,13 @@ export const AutopilotWorkspace: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <Sliders className="w-4 h-4 text-purple-400" />
-                <span>Camera Calibration (K_00, D_00)</span>
+                <span>{t('autopilot.calibration.heading')}</span>
               </div>
               <span className="text-xs text-slate-500 font-mono">calib_cam_to_cam.txt</span>
             </div>
 
             <p className="text-[11px] text-slate-500">
-              Adjust these, then use the live backend demo below to run the project's real
-              undistort/projection code with them.
+              {t('autopilot.calibration.instructions')}
             </p>
 
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
@@ -700,7 +713,7 @@ export const AutopilotWorkspace: React.FC = () => {
               onClick={() => setCalib(DEFAULT_KITTI_CALIBRATION)}
               className="text-[11px] text-slate-500 hover:text-slate-300 underline"
             >
-              Reset to KITTI defaults
+              {t('autopilot.calibration.resetButton')}
             </button>
           </div>
 
@@ -709,9 +722,9 @@ export const AutopilotWorkspace: React.FC = () => {
             <div className="flex items-center justify-between pb-2">
               <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
                 <ShieldAlert className="w-4 h-4 text-red-400" />
-                <span>Penalty & Safety Event Log</span>
+                <span>{t('autopilot.safetyLog.heading')}</span>
               </div>
-              <span className="text-xs text-slate-500 font-mono">{penaltyFeed.length} events</span>
+              <span className="text-xs text-slate-500 font-mono">{t('autopilot.safetyLog.eventsCount', { count: penaltyFeed.length })}</span>
             </div>
 
             {/* Real LiDAR proximity warning (from "Live Backend Demo" -> Run
@@ -733,13 +746,11 @@ export const AutopilotWorkspace: React.FC = () => {
                 <div className="flex-1">
                   <div className={`text-sm font-bold ${lidarResult.warningActive ? 'text-red-300' : 'text-emerald-300'}`}>
                     {lidarResult.warningActive
-                      ? `WARNING: Object detected at ${lidarResult.nearestDistanceM.toFixed(1)} m`
-                      : `Clear: nearest object at ${lidarResult.nearestDistanceM.toFixed(1)} m`}
+                      ? t('autopilot.warnings.objectDetected', { distance: lidarResult.nearestDistanceM.toFixed(1) })
+                      : t('autopilot.warnings.clear', { distance: lidarResult.nearestDistanceM.toFixed(1) })}
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    Real Euclidean distance from the synthetic LiDAR point cloud's own sensor-frame
-                    coordinates to the nearest point that projects into the visible camera frame
-                    (warning threshold: {lidarResult.warningThresholdM} m, from "Live Backend Demo" below).
+                    {t('autopilot.safetyLog.noticeDescription', { threshold: lidarResult.warningThresholdM })}
                   </div>
                 </div>
               </div>
@@ -747,7 +758,7 @@ export const AutopilotWorkspace: React.FC = () => {
 
             <div className="h-44 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px]">
               {penaltyFeed.length === 0 ? (
-                <div className="text-slate-500 text-center py-8">No safety penalties triggered. Smooth drive!</div>
+                <div className="text-slate-500 text-center py-8">{t('autopilot.safetyLog.emptyState')}</div>
               ) : (
                 penaltyFeed.map((msg, i) => (
                   <div key={i} className="p-2 rounded-lg bg-red-950/40 border border-red-500/20 text-red-300">
@@ -769,13 +780,11 @@ export const AutopilotWorkspace: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
               <ServerCog className="w-4 h-4 text-purple-400" />
-              <span>Live Backend Demo</span>
+              <span>{t('autopilot.liveDemo.heading')}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-1 max-w-2xl">
-              The dual displays above are a client-side visualization (the raw KITTI dataset isn't
-              bundled in this repo). Everything below instead calls the real backend, which runs the
-              project's actual OpenCV / pretrained-policy code from{' '}
-              <span className="font-mono">rl_cv_car-autopilot/</span> on a bundled sample frame.
+              {t('autopilot.liveDemo.descriptionPrefix')}
+              <span className="font-mono">rl_cv_car-autopilot/</span>{t('autopilot.liveDemo.descriptionSuffix')}
             </p>
           </div>
           <span className="text-xs text-slate-500 font-mono shrink-0">FastAPI</span>
@@ -787,7 +796,7 @@ export const AutopilotWorkspace: React.FC = () => {
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-purple-400" />
-                Computer Vision
+                {t('autopilot.cvColumn.heading')}
               </h4>
               <div className="flex gap-2">
                 <button
@@ -796,7 +805,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   className="flex items-center gap-1.5 py-1.5 px-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-medium rounded-lg transition disabled:opacity-50"
                 >
                   {undistortLoading ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-                  <span>Run Undistort</span>
+                  <span>{t('autopilot.cvColumn.runUndistortButton')}</span>
                 </button>
                 <button
                   onClick={handleRunLidarOverlay}
@@ -804,7 +813,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   className="flex items-center gap-1.5 py-1.5 px-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-medium rounded-lg transition disabled:opacity-50"
                 >
                   {lidarLoading ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Radar className="w-3.5 h-3.5" />}
-                  <span>Run LiDAR</span>
+                  <span>{t('autopilot.cvColumn.runLidarButton')}</span>
                 </button>
               </div>
             </div>
@@ -814,7 +823,7 @@ export const AutopilotWorkspace: React.FC = () => {
 
             {!undistortResult ? (
               <div className="h-56 flex items-center justify-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-                Click "Run Undistort" to load the sample frame from the backend.
+                {t('autopilot.cvColumn.emptyState')}
               </div>
             ) : (
               <>
@@ -825,7 +834,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   <div className="w-full h-full overflow-hidden" style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
                     <img
                       src={`data:image/png;base64,${undistortResult.originalImageBase64}`}
-                      alt="Original sample frame"
+                      alt={t('autopilot.cvColumn.originalFrameAlt')}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div
@@ -836,7 +845,7 @@ export const AutopilotWorkspace: React.FC = () => {
                         src={`data:image/png;base64,${
                           showLidarOverlay && lidarResult ? lidarResult.imageBase64 : undistortResult.undistortedImageBase64
                         }`}
-                        alt="Undistorted sample frame"
+                        alt={t('autopilot.cvColumn.undistortedFrameAlt')}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -846,45 +855,45 @@ export const AutopilotWorkspace: React.FC = () => {
                     />
                   </div>
                   <span className="absolute bottom-1.5 left-1.5 text-[10px] font-mono bg-black/60 px-1.5 py-0.5 rounded text-purple-300">
-                    {showLidarOverlay && lidarResult ? 'undistorted + LiDAR' : 'undistorted'}
+                    {showLidarOverlay && lidarResult ? t('autopilot.cvColumn.badgeUndistortedLidar') : t('autopilot.cvColumn.badgeUndistorted')}
                   </span>
                   <span className="absolute bottom-1.5 right-1.5 text-[10px] font-mono bg-black/60 px-1.5 py-0.5 rounded text-slate-400">
-                    original
+                    {t('autopilot.cvColumn.badgeOriginal')}
                   </span>
                 </div>
 
                 <div className="space-y-2 text-xs">
                   <div>
                     <div className="flex justify-between mb-1 text-slate-400">
-                      <span>Compare: original &harr; undistorted</span>
+                      <span>{t('autopilot.cvColumn.compareLabel')}</span>
                       <span className="font-mono text-purple-300">{compareSplit}%</span>
                     </div>
                     <input type="range" min={0} max={100} value={compareSplit} onChange={(e) => setCompareSplit(Number(e.target.value))} className="w-full accent-purple-500" />
                   </div>
                   <div>
                     <div className="flex justify-between mb-1 text-slate-400">
-                      <span>Zoom</span>
+                      <span>{t('autopilot.cvColumn.zoomLabel')}</span>
                       <span className="font-mono text-purple-300">{zoom.toFixed(1)}x</span>
                     </div>
                     <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-purple-500" />
                   </div>
                   {lidarResult && (
                     <label className="flex items-center justify-between cursor-pointer pt-1">
-                      <span className="text-slate-400">Show LiDAR overlay</span>
+                      <span className="text-slate-400">{t('autopilot.cvColumn.showLidarOverlayLabel')}</span>
                       <input type="checkbox" checked={showLidarOverlay} onChange={(e) => setShowLidarOverlay(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-purple-500 focus:ring-purple-500" />
                     </label>
                   )}
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
                       <div className="flex justify-between mb-1 text-slate-400">
-                        <span>LiDAR points</span>
+                        <span>{t('autopilot.cvColumn.lidarPointsLabel')}</span>
                         <span className="font-mono text-purple-300">{numLidarPoints}</span>
                       </div>
                       <input type="range" min={50} max={2000} step={50} value={numLidarPoints} onChange={(e) => setNumLidarPoints(Number(e.target.value))} className="w-full accent-purple-500" />
                     </div>
                     <div>
                       <div className="flex justify-between mb-1 text-slate-400">
-                        <span>Point size</span>
+                        <span>{t('autopilot.cvColumn.pointSizeLabel')}</span>
                         <span className="font-mono text-purple-300">{lidarPointSize}px</span>
                       </div>
                       <input type="range" min={1} max={8} value={lidarPointSize} onChange={(e) => setLidarPointSize(Number(e.target.value))} className="w-full accent-purple-500" />
@@ -893,23 +902,23 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <MetricCard label="Frame Size" value={`${undistortResult.imageWidth}×${undistortResult.imageHeight}`} icon={Maximize2} color="text-purple-300" tooltip="Actual pixel dimensions of the bundled sample frame." />
-                  <MetricCard label="Undistort Time" value={undistortResult.processingTimeMs} unit="ms" icon={Zap} color="text-purple-300" tooltip="Wall-clock time for cv2.getOptimalNewCameraMatrix + cv2.undistort on this frame, measured server-side." />
+                  <MetricCard label={t('autopilot.metrics.frameSizeLabel')} value={`${undistortResult.imageWidth}×${undistortResult.imageHeight}`} icon={Maximize2} color="text-purple-300" tooltip={t('autopilot.metrics.frameSizeTooltip')} />
+                  <MetricCard label={t('autopilot.metrics.undistortTimeLabel')} value={undistortResult.processingTimeMs} unit="ms" icon={Zap} color="text-purple-300" tooltip={t('autopilot.metrics.undistortTimeTooltipLive')} />
                   {lidarResult && (
                     <>
-                      <MetricCard label="Points Generated" value={lidarResult.pointsGenerated} icon={Radar} color="text-purple-300" tooltip="Size of the synthetic LiDAR point cloud generated for this request (real point cloud data isn't bundled)." />
-                      <MetricCard label="Points In Frame" value={lidarResult.pointsInFrame} icon={CheckCircle} color="text-purple-300" tooltip="Of the generated points, how many projected to valid pixel coordinates inside the image after velo_to_cam() + project_to_image()." />
+                      <MetricCard label={t('autopilot.metrics.pointsGeneratedLabel')} value={lidarResult.pointsGenerated} icon={Radar} color="text-purple-300" tooltip={t('autopilot.metrics.pointsGeneratedTooltip')} />
+                      <MetricCard label={t('autopilot.metrics.pointsInFrameLabel')} value={lidarResult.pointsInFrame} icon={CheckCircle} color="text-purple-300" tooltip={t('autopilot.metrics.pointsInFrameTooltip')} />
                       {lidarResult.nearestDistanceM !== null && (
                         <MetricCard
-                          label="Nearest Distance"
+                          label={t('autopilot.metrics.nearestDistanceLabel')}
                           value={lidarResult.nearestDistanceM}
                           unit="m"
                           icon={lidarResult.warningActive ? AlertTriangle : Radar}
                           color={lidarResult.warningActive ? 'text-red-300' : 'text-purple-300'}
-                          tooltip="Real Euclidean distance to the closest in-frame LiDAR point, from the synthetic point cloud's own sensor-frame coordinates."
+                          tooltip={t('autopilot.metrics.nearestDistanceTooltipLive')}
                         />
                       )}
-                      <MetricCard label="LiDAR Time" value={lidarResult.processingTimeMs} unit="ms" icon={Zap} color="text-purple-300" tooltip="Wall-clock time for the projection + overlay drawing, measured server-side." />
+                      <MetricCard label={t('autopilot.metrics.lidarTimeLabel')} value={lidarResult.processingTimeMs} unit="ms" icon={Zap} color="text-purple-300" tooltip={t('autopilot.metrics.lidarTimeTooltip')} />
                     </>
                   )}
                 </div>
@@ -922,7 +931,7 @@ export const AutopilotWorkspace: React.FC = () => {
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
                 <BrainCircuit className="w-4 h-4 text-emerald-400" />
-                Autonomous Policy
+                {t('autopilot.policyColumn.heading')}
               </h4>
               <button
                 onClick={handleQueryPolicy}
@@ -930,7 +939,7 @@ export const AutopilotWorkspace: React.FC = () => {
                 className="flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium rounded-lg transition disabled:opacity-50"
               >
                 {policyLoading ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />}
-                <span>Query Policy (current frame)</span>
+                <span>{t('autopilot.policyColumn.queryButton')}</span>
               </button>
             </div>
 
@@ -938,13 +947,13 @@ export const AutopilotWorkspace: React.FC = () => {
 
             {!policyResult ? (
               <div className="h-56 flex items-center justify-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-                Click "Query Policy" to run a real forward pass through the pretrained SAC weights.
+                {t('autopilot.policyColumn.emptyState')}
               </div>
             ) : (
               <>
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Source</span>
+                    <span className="text-slate-500">{t('autopilot.policyColumn.sourceLabel')}</span>
                     <span className={`font-mono font-semibold ${policyResult.modelSource === 'pretrained-sac' ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {policyResult.modelSource}
                     </span>
@@ -956,10 +965,10 @@ export const AutopilotWorkspace: React.FC = () => {
                   ] as [string, number, number, number, boolean][]).map(([name, value, low, high, clipped]) => (
                     <div key={name}>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400 capitalize">{name}</span>
+                        <span className="text-slate-400 capitalize">{t(ACTION_LABEL_KEYS[name])}</span>
                         <span className="font-mono text-emerald-300">
                           {value.toFixed(3)} <span className="text-slate-600">[{low}, {high}]</span>
-                          {clipped && <span className="ml-1 text-amber-400" title="Value is at (or within epsilon of) the action-space bound">at bound</span>}
+                          {clipped && <span className="ml-1 text-amber-400" title={t('autopilot.policyColumn.atBoundTitle')}>{t('autopilot.policyColumn.atBoundBadge')}</span>}
                         </span>
                       </div>
                       <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -970,11 +979,11 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <MetricCard label="Inference Time" value={policyResult.inferenceTimeMs} unit="ms" icon={Zap} color="text-emerald-300" tooltip="Wall-clock time for the model forward pass (or heuristic calculation), measured server-side." />
-                  <MetricCard label="Model" value={<span className="text-sm">{policyResult.modelSource === 'pretrained-sac' ? 'SAC' : 'Heuristic'}</span>} icon={BrainCircuit} color="text-emerald-300" tooltip={policyResult.modelName} />
+                  <MetricCard label={t('autopilot.metrics.inferenceTimeLabel')} value={policyResult.inferenceTimeMs} unit="ms" icon={Zap} color="text-emerald-300" tooltip={t('autopilot.metrics.inferenceTimeTooltip')} />
+                  <MetricCard label={t('autopilot.metrics.modelLabel')} value={<span className="text-sm">{policyResult.modelSource === 'pretrained-sac' ? 'SAC' : t('autopilot.policyColumn.modelHeuristic')}</span>} icon={BrainCircuit} color="text-emerald-300" tooltip={policyResult.modelName} />
                 </div>
                 <div className="text-[11px] text-slate-500 font-mono bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
-                  observation: {policyResult.observationShape}
+                  {t('autopilot.policyColumn.observationLabel', { shape: policyResult.observationShape })}
                 </div>
                 <p className="text-[11px] text-slate-500">{policyResult.note}</p>
               </>

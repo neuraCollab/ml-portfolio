@@ -1,6 +1,7 @@
 import React from 'react';
 import autopilotResults from '../../data/staticResults/autopilotResults.json';
 import { MetricCard } from '../shared/MetricCard';
+import { useTranslation } from '../../i18n/I18nContext';
 import {
   ClipboardCheck, Zap, Radar, AlertTriangle, CheckCircle, Gauge, BrainCircuit, Camera,
 } from 'lucide-react';
@@ -37,18 +38,17 @@ const ImageCard: React.FC<{ src: string; label: string; caption: string }> = ({ 
 );
 
 export const StaticResultsSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
       <div className="flex items-center gap-2 text-purple-400 text-xs font-mono font-semibold uppercase tracking-wider">
         <ClipboardCheck className="w-4 h-4" />
-        <span>Results</span>
+        <span>{t('autopilot.staticResults.eyebrow')}</span>
       </div>
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Real Pipeline Results</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">{t('autopilot.staticResults.title')}</h2>
         <p className="text-sm text-slate-400 max-w-3xl mt-1">
-          A saved, real run of the backend pipeline (same code as the live demo above) -- generated once
-          from the actual OpenCV undistortion, LiDAR projection, and pretrained SAC policy, so the results
-          below are visible immediately without executing anything.
+          {t('autopilot.staticResults.description')}
         </p>
       </div>
 
@@ -57,18 +57,18 @@ export const StaticResultsSection: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <ImageCard
           src={`${(import.meta as any).env.BASE_URL}static-results/autopilot/original.png`}
-          label="Original KITTI frame"
-          caption="Bundled sample camera frame, before any processing."
+          label={t('autopilot.staticResults.originalFrameLabel')}
+          caption={t('autopilot.staticResults.originalFrameCaption')}
         />
         <ImageCard
           src={`${(import.meta as any).env.BASE_URL}static-results/autopilot/undistorted.png`}
-          label="Undistorted"
-          caption={`cv2.undistort() with the calibration below (${data.undistort.processingTimeMs} ms).`}
+          label={t('autopilot.staticResults.undistortedLabel')}
+          caption={t('autopilot.staticResults.undistortedCaption', { ms: data.undistort.processingTimeMs })}
         />
         <ImageCard
           src={`${(import.meta as any).env.BASE_URL}static-results/autopilot/lidar_overlay.png`}
-          label="LiDAR overlay"
-          caption={`velo_to_cam() + project_to_image(), ${data.lidar.pointsInFrame} of ${data.lidar.pointsGenerated} points in frame.`}
+          label={t('autopilot.staticResults.lidarOverlayLabel')}
+          caption={t('autopilot.staticResults.lidarOverlayCaption', { inFrame: data.lidar.pointsInFrame, generated: data.lidar.pointsGenerated })}
         />
       </div>
 
@@ -87,12 +87,11 @@ export const StaticResultsSection: React.FC = () => {
           <div className="flex-1">
             <div className={`text-sm font-bold ${data.lidar.warningActive ? 'text-red-300' : 'text-emerald-300'}`}>
               {data.lidar.warningActive
-                ? `WARNING: Object detected at ${data.lidar.nearestDistanceM.toFixed(1)} m`
-                : `Clear: nearest object at ${data.lidar.nearestDistanceM.toFixed(1)} m`}
+                ? t('autopilot.warnings.objectDetected', { distance: data.lidar.nearestDistanceM.toFixed(1) })
+                : t('autopilot.warnings.clear', { distance: data.lidar.nearestDistanceM.toFixed(1) })}
             </div>
             <div className="text-[10px] text-slate-400">
-              Real Euclidean distance to the nearest LiDAR point projected into frame (seed={data.lidar.seed},
-              threshold {data.lidar.warningThresholdM} m).
+              {t('autopilot.staticResults.warningDescription', { seed: data.lidar.seed, threshold: data.lidar.warningThresholdM })}
             </div>
           </div>
         </div>
@@ -101,52 +100,52 @@ export const StaticResultsSection: React.FC = () => {
       {/* Metrics grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricCard
-          label="Undistort Time"
+          label={t('autopilot.metrics.undistortTimeLabel')}
           value={data.undistort.processingTimeMs}
           unit="ms"
           icon={Zap}
           color="text-purple-300"
-          tooltip="Wall-clock time for cv2.getOptimalNewCameraMatrix + cv2.undistort, measured server-side."
+          tooltip={t('autopilot.metrics.undistortTimeTooltipStatic')}
         />
         <MetricCard
-          label="LiDAR Points"
+          label={t('autopilot.metrics.lidarPointsLabel')}
           value={data.lidar.pointsGenerated}
-          detail={`${data.lidar.pointsInFrame} in frame`}
+          detail={t('autopilot.metrics.lidarPointsDetail', { count: data.lidar.pointsInFrame })}
           icon={Radar}
           color="text-purple-300"
-          tooltip="Size of the synthetic point cloud projected through the real velo_to_cam()/project_to_image() pipeline, and how many landed inside the visible image."
+          tooltip={t('autopilot.metrics.lidarPointsTooltip')}
         />
         <MetricCard
-          label="Nearest Distance"
+          label={t('autopilot.metrics.nearestDistanceLabel')}
           value={data.lidar.nearestDistanceM?.toFixed(2) ?? 'n/a'}
           unit="m"
           icon={data.lidar.warningActive ? AlertTriangle : Radar}
           color={data.lidar.warningActive ? 'text-red-300' : 'text-purple-300'}
-          tooltip="Real Euclidean distance from the LiDAR sensor frame to the closest in-frame point."
+          tooltip={t('autopilot.metrics.nearestDistanceTooltipStatic')}
         />
         <MetricCard
-          label="LiDAR Time"
+          label={t('autopilot.metrics.lidarTimeLabel')}
           value={data.lidar.processingTimeMs}
           unit="ms"
           icon={Zap}
           color="text-purple-300"
-          tooltip="Wall-clock time for the projection + overlay drawing, measured server-side."
+          tooltip={t('autopilot.metrics.lidarTimeTooltip')}
         />
         <MetricCard
-          label="Policy Inference"
+          label={t('autopilot.metrics.policyInferenceLabel')}
           value={data.policy.inferenceTimeMs}
           unit="ms"
           icon={BrainCircuit}
           color={data.policy.modelSource === 'pretrained-sac' ? 'text-emerald-300' : 'text-amber-300'}
-          detail={data.policy.modelSource === 'pretrained-sac' ? 'Pretrained SAC' : 'Heuristic fallback'}
-          tooltip="Real forward-pass latency through the model that actually produced the action below."
+          detail={data.policy.modelSource === 'pretrained-sac' ? t('autopilot.metrics.policyInferenceDetailPretrained') : t('autopilot.metrics.policyInferenceDetailHeuristic')}
+          tooltip={t('autopilot.metrics.policyInferenceTooltip')}
         />
         <MetricCard
-          label="Frame Size"
+          label={t('autopilot.metrics.frameSizeLabel')}
           value={`${data.undistort.imageWidth}×${data.undistort.imageHeight}`}
           icon={Camera}
           color="text-purple-300"
-          tooltip="Actual pixel dimensions of the bundled sample frame."
+          tooltip={t('autopilot.metrics.frameSizeTooltip')}
         />
       </div>
 
@@ -154,39 +153,39 @@ export const StaticResultsSection: React.FC = () => {
       <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
           <Gauge className="w-4 h-4 text-purple-400" />
-          <span>Policy Action ({data.policy.modelName})</span>
+          <span>{t('autopilot.staticResults.policyActionHeading', { modelName: data.policy.modelName })}</span>
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
             <div className="text-lg font-mono font-bold text-purple-300">{data.policy.action.steering.toFixed(3)}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Steering</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('autopilot.actionLabels.steering')}</div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-purple-300">{data.policy.action.throttle.toFixed(3)}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Throttle</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('autopilot.actionLabels.throttle')}</div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-purple-300">{data.policy.action.brake.toFixed(3)}</div>
-            <div className="text-[10px] text-slate-500 uppercase">Brake</div>
+            <div className="text-[10px] text-slate-500 uppercase">{t('autopilot.actionLabels.brake')}</div>
           </div>
         </div>
         <p className="text-[10px] text-slate-500 border-t border-slate-800 pt-2">
-          Example input state: speed={data.policy.inputState.speed} m/s, yaw_rate={data.policy.inputState.yawRate} rad/s,
-          nearest_obstacle_dist={data.policy.inputState.nearestObstacleDist} m, lane_offset={data.policy.inputState.laneOffset} m
-          -- {data.policy.note}
+          {t('autopilot.staticResults.inputStateCaption', {
+            speed: data.policy.inputState.speed,
+            yawRate: data.policy.inputState.yawRate,
+            dist: data.policy.inputState.nearestObstacleDist,
+            offset: data.policy.inputState.laneOffset,
+            note: data.policy.note,
+          })}
         </p>
       </div>
 
       <p className="text-xs text-slate-400 border-t border-slate-800 pt-4">
-        <strong className="text-slate-300">What this demonstrates:</strong> the full computer-vision +
-        control stack runs end-to-end on real code -- OpenCV lens undistortion with real KITTI-style
-        calibration, a real synthetic LiDAR point cloud projected through the project's actual
-        camera-projection math (with a working &lt;10m proximity warning), and a real forward pass
-        through the pretrained SAC policy network. Every number above came from one real run of
+        <strong className="text-slate-300">{t('autopilot.staticResults.demonstratesLabel')}</strong>
+        {t('autopilot.staticResults.demonstratesBodyPrefix')}
         <code className="text-slate-500"> POST /api/autopilot/undistort</code>,
-        <code className="text-slate-500"> /lidar-overlay</code>, and
-        <code className="text-slate-500"> /predict</code> -- try the interactive demo above to run it again
-        with your own parameters.
+        <code className="text-slate-500"> /lidar-overlay</code>{t('autopilot.staticResults.demonstratesBodyMiddle')}
+        <code className="text-slate-500"> /predict</code>{t('autopilot.staticResults.demonstratesBodySuffix')}
       </p>
     </div>
   );
