@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import autopilot, autotopic, ecg, health
+from app.api.routes import autopilot, autotopic, cassandra_grpc, ecg, health
 from app.core.config import CORS_ORIGINS
 from app.services import autotopic_service, ecg_service
 
@@ -45,3 +45,4 @@ app.include_router(health.router)
 app.include_router(autotopic.router)
 app.include_router(autopilot.router)
 app.include_router(ecg.router)
+app.include_router(cassandra_grpc.router)
