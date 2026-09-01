@@ -13,7 +13,12 @@ export const TrainingPanel: React.FC = () => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    getCassandraGrpcTrainStatus().then(setJob).catch(() => {});
+    getCassandraGrpcTrainStatus().then((status) => {
+      setJob(status);
+      if (status.status === 'running') {
+        startPolling();
+      }
+    }).catch(() => {});
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
