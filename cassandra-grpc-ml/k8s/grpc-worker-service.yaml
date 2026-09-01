@@ -1,0 +1,12 @@
+# UNVERIFIED: see grpc-worker-deployment.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-grpc-ml-worker
+spec:
+  selector:
+    app: cassandra-grpc-ml-worker
+  ports:
+    - port: 50061
+      targetPort: 50061
+  type: ClusterIP

@@ -1,0 +1,45 @@
+# UNVERIFIED: adapted from the original cassandra-grpc-dev repo's k8s
+# manifests for this project's schema/keyspace; not deployed or tested
+# against a live cluster in this environment. See cassandra-grpc-ml/README.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cassandra-grpc-ml-cassandra
+  labels:
+    app: cassandra-grpc-ml-cassandra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra-grpc-ml-cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra-grpc-ml-cassandra
+    spec:
+      containers:
+        - name: cassandra
+          image: cassandra:5
+          ports:
+            - containerPort: 9042
+          env:
+            - name: MAX_HEAP_SIZE
+              value: "768M"
+            - name: HEAP_NEWSIZE
+              value: "200M"
+            - name: CASSANDRA_CLUSTER_NAME
+              value: PortfolioCassandra
+          resources:
+            requests:
+              memory: "1.5Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: cassandra-data
+              mountPath: /var/lib/cassandra
+      volumes:
+        - name: cassandra-data
+          persistentVolumeClaim:
+            claimName: cassandra-grpc-ml-cassandra-pvc
