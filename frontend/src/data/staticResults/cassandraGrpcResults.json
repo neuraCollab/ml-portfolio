@@ -1,0 +1,561 @@
+{
+  "available": true,
+  "datasetSize": 40000,
+  "modelType": "TF-IDF + Logistic Regression (multinomial)",
+  "trainingTimeSeconds": 68.02101802825928,
+  "inferenceLatencyMs": 7.3,
+  "accuracy": 0.5276659959758552,
+  "macroPrecision": 0.684418016493003,
+  "macroRecall": 0.23692235278110807,
+  "macroF1": 0.31518778435502204,
+  "topClasses": [
+    {
+      "topicId": 26,
+      "topicName": "Жизненные советы",
+      "support": 1287
+    },
+    {
+      "topicId": 18,
+      "topicName": "Проекты и задачи",
+      "support": 598
+    },
+    {
+      "topicId": 0,
+      "topicName": "Эмоции студентов",
+      "support": 144
+    },
+    {
+      "topicId": 32,
+      "topicName": "Посты о любви",
+      "support": 118
+    },
+    {
+      "topicId": 33,
+      "topicName": "Расклады отношений",
+      "support": 104
+    },
+    {
+      "topicId": 41,
+      "topicName": "Технический анализ",
+      "support": 103
+    },
+    {
+      "topicId": 17,
+      "topicName": "Поздравления с днем рождения",
+      "support": 101
+    },
+    {
+      "topicId": 43,
+      "topicName": "Даты и карты",
+      "support": 83
+    },
+    {
+      "topicId": 38,
+      "topicName": "Анализ персонажей",
+      "support": 68
+    },
+    {
+      "topicId": 15,
+      "topicName": "Похудение и здоровье",
+      "support": 58
+    },
+    {
+      "topicId": 5,
+      "topicName": "Описание товаров",
+      "support": 56
+    },
+    {
+      "topicId": 25,
+      "topicName": "Ошибки в коде",
+      "support": 54
+    },
+    {
+      "topicId": 30,
+      "topicName": "Расклад Таро",
+      "support": 54
+    },
+    {
+      "topicId": 14,
+      "topicName": "Придумай песню",
+      "support": 52
+    },
+    {
+      "topicId": 48,
+      "topicName": "Отзывы о студиях",
+      "support": 52
+    }
+  ],
+  "confusionMatrix": [
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 26,
+      "count": 1165
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 18,
+      "count": 96
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 0,
+      "count": 3
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 32,
+      "count": 1
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 33,
+      "count": 4
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 17,
+      "count": 4
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 43,
+      "count": 2
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 25,
+      "count": 1
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 30,
+      "count": 1
+    },
+    {
+      "trueTopicId": 26,
+      "predictedTopicId": 48,
+      "count": 1
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 26,
+      "count": 181
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 18,
+      "count": 401
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 0,
+      "count": 2
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 32,
+      "count": 3
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 33,
+      "count": 1
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 17,
+      "count": 1
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 15,
+      "count": 2
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 5,
+      "count": 2
+    },
+    {
+      "trueTopicId": 18,
+      "predictedTopicId": 14,
+      "count": 1
+    },
+    {
+      "trueTopicId": 0,
+      "predictedTopicId": 26,
+      "count": 97
+    },
+    {
+      "trueTopicId": 0,
+      "predictedTopicId": 18,
+      "count": 14
+    },
+    {
+      "trueTopicId": 0,
+      "predictedTopicId": 0,
+      "count": 27
+    },
+    {
+      "trueTopicId": 0,
+      "predictedTopicId": 25,
+      "count": 1
+    },
+    {
+      "trueTopicId": 0,
+      "predictedTopicId": 30,
+      "count": 1
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 26,
+      "count": 69
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 18,
+      "count": 8
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 0,
+      "count": 2
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 32,
+      "count": 34
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 33,
+      "count": 1
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 43,
+      "count": 1
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 15,
+      "count": 1
+    },
+    {
+      "trueTopicId": 32,
+      "predictedTopicId": 14,
+      "count": 1
+    },
+    {
+      "trueTopicId": 33,
+      "predictedTopicId": 26,
+      "count": 59
+    },
+    {
+      "trueTopicId": 33,
+      "predictedTopicId": 18,
+      "count": 8
+    },
+    {
+      "trueTopicId": 33,
+      "predictedTopicId": 0,
+      "count": 1
+    },
+    {
+      "trueTopicId": 33,
+      "predictedTopicId": 33,
+      "count": 36
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 26,
+      "count": 45
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 18,
+      "count": 40
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 0,
+      "count": 3
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 33,
+      "count": 1
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 41,
+      "count": 11
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 17,
+      "count": 1
+    },
+    {
+      "trueTopicId": 41,
+      "predictedTopicId": 5,
+      "count": 1
+    },
+    {
+      "trueTopicId": 17,
+      "predictedTopicId": 26,
+      "count": 39
+    },
+    {
+      "trueTopicId": 17,
+      "predictedTopicId": 18,
+      "count": 10
+    },
+    {
+      "trueTopicId": 17,
+      "predictedTopicId": 32,
+      "count": 1
+    },
+    {
+      "trueTopicId": 17,
+      "predictedTopicId": 17,
+      "count": 50
+    },
+    {
+      "trueTopicId": 17,
+      "predictedTopicId": 48,
+      "count": 1
+    },
+    {
+      "trueTopicId": 43,
+      "predictedTopicId": 26,
+      "count": 16
+    },
+    {
+      "trueTopicId": 43,
+      "predictedTopicId": 18,
+      "count": 5
+    },
+    {
+      "trueTopicId": 43,
+      "predictedTopicId": 33,
+      "count": 1
+    },
+    {
+      "trueTopicId": 43,
+      "predictedTopicId": 43,
+      "count": 54
+    },
+    {
+      "trueTopicId": 43,
+      "predictedTopicId": 25,
+      "count": 4
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 26,
+      "count": 35
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 18,
+      "count": 16
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 33,
+      "count": 1
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 43,
+      "count": 1
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 38,
+      "count": 11
+    },
+    {
+      "trueTopicId": 38,
+      "predictedTopicId": 14,
+      "count": 2
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 26,
+      "count": 27
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 18,
+      "count": 7
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 0,
+      "count": 2
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 32,
+      "count": 1
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 15,
+      "count": 19
+    },
+    {
+      "trueTopicId": 15,
+      "predictedTopicId": 14,
+      "count": 1
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 26,
+      "count": 21
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 18,
+      "count": 17
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 0,
+      "count": 2
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 33,
+      "count": 2
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 38,
+      "count": 1
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 5,
+      "count": 10
+    },
+    {
+      "trueTopicId": 5,
+      "predictedTopicId": 48,
+      "count": 1
+    },
+    {
+      "trueTopicId": 25,
+      "predictedTopicId": 26,
+      "count": 16
+    },
+    {
+      "trueTopicId": 25,
+      "predictedTopicId": 18,
+      "count": 9
+    },
+    {
+      "trueTopicId": 25,
+      "predictedTopicId": 0,
+      "count": 1
+    },
+    {
+      "trueTopicId": 25,
+      "predictedTopicId": 43,
+      "count": 2
+    },
+    {
+      "trueTopicId": 25,
+      "predictedTopicId": 25,
+      "count": 24
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 26,
+      "count": 16
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 18,
+      "count": 6
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 32,
+      "count": 1
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 33,
+      "count": 3
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 41,
+      "count": 1
+    },
+    {
+      "trueTopicId": 30,
+      "predictedTopicId": 30,
+      "count": 27
+    },
+    {
+      "trueTopicId": 14,
+      "predictedTopicId": 26,
+      "count": 17
+    },
+    {
+      "trueTopicId": 14,
+      "predictedTopicId": 18,
+      "count": 5
+    },
+    {
+      "trueTopicId": 14,
+      "predictedTopicId": 0,
+      "count": 2
+    },
+    {
+      "trueTopicId": 14,
+      "predictedTopicId": 41,
+      "count": 1
+    },
+    {
+      "trueTopicId": 14,
+      "predictedTopicId": 14,
+      "count": 26
+    },
+    {
+      "trueTopicId": 48,
+      "predictedTopicId": 26,
+      "count": 33
+    },
+    {
+      "trueTopicId": 48,
+      "predictedTopicId": 18,
+      "count": 6
+    },
+    {
+      "trueTopicId": 48,
+      "predictedTopicId": 17,
+      "count": 3
+    },
+    {
+      "trueTopicId": 48,
+      "predictedTopicId": 14,
+      "count": 1
+    },
+    {
+      "trueTopicId": 48,
+      "predictedTopicId": 48,
+      "count": 6
+    }
+  ],
+  "examplePrediction": {
+    "inputText": "Подбери синонимы к слову веселый",
+    "topicName": "Анализ персонажей",
+    "confidence": 0.6367891761099003
+  },
+  "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md."
+}

@@ -1,0 +1,36 @@
+import React, { useState } from 'react';
+import { Database } from 'lucide-react';
+import { OverviewPanel } from './cassandragrpc/OverviewPanel';
+import { DatasetPanel } from './cassandragrpc/DatasetPanel';
+import { TrainingPanel } from './cassandragrpc/TrainingPanel';
+import { InferencePanel } from './cassandragrpc/InferencePanel';
+import { MetricsPanel } from './cassandragrpc/MetricsPanel';
+import { StaticResultsSection } from './cassandragrpc/StaticResultsSection';
+
+export const CassandraGrpcWorkspace: React.FC = () => {
+  const [metricsRefreshKey, setMetricsRefreshKey] = useState(0);
+
+  return (
+    <div className="space-y-6 pb-10">
+      <div>
+        <div className="flex items-center gap-2 text-cyan-400 text-xs font-mono font-semibold uppercase tracking-wider">
+          <Database className="w-4 h-4" />
+          <span>Distributed ML</span>
+        </div>
+        <h1 className="text-2xl font-bold text-white tracking-tight mt-1">Cassandra + gRPC ML</h1>
+        <p className="text-sm text-slate-400 max-w-3xl mt-1">
+          A distilled topic classifier: AutoTopic discovers 50 topics in a large Russian request
+          corpus via slow unsupervised BERTopic clustering; this project stores a labeled sample of
+          that corpus in Apache Cassandra and trains a fast TF-IDF + Logistic Regression classifier,
+          served over a real gRPC call to a separate worker container for low-latency inference.
+        </p>
+      </div>
+      <OverviewPanel />
+      <DatasetPanel />
+      <TrainingPanel onTrainingComplete={() => setMetricsRefreshKey((k) => k + 1)} />
+      <InferencePanel />
+      <MetricsPanel refreshKey={metricsRefreshKey} />
+      <StaticResultsSection />
+    </div>
+  );
+};

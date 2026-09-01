@@ -42,3 +42,14 @@ ECG_SAMPLE_PATH = ECG_DIR / "physics" / "ecg_mock_0001_raw.npy"
 ECG_MAX_UPLOAD_BYTES = int(os.environ.get("ECG_MAX_UPLOAD_BYTES", str(2 * 1024 * 1024)))
 ECG_MAX_EVAL_UPLOAD_BYTES = int(os.environ.get("ECG_MAX_EVAL_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 ECG_MAX_EVAL_SAMPLES = int(os.environ.get("ECG_MAX_EVAL_SAMPLES", "500"))
+
+# Cassandra + gRPC ML project: reuses AutoTopic's real labeled dataset (see
+# AutoTopic/data/README.md) to train a fast supervised topic classifier
+# served over gRPC by the grpc-worker container, backed by a Cassandra
+# keyspace. See cassandra-grpc-ml/README.md for the full architecture.
+CASSANDRA_GRPC_DATASET_PATH = os.environ.get(
+    "CASSANDRA_GRPC_DATASET_PATH", "AutoTopic/data/raw/labeled_requests.parquet"
+)
+CASSANDRA_GRPC_SAMPLE_SIZE = int(os.environ.get("CASSANDRA_GRPC_SAMPLE_SIZE", "40000"))
+CASSANDRA_HOST = os.environ.get("CASSANDRA_HOST", "cassandra")
+GRPC_WORKER_ADDRESS = os.environ.get("GRPC_WORKER_ADDRESS", "grpc-worker:50061")

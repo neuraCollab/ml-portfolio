@@ -1,0 +1,40 @@
+# UNVERIFIED: adapted from the original cassandra-grpc-dev repo's
+# worker-deployment.yaml for the new Python grpc-worker image (built from
+# cassandra-grpc-ml/worker/Dockerfile); not deployed or tested against a
+# live cluster in this environment. See cassandra-grpc-ml/README.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cassandra-grpc-ml-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra-grpc-ml-worker
+  template:
+    metadata:
+      labels:
+        app: cassandra-grpc-ml-worker
+    spec:
+      containers:
+        - name: grpc-worker
+          image: cassandra-grpc-ml-worker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50061
+          env:
+            - name: CASSANDRA_HOST
+              value: "cassandra-grpc-ml-cassandra"
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: model-store
+              mountPath: /app/model_store
+      volumes:
+        - name: model-store
+          emptyDir: {}

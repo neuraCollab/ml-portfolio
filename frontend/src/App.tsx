@@ -5,6 +5,7 @@ import { AutoTopicWorkspace } from './components/AutoTopicWorkspace';
 import { AutopilotWorkspace } from './components/AutopilotWorkspace';
 import { ECGWorkspace } from './components/ECGWorkspace';
 import { OverviewWorkspace } from './components/OverviewWorkspace';
+import { CassandraGrpcWorkspace } from './components/CassandraGrpcWorkspace';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('autotopic');
@@ -17,6 +18,7 @@ export function App() {
         {activeTab === 'autotopic' && <AutoTopicWorkspace />}
         {activeTab === 'autopilot' && <AutopilotWorkspace />}
         {activeTab === 'ecg' && <ECGWorkspace />}
+        {activeTab === 'cassandragrpc' && <CassandraGrpcWorkspace />}
         {activeTab === 'overview' && <OverviewWorkspace />}
       </main>
 

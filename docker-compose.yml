@@ -1,13 +1,47 @@
 services:
+  cassandra:
+    image: cassandra:5
+    environment:
+      - CASSANDRA_CLUSTER_NAME=PortfolioCassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+
+  grpc-worker:
+    build:
+      context: .
+      dockerfile: cassandra-grpc-ml/worker/Dockerfile
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      - CASSANDRA_HOST=cassandra
+    volumes:
+      - cassandra_grpc_model_data:/app/model_store
+
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
+    depends_on:
+      cassandra:
+        condition: service_started
+      grpc-worker:
+        condition: service_started
     environment:
       - CORS_ORIGINS=http://localhost:3000
       - AUTOTOPIC_DATA_URL=${AUTOTOPIC_DATA_URL:-data/raw/labeled_requests.parquet}
+      - CASSANDRA_HOST=cassandra
+      - GRPC_WORKER_ADDRESS=grpc-worker:50061
+      - CASSANDRA_GRPC_DATASET_PATH=${CASSANDRA_GRPC_DATASET_PATH:-AutoTopic/data/raw/labeled_requests.parquet}
+      - CASSANDRA_GRPC_SAMPLE_SIZE=${CASSANDRA_GRPC_SAMPLE_SIZE:-40000}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 10s
@@ -25,3 +59,7 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+volumes:
+  cassandra_data:
+  cassandra_grpc_model_data:

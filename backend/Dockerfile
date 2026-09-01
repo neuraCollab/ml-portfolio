@@ -20,6 +20,11 @@ RUN python -m spacy download ru_core_news_sm \
     && python -m spacy download en_core_web_sm
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
 
+# Cassandra + gRPC ML project: generate the gRPC Python stubs the backend
+# needs to act as a client of the grpc-worker service.
+COPY cassandra-grpc-ml/proto ./cassandra-grpc-ml/proto
+RUN python -m grpc_tools.protoc -I cassandra-grpc-ml/proto --python_out=. --grpc_python_out=. cassandra-grpc-ml/proto/ml_worker.proto
+
 # The three ML projects, reused as-is (see backend/app/services for the adapters).
 COPY AutoTopic ./AutoTopic
 COPY rl_cv_car-autopilot ./rl_cv_car-autopilot

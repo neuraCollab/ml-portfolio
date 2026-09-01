@@ -39,3 +39,8 @@ gymnasium==1.1.1
 # ECG Edge AI (reused from ../raspberry-pi-ecg, adapted from neuraCollab/rasbery-pi-5-ECG)
 scipy>=1.11.0
 pyserial>=3.5
+
+# Cassandra + gRPC ML project
+grpcio>=1.62,<1.68
+grpcio-tools>=1.62,<1.68
+cassandra-driver>=3.29,<4.0

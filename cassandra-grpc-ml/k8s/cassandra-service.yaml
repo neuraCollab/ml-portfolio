@@ -1,0 +1,13 @@
+# UNVERIFIED: see cassandra-deployment.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-grpc-ml-cassandra
+spec:
+  selector:
+    app: cassandra-grpc-ml-cassandra
+  ports:
+    - name: cql
+      port: 9042
+      targetPort: 9042
+  type: ClusterIP
