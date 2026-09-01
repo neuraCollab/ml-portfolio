@@ -1,5 +1,6 @@
 import React from 'react';
 import { Database } from 'lucide-react';
+import { OverviewPanel } from './cassandragrpc/OverviewPanel';
 
 export const CassandraGrpcWorkspace: React.FC = () => {
   return (
@@ -17,8 +18,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
           served over a real gRPC call to a separate worker container for low-latency inference.
         </p>
       </div>
-      {/* Overview/Architecture, Dataset, Training, Inference, Metrics, and Results sections
-          are added here in later tasks. */}
+      <OverviewPanel />
     </div>
   );
 };
