@@ -1,4 +1,4 @@
-import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, EcgAnalysisResult, EcgEvaluationResult, EcgHealth } from '../types';
+import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgEvaluationResult, EcgHealth } from '../types';
 
 const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL: string = API_BASE_URL.replace(/^http/, 'ws');
@@ -180,4 +180,40 @@ export function openEcgLiveSocket(onMessage: (data: any) => void, onClose?: () =
   };
   if (onClose) ws.onclose = onClose;
   return ws;
+}
+
+export function getCassandraGrpcStatus(): Promise<CassandraGrpcStatus> {
+  return request<CassandraGrpcStatus>('/api/cassandra-grpc/status');
+}
+
+export function getCassandraGrpcDatasetInfo(): Promise<CassandraGrpcDatasetInfo> {
+  return request<CassandraGrpcDatasetInfo>('/api/cassandra-grpc/dataset-info');
+}
+
+export function startCassandraGrpcTraining(sampleSize: number): Promise<CassandraGrpcTrainJobStatus> {
+  return request<CassandraGrpcTrainJobStatus>('/api/cassandra-grpc/train', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sampleSize }),
+  });
+}
+
+export function getCassandraGrpcTrainStatus(): Promise<CassandraGrpcTrainJobStatus> {
+  return request<CassandraGrpcTrainJobStatus>('/api/cassandra-grpc/train/status');
+}
+
+export function getCassandraGrpcMetrics(): Promise<CassandraGrpcTrainMetrics | null> {
+  return request<CassandraGrpcTrainMetrics | null>('/api/cassandra-grpc/metrics');
+}
+
+export function predictCassandraGrpc(text: string): Promise<CassandraGrpcPredictResult> {
+  return request<CassandraGrpcPredictResult>('/api/cassandra-grpc/predict', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+}
+
+export function getCassandraGrpcLog(): Promise<CassandraGrpcLogEntry[]> {
+  return request<CassandraGrpcLogEntry[]>('/api/cassandra-grpc/grpc-log');
 }

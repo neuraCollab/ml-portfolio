@@ -1,4 +1,4 @@
-export type ActiveTab = 'autotopic' | 'autopilot' | 'ecg' | 'overview';
+export type ActiveTab = 'autotopic' | 'autopilot' | 'ecg' | 'cassandragrpc' | 'overview';
 
 // AutoTopic Types
 export interface LogDocument {
@@ -225,4 +225,84 @@ export interface EcgEvaluationResult {
   microF1: number;
   perClass: EcgPerClassMetric[];
   note: string;
+}
+
+// Cassandra + gRPC ML Types
+export interface CassandraGrpcStatus {
+  cassandra: 'connected' | 'unreachable';
+  worker: 'connected' | 'unreachable';
+  modelLoaded: boolean;
+  numClasses: number;
+  trainedAt?: string | null;
+}
+
+export interface ClassDistributionEntry {
+  topicId: number;
+  topicName: string;
+  count: number;
+}
+
+export interface CassandraGrpcDatasetInfo {
+  ingestedRows: number;
+  trainRows: number;
+  testRows: number;
+  numClasses: number;
+  sampleSize: number;
+  topicDistribution: ClassDistributionEntry[];
+  note: string;
+}
+
+export interface ClassSupport {
+  topicId: number;
+  topicName: string;
+  support: number;
+}
+
+export interface ConfusionMatrixEntry {
+  trueTopicId: number;
+  predictedTopicId: number;
+  count: number;
+}
+
+export interface CassandraGrpcTrainMetrics {
+  numClasses: number;
+  trainRows: number;
+  testRows: number;
+  accuracy: number;
+  macroPrecision: number;
+  macroRecall: number;
+  macroF1: number;
+  microPrecision: number;
+  microRecall: number;
+  microF1: number;
+  trainingTimeSeconds: number;
+  topClasses: ClassSupport[];
+  confusionMatrix: ConfusionMatrixEntry[];
+  trainedAt: string;
+}
+
+export interface CassandraGrpcTrainJobStatus {
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startedAt?: number | null;
+  finishedAt?: number | null;
+  error?: string | null;
+  result?: CassandraGrpcTrainMetrics | null;
+}
+
+export interface CassandraGrpcPredictResult {
+  topicId: number;
+  topicName: string;
+  confidence: number;
+  preprocessingTimeMs: number;
+  grpcRoundtripMs: number;
+  note: string;
+}
+
+export interface CassandraGrpcLogEntry {
+  id: string;
+  timestamp: string;
+  method: 'Predict' | 'Train' | 'GetStatus';
+  status: 'OK' | 'UNAVAILABLE' | 'FAILED_PRECONDITION' | 'INTERNAL';
+  latencyMs: number;
+  detail: string;
 }
