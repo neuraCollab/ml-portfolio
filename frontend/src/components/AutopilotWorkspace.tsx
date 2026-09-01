@@ -714,6 +714,37 @@ export const AutopilotWorkspace: React.FC = () => {
               <span className="text-xs text-slate-500 font-mono">{penaltyFeed.length} events</span>
             </div>
 
+            {/* Real LiDAR proximity warning (from "Live Backend Demo" -> Run
+                LiDAR below) -- lives here so all safety-relevant signals are
+                in one place. Only appears once that real backend call has run. */}
+            {lidarResult && lidarResult.nearestDistanceM !== null && (
+              <div
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                  lidarResult.warningActive
+                    ? 'bg-red-500/10 border-red-500/40 animate-pulse'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
+                }`}
+              >
+                {lidarResult.warningActive ? (
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                ) : (
+                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                )}
+                <div className="flex-1">
+                  <div className={`text-sm font-bold ${lidarResult.warningActive ? 'text-red-300' : 'text-emerald-300'}`}>
+                    {lidarResult.warningActive
+                      ? `WARNING: Object detected at ${lidarResult.nearestDistanceM.toFixed(1)} m`
+                      : `Clear: nearest object at ${lidarResult.nearestDistanceM.toFixed(1)} m`}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Real Euclidean distance from the synthetic LiDAR point cloud's own sensor-frame
+                    coordinates to the nearest point that projects into the visible camera frame
+                    (warning threshold: {lidarResult.warningThresholdM} m, from "Live Backend Demo" below).
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="h-44 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px]">
               {penaltyFeed.length === 0 ? (
                 <div className="text-slate-500 text-center py-8">No safety penalties triggered. Smooth drive!</div>
@@ -860,34 +891,6 @@ export const AutopilotWorkspace: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {lidarResult && lidarResult.nearestDistanceM !== null && (
-                  <div
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                      lidarResult.warningActive
-                        ? 'bg-red-500/10 border-red-500/40 animate-pulse'
-                        : 'bg-emerald-500/10 border-emerald-500/30'
-                    }`}
-                  >
-                    {lidarResult.warningActive ? (
-                      <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-                    ) : (
-                      <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <div className={`text-sm font-bold ${lidarResult.warningActive ? 'text-red-300' : 'text-emerald-300'}`}>
-                        {lidarResult.warningActive
-                          ? `WARNING: Object detected at ${lidarResult.nearestDistanceM.toFixed(1)} m`
-                          : `Clear: nearest object at ${lidarResult.nearestDistanceM.toFixed(1)} m`}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Real Euclidean distance from the synthetic LiDAR point cloud's own sensor-frame
-                        coordinates to the nearest point that projects into the visible camera frame
-                        (warning threshold: {lidarResult.warningThresholdM} m).
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <MetricCard label="Frame Size" value={`${undistortResult.imageWidth}×${undistortResult.imageHeight}`} icon={Maximize2} color="text-purple-300" tooltip="Actual pixel dimensions of the bundled sample frame." />

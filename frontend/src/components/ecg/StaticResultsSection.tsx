@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ecgResults from '../../data/staticResults/ecgResults.json';
 import { MetricCard } from '../shared/MetricCard';
 import { ECGChart } from './ECGChart';
 import { ECG_LEAD_NAMES } from '../../types';
-import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info, Camera } from 'lucide-react';
+import { formatProbability } from '../../utils/formatProbability';
+
+const HARDWARE_IMAGE_PATH = 'static-results/ecg/hardware.jpg';
 
 interface PerClassMetric {
   className: string; label: string; support: number;
@@ -46,6 +49,8 @@ export const StaticResultsSection: React.FC = () => {
   const gtEntries = Object.entries(data.publicExample.groundTruthLabels).filter(
     ([name, isPositive]) => isPositive || !data.publicExample.groundTruthCorrect[name]
   );
+  const [hardwareImageFailed, setHardwareImageFailed] = useState(false);
+  const hardwareImageSrc = `${(import.meta as any).env.BASE_URL}${HARDWARE_IMAGE_PATH}`;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
@@ -60,6 +65,36 @@ export const StaticResultsSection: React.FC = () => {
           61-record labeled evaluation set (PhysioNet, CC-BY 4.0) -- see{' '}
           <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code> for exact provenance.
           Visible immediately, no need to run the interactive demo above.
+        </p>
+      </div>
+
+      {/* Hardware photo -- medium-sized, real-world photo of the physical rig
+          (AD8232 x2 + Arduino Nano x2 + Raspberry Pi 5). Reserved spot: drop
+          the real photo at frontend/public/static-results/ecg/hardware.jpg
+          and it appears automatically, no code change needed. */}
+      <div className="space-y-2">
+        <div className="text-sm font-semibold text-slate-200">Hardware Setup</div>
+        <div className="max-w-md">
+          {!hardwareImageFailed ? (
+            <img
+              src={hardwareImageSrc}
+              alt="Raspberry Pi 5 ECG hardware setup: AD8232 sensors, Arduino Nano units, and Raspberry Pi 5"
+              className="w-full h-auto rounded-xl border border-slate-800 object-cover"
+              onError={() => setHardwareImageFailed(true)}
+            />
+          ) : (
+            <div className="aspect-video rounded-xl border border-dashed border-slate-700 bg-slate-950 flex flex-col items-center justify-center text-center p-4 gap-2">
+              <Camera className="w-6 h-6 text-slate-600" />
+              <p className="text-xs text-slate-500">
+                Real hardware photo not yet added.
+                <br />
+                Drop an image at <code className="text-slate-400">frontend/public/{HARDWARE_IMAGE_PATH}</code>.
+              </p>
+            </div>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-500">
+          The AD8232 + Arduino Nano + Raspberry Pi 5 rig described above, in the real world.
         </p>
       </div>
 
@@ -165,9 +200,9 @@ export const StaticResultsSection: React.FC = () => {
             </div>
             <div className="text-right">
               <div className="text-xl font-bold font-mono text-rose-400">
-                {(data.publicExample.topProbability * 100).toFixed(4)}%
+                {formatProbability(data.publicExample.topProbability)}
               </div>
-              <div className="text-[10px] text-slate-500">model probability</div>
+              <div className="text-[10px] text-slate-500">raw model probability</div>
             </div>
           </div>
           <div className="space-y-1.5 pt-2 border-t border-slate-800">

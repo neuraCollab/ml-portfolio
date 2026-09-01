@@ -660,56 +660,52 @@ export const AutoTopicWorkspace: React.FC = () => {
         )}
       </div>
 
-      {fullPipelineStatus?.status === 'completed' && fullPipelineStatus.result && (
-        <div className="space-y-6">
-          <div className="flex items-center space-x-2 text-emerald-400 text-sm font-semibold">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Full Dataset Results</span>
-          </div>
-          <ResultsPanel
-            results={fullPipelineStatus.result}
-            documentsHeading={`Classified Log Documents (random preview of ${fullPipelineStatus.result.documents.length})`}
-          />
-        </div>
-      )}
-
-      {/* Static snapshot of a real full-dataset run (see
-          backend/scripts/generate_static_results.py) -- always visible
-          regardless of whether the live background job above has ever been
-          run in this session, so the charts/keywords/metrics are visible
-          immediately, the same way the Autopilot and ECG pages work. */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-        <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
-          <ClipboardCheck className="w-4 h-4" />
-          <span>Results</span>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Real Full-Dataset Pipeline Results</h2>
-          <p className="text-sm text-slate-400 max-w-3xl mt-1">
-            {staticFullPipelineResults ? (
-              <>
-                A saved snapshot of a real run of the full pipeline above, over every real row in{' '}
-                <span className="font-mono text-emerald-400">{staticFullPipelineResults.datasetInfo?.resolvedPath}</span>{' '}
-                -- {staticFullPipelineResults.metrics.documentsAnalyzed.toLocaleString()} real documents
-                clustered into {staticFullPipelineResults.metrics.nTopics} real topics. Visible immediately,
-                no need to run the (~45-70 minute) job yourself.
-              </>
+      {/* Full-dataset results: a single spot, not two. Prefers a result from
+          a job that JUST completed live in this session (freshest data) and
+          falls back to the saved snapshot (backend/scripts/generate_static_results.py)
+          otherwise, so this is always visible without duplicating the same
+          numbers/charts in two places when both happen to be the same run. */}
+      {(() => {
+        const liveResult = fullPipelineStatus?.status === 'completed' ? fullPipelineStatus.result : null;
+        const effectiveResults = liveResult ?? staticFullPipelineResults;
+        const isLive = !!liveResult;
+        return (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
+              <ClipboardCheck className="w-4 h-4" />
+              <span>Results</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white tracking-tight">Real Full-Dataset Pipeline Results</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">
+                {effectiveResults ? (
+                  <>
+                    {isLive
+                      ? 'Results from the job you just ran above, over every real row in '
+                      : 'A saved snapshot of a real run of the full pipeline above, over every real row in '}
+                    <span className="font-mono text-emerald-400">{effectiveResults.datasetInfo?.resolvedPath}</span>{' '}
+                    -- {effectiveResults.metrics.documentsAnalyzed.toLocaleString()} real documents
+                    clustered into {effectiveResults.metrics.nTopics} real topics.
+                    {!isLive && ' Visible immediately, no need to run the (~45-70 minute) job yourself.'}
+                  </>
+                ) : (
+                  'A saved snapshot of a real full-dataset pipeline run -- visible immediately, no need to run the (~45-70 minute) job yourself.'
+                )}
+              </p>
+            </div>
+            {staticFullPipelineError && !effectiveResults ? (
+              <p className="text-xs text-red-400">{staticFullPipelineError}</p>
+            ) : !effectiveResults ? (
+              <p className="text-xs text-slate-500">Loading saved results...</p>
             ) : (
-              'A saved snapshot of a real full-dataset pipeline run -- visible immediately, no need to run the (~45-70 minute) job yourself.'
+              <ResultsPanel
+                results={effectiveResults}
+                documentsHeading={`Classified Log Documents (random preview of ${effectiveResults.documents.length})`}
+              />
             )}
-          </p>
-        </div>
-        {staticFullPipelineError ? (
-          <p className="text-xs text-red-400">{staticFullPipelineError}</p>
-        ) : !staticFullPipelineResults ? (
-          <p className="text-xs text-slate-500">Loading saved results...</p>
-        ) : (
-          <ResultsPanel
-            results={staticFullPipelineResults}
-            documentsHeading={`Classified Log Documents (random preview of ${staticFullPipelineResults.documents.length})`}
-          />
-        )}
-      </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

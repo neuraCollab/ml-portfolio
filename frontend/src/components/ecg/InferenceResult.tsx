@@ -2,6 +2,7 @@ import React from 'react';
 import { EcgAnalysisResult } from '../../types';
 import { BrainCircuit, HelpCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { ProbabilityBarChart } from './ProbabilityBarChart';
+import { formatProbability } from '../../utils/formatProbability';
 
 interface InferenceResultProps {
   result: EcgAnalysisResult;
@@ -16,8 +17,8 @@ export const InferenceResult: React.FC<InferenceResultProps> = ({ result }) => {
           <div className="text-lg font-bold text-rose-300">{result.topLabel}</div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold font-mono text-rose-400">{(result.topProbability * 100).toFixed(1)}%</div>
-          <div className="text-[10px] text-slate-500">model probability</div>
+          <div className="text-2xl font-bold font-mono text-rose-400">{formatProbability(result.topProbability)}</div>
+          <div className="text-[10px] text-slate-500">raw model probability</div>
         </div>
       </div>
 
