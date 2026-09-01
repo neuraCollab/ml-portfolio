@@ -37,6 +37,9 @@ def train(request: TrainRequestBody):
         return svc.start_training(request.sampleSize)
     except CassandraGrpcError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+    except Exception:
+        logger.exception("Cassandra+gRPC train-start failed")
+        raise HTTPException(status_code=500, detail="Could not start training. See server logs.")
 
 
 @router.get("/train/status", response_model=TrainJobStatus)
