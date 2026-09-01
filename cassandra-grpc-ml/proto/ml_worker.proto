@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package ml_worker;
+
+service MLWorker {
+  rpc Predict(PredictRequest) returns (PredictResponse);
+  rpc Train(TrainRequest) returns (TrainResponse);
+  rpc GetStatus(StatusRequest) returns (StatusResponse);
+}
+
+message PredictRequest {
+  string text = 1;
+}
+
+message PredictResponse {
+  int32 topic_id = 1;
+  string topic_name = 2;
+  double confidence = 3;
+  double latency_ms = 4;
+}
+
+message TrainRequest {
+  int32 sample_size = 1;
+}
+
+message ClassSupport {
+  int32 topic_id = 1;
+  string topic_name = 2;
+  int32 support = 3;
+}
+
+message ConfusionMatrixEntry {
+  int32 true_topic_id = 1;
+  int32 predicted_topic_id = 2;
+  int32 count = 3;
+}
+
+message TrainResponse {
+  bool success = 1;
+  string message = 2;
+  int32 num_classes = 3;
+  int32 train_rows = 4;
+  int32 test_rows = 5;
+  double accuracy = 6;
+  double macro_precision = 7;
+  double macro_recall = 8;
+  double macro_f1 = 9;
+  double micro_precision = 10;
+  double micro_recall = 11;
+  double micro_f1 = 12;
+  double training_time_seconds = 13;
+  repeated ClassSupport top_classes = 14;
+  repeated ConfusionMatrixEntry confusion_matrix = 15;
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  bool model_loaded = 1;
+  int32 num_classes = 2;
+  string trained_at = 3; // ISO8601, or "" if never trained
+}
