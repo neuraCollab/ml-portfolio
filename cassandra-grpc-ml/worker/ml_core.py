@@ -58,6 +58,8 @@ def train_and_evaluate(
     start = time.time()
     vectorizer = TfidfVectorizer(max_features=50000, ngram_range=(1, 2), min_df=1)
     X_train = vectorizer.fit_transform(train_texts)
+    # scikit-learn removed multi_class param (deprecated 1.5, removed 1.7+);
+    # solver='lbfgs' defaults to multinomial loss for multi-class, same behavior as multi_class="multinomial"
     classifier = LogisticRegression(max_iter=200, n_jobs=-1, solver='lbfgs')
     classifier.fit(X_train, train_labels)
     training_time = time.time() - start
