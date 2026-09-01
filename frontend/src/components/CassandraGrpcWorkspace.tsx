@@ -3,6 +3,7 @@ import { Database } from 'lucide-react';
 import { OverviewPanel } from './cassandragrpc/OverviewPanel';
 import { DatasetPanel } from './cassandragrpc/DatasetPanel';
 import { TrainingPanel } from './cassandragrpc/TrainingPanel';
+import { InferencePanel } from './cassandragrpc/InferencePanel';
 
 export const CassandraGrpcWorkspace: React.FC = () => {
   return (
@@ -23,6 +24,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
       <OverviewPanel />
       <DatasetPanel />
       <TrainingPanel />
+      <InferencePanel />
     </div>
   );
 };
