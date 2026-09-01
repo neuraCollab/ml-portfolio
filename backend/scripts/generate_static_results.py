@@ -12,6 +12,7 @@ Usage (with the stack running via docker-compose, from the repo root):
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/autopilot/results.json      frontend/src/data/staticResults/autopilotResults.json
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/ecg/results.json            frontend/src/data/staticResults/ecgResults.json
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/autotopic/full_pipeline_results.json frontend/src/data/staticResults/autotopicFullPipelineResults.json
+    docker cp portfolio-integration-backend-1:/tmp/static_results_out/cassandra_grpc/results.json frontend/src/data/staticResults/cassandraGrpcResults.json
 
 Re-run and re-copy whenever the underlying models/pipeline change and the
 static portfolio numbers should be refreshed. The AutoTopic snapshot only
@@ -163,5 +164,52 @@ else:
         "skipping the snapshot. Run POST /api/autotopic/full-pipeline/start and wait for it to "
         "finish, then re-run this script."
     )
+
+
+# ---------------------------------------------------------------------------
+# Cassandra + gRPC ML: reads whatever the last completed training run left
+# in the backend's in-memory job state (GET /api/cassandra-grpc/metrics),
+# plus one real example prediction. Does NOT trigger training itself -- run
+# POST /api/cassandra-grpc/train yourself first if metrics is null.
+# ---------------------------------------------------------------------------
+(OUT / "cassandra_grpc").mkdir(parents=True, exist_ok=True)
+cg_metrics = get("/api/cassandra-grpc/metrics")
+
+if cg_metrics:
+    cg_dataset = get("/api/cassandra-grpc/dataset-info")
+    example_text = "Подбери синонимы к слову веселый"
+    example = post("/api/cassandra-grpc/predict", {"text": example_text})
+    cassandra_grpc_results = {
+        "available": True,
+        "datasetSize": cg_dataset["ingestedRows"],
+        "modelType": "TF-IDF + Logistic Regression (multinomial)",
+        "trainingTimeSeconds": cg_metrics["trainingTimeSeconds"],
+        "inferenceLatencyMs": example["grpcRoundtripMs"],
+        "accuracy": cg_metrics["accuracy"],
+        "macroPrecision": cg_metrics["macroPrecision"],
+        "macroRecall": cg_metrics["macroRecall"],
+        "macroF1": cg_metrics["macroF1"],
+        "topClasses": cg_metrics["topClasses"],
+        "confusionMatrix": cg_metrics["confusionMatrix"],
+        "examplePrediction": {
+            "inputText": example_text,
+            "topicName": example["topicName"],
+            "confidence": example["confidence"],
+        },
+        "note": (
+            f"Real training run on {cg_dataset['ingestedRows']:,} ingested rows "
+            f"({cg_metrics['numClasses']} classes), evaluated on a real held-out test split. "
+            "Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md."
+        ),
+    }
+    print("Cassandra+gRPC ML done. accuracy:", cg_metrics["accuracy"], "macroF1:", cg_metrics["macroF1"])
+else:
+    cassandra_grpc_results = {
+        "available": False,
+        "note": "No training run has completed yet -- run POST /api/cassandra-grpc/train and wait for it to finish, then re-run this script.",
+    }
+    print("Cassandra+gRPC ML metrics not available yet -- skipping the snapshot.")
+
+(OUT / "cassandra_grpc" / "results.json").write_text(json.dumps(cassandra_grpc_results, ensure_ascii=False, indent=2))
 
 print("\nAll static results written to", OUT)

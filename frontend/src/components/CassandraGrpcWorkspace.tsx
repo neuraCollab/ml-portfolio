@@ -4,6 +4,8 @@ import { OverviewPanel } from './cassandragrpc/OverviewPanel';
 import { DatasetPanel } from './cassandragrpc/DatasetPanel';
 import { TrainingPanel } from './cassandragrpc/TrainingPanel';
 import { InferencePanel } from './cassandragrpc/InferencePanel';
+import { MetricsPanel } from './cassandragrpc/MetricsPanel';
+import { StaticResultsSection } from './cassandragrpc/StaticResultsSection';
 
 export const CassandraGrpcWorkspace: React.FC = () => {
   return (
@@ -25,6 +27,8 @@ export const CassandraGrpcWorkspace: React.FC = () => {
       <DatasetPanel />
       <TrainingPanel />
       <InferencePanel />
+      <MetricsPanel />
+      <StaticResultsSection />
     </div>
   );
 };
