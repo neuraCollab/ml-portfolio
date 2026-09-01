@@ -13,7 +13,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
 
-# With ~60 real topic classes, a full NxN confusion matrix is impractical to
+# With 50 real topic classes, a full NxN confusion matrix is impractical to
 # render -- restricting to the top-15 by test-set support matches the
 # "notable classes" disclosure pattern already used in the ECG project's
 # static results section (frontend/src/components/ecg/StaticResultsSection.tsx).

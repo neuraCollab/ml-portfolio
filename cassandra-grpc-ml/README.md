@@ -17,7 +17,7 @@ source is not included in this repository.
 
 ## ML Task
 
-Multi-class topic classification: predict `topic_id`/`topic_name` (one of ~60 real categories,
+Multi-class topic classification: predict `topic_id`/`topic_name` (one of 50 real categories,
 e.g. "Поздравления с днем рождения", "Рецепты действий") from `cleaned_text`, using
 `AutoTopic/data/raw/labeled_requests.parquet` (373,657 real rows, gitignored -- see
 `AutoTopic/data/README.md`). A stratified sample capped at 40,000 rows (configurable via
