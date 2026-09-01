@@ -156,6 +156,15 @@ FastAPI backend (backend/)
              rl_cv_car-autopilot/policy_inference.py        the rest of that project is unchanged)
         +--> raspberry-pi-ecg/ecg_pipeline.py              (Project 3 adapter, new file, fixes
                                                               3 bugs found in the source project)
+        +--> app/services/cassandra_grpc_service.py        (Project 4 coordinator/gateway logic)
+                |
+                +--> Cassandra (storage: requests, predictions, training_runs)
+                +--> gRPC --> grpc-worker container         (separate process, holds the
+                                                               trained TF-IDF + LogisticRegression
+                                                               model; reached over a real network
+                                                               call, not an in-process function)
+                                |
+                                +--> Cassandra (reads `requests` for training)
 ```
 
 The backend is a thin adapter layer (`backend/app/services/*`) around each project's existing
@@ -165,10 +174,11 @@ what's real vs. illustrative.
 
 ## Technologies
 
-Across the three projects and the integration layer: **Python** (FastAPI, PyTorch/TorchScript,
+Across the four projects and the integration layer: **Python** (FastAPI, PyTorch/TorchScript,
 scikit-learn, SciPy, OpenCV, BERTopic, Stable-Baselines3, Gymnasium), **React 18 + TypeScript +
-Vite + Tailwind CSS + Recharts**, **Docker / docker-compose**. NLP, reinforcement learning,
-computer vision, digital signal processing, and edge/on-device inference are each represented by
+Vite + Tailwind CSS + Recharts**, **Docker / docker-compose**, **Apache Cassandra**, **gRPC +
+Protocol Buffers**. NLP, reinforcement learning, computer vision, digital signal processing,
+edge/on-device inference, and distributed storage/service architecture are each represented by
 one project.
 
 ## API Endpoints
@@ -185,6 +195,13 @@ one project.
 | POST | `/api/ecg/demo` | `{source: "sample"\|"synthetic", heartRate, seed}` -> `EcgAnalysisResponse` |
 | POST | `/api/ecg/analyze` | multipart `.npy` upload (shape `(1000,6)` or `(6,1000)`) -> `EcgAnalysisResponse` |
 | WS | `/api/ecg/live` | Live sensor stream if 2 serial devices are detected; otherwise a status message explaining why not |
+| GET | `/api/cassandra-grpc/status` | Cassandra/worker reachability, model-loaded flag, class count, last-trained timestamp |
+| GET | `/api/cassandra-grpc/dataset-info` | Triggers ingestion-if-needed, then returns row counts and class distribution for the ingested sample |
+| POST | `/api/cassandra-grpc/train` | `{sampleSize}` -> starts a background training job (ingest + real gRPC `Train` call) |
+| GET | `/api/cassandra-grpc/train/status` | Polls the current/last training job's status and, once completed, its result metrics |
+| GET | `/api/cassandra-grpc/metrics` | Latest completed training run's real metrics, or `null` if none yet this process |
+| POST | `/api/cassandra-grpc/predict` | `{text}` -> real gRPC `Predict` call to `grpc-worker` -> `topicId`/`topicName`/confidence |
+| GET | `/api/cassandra-grpc/grpc-log` | Recent gRPC calls made by the backend (method, status, latency), for the UI's live log stream |
 
 Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the backend is running.
 
@@ -214,11 +231,18 @@ embedding model).
 | `CORS_ORIGINS` | backend | `http://localhost:3000` | Comma-separated list of allowed frontend origins |
 | `AUTOTOPIC_MAX_DOCUMENTS` | backend | `500` | Caps corpus size per request so BERTopic stays fast on CPU |
 | `ECG_MAX_UPLOAD_BYTES` | backend | `2097152` (2MB) | Caps `.npy` upload size for `/api/ecg/analyze` |
+| `CASSANDRA_GRPC_DATASET_PATH` | backend | `AutoTopic/data/raw/labeled_requests.parquet` | Reuses AutoTopic's real dataset -- a path relative to the repo root, or an absolute local path |
+| `CASSANDRA_GRPC_SAMPLE_SIZE` | backend | `40000` | Caps the stratified sample ingested into Cassandra for training |
+| `CASSANDRA_HOST` | backend | `cassandra` | Hostname of the Cassandra node (the `cassandra` service name under docker-compose) |
+| `GRPC_WORKER_ADDRESS` | backend | `grpc-worker:50061` | Host:port of the `grpc-worker` container the backend calls over gRPC |
 
-See `.env.example`, `backend/.env.example`, and `frontend/.env.example`. None of the three projects
+See `.env.example`, `backend/.env.example`, and `frontend/.env.example`. None of the four projects
 need any API keys or credentials -- the AI Studio scaffold's `GEMINI_API_KEY` placeholder was
-unused dead boilerplate (no code ever read it) and has been removed, and the ECG project's real
-infrastructure secrets (VPS IP, tunnel binaries) were deliberately excluded, not parameterized.
+unused dead boilerplate (no code ever read it) and has been removed, the ECG project's real
+infrastructure secrets (VPS IP, tunnel binaries) were deliberately excluded, not parameterized, and
+Cassandra runs in dev mode with no auth. (`CASSANDRA_HOST` and `GRPC_WORKER_ADDRESS` are set
+directly in `docker-compose.yml` to the in-network service names/ports rather than exposed in the
+`.env.example` files, since overriding them only makes sense for a non-Docker run.)
 
 ## Running the Portfolio
 
@@ -248,10 +272,11 @@ present as siblings of `backend/app/`, or adjust `backend/app/core/config.py`'s 
 Each project's own README documents its original design in full:
 [`AutoTopic/README.md`](AutoTopic/README.md), [`rl_cv_car-autopilot/README.md`](rl_cv_car-autopilot/README.md),
 [`raspberry-pi-ecg/README.md`](raspberry-pi-ecg/README.md) (the latter also documents this
-integration's bug fixes and security exclusions in detail). Backend code is organized as
+integration's bug fixes and security exclusions in detail), and
+[`cassandra-grpc-ml/README.md`](cassandra-grpc-ml/README.md). Backend code is organized as
 `app/api/routes/<project>.py` -> `app/services/<project>_service.py` -> the project's own adapter
-module, kept flat and parallel across all three projects rather than nested per-project
-directories, to match the scale of this repo (three route files, three service files -- a deeper
+module, kept flat and parallel across all four projects rather than nested per-project
+directories, to match the scale of this repo (four route files, four service files -- a deeper
 `projects/<name>/` package structure would be organizational overhead without a matching payoff
 here).
 
@@ -267,6 +292,10 @@ curl -X POST http://localhost:8000/api/autotopic/analyze \
 curl -X POST http://localhost:8000/api/ecg/demo \
   -H 'Content-Type: application/json' \
   -d '{"source": "sample", "heartRate": 72}'
+curl http://localhost:8000/api/cassandra-grpc/status
+curl -X POST http://localhost:8000/api/cassandra-grpc/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "подбери синонимы к слову веселый"}'
 
 # Frontend
 cd frontend
@@ -274,7 +303,22 @@ npm install
 npm run build   # type-checks (tsc) then builds
 ```
 
-There is no existing automated test suite in any of the three ML projects to preserve/extend; this
-integration was verified by running all three flows end-to-end through the browser: sample-data
-runs, CSV/`.npy` upload, invalid input, backend-down, and mobile viewport. See the final report for
-the exact scenarios exercised in this session.
+There is no automated test suite for the first three ML projects (AutoTopic, RL Car Autopilot,
+ECG) to preserve/extend; those were verified by running all three flows end-to-end through the
+browser: sample-data runs, CSV/`.npy` upload, invalid input, backend-down, and mobile viewport. See
+the final report for the exact scenarios exercised in this session.
+
+The fourth project (Cassandra + gRPC ML) additionally has a minimal pytest suite covering its
+pure-function logic that needs no live Cassandra/gRPC/Docker service (ML training math and
+stratified sampling in `cassandra-grpc-ml/worker/tests/test_ml_core.py` and
+`test_model_store.py`; request/schema validation in
+`backend/tests/test_cassandra_grpc_schemas.py` and `test_cassandra_grpc_ingestion.py`) --
+everything else for this project (gRPC wiring, Cassandra I/O, Docker, frontend) is still verified
+live, the same way as the other three. Run it in a throwaway container, e.g.:
+
+```bash
+docker run --rm -v "$(pwd)/cassandra-grpc-ml/worker:/app" -w /app python:3.11-slim \
+  bash -c "pip install --no-cache-dir -q scikit-learn numpy pytest joblib && pytest -v"
+docker run --rm -v "$(pwd)/backend:/app" -w /app python:3.11-slim \
+  bash -c "pip install --no-cache-dir -q pydantic pandas pyarrow pytest && pytest tests/test_cassandra_grpc_schemas.py tests/test_cassandra_grpc_ingestion.py -v"
+```

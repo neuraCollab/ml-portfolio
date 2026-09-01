@@ -5,7 +5,7 @@ import { getCassandraGrpcMetrics } from '../../api/client';
 import { MetricCard } from '../shared/MetricCard';
 import { Target } from 'lucide-react';
 
-export const MetricsPanel: React.FC = () => {
+export const MetricsPanel: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
   const [metrics, setMetrics] = useState<CassandraGrpcTrainMetrics | null>(null);
   const [checked, setChecked] = useState(false);
 
@@ -13,7 +13,7 @@ export const MetricsPanel: React.FC = () => {
     getCassandraGrpcMetrics()
       .then(setMetrics)
       .finally(() => setChecked(true));
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">

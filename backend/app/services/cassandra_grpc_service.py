@@ -88,6 +88,12 @@ _grpc_log_lock = threading.Lock()
 _grpc_log: list[GrpcLogEntry] = []
 _GRPC_LOG_MAX = 50
 
+# Guards ingest_if_needed()'s count-check-and-insert so two concurrent callers
+# (e.g. GET /dataset-info on mount and POST /train's background job) can't both
+# see COUNT(*) == 0 and race to ingest, or have one see a partial in-progress
+# ingestion's non-zero count and short-circuit onto a half-populated table.
+_ingest_lock = threading.Lock()
+
 
 def _log_grpc_call(method: str, status: str, latency_ms: float, detail: str) -> None:
     entry = GrpcLogEntry(
@@ -178,39 +184,40 @@ def _dataset_info_from_cassandra(session, total: int) -> DatasetInfo:
 
 
 def ingest_if_needed() -> DatasetInfo:
-    cluster, session = _connect_cassandra()
-    try:
-        row = session.execute(f"SELECT COUNT(*) AS c FROM {KEYSPACE}.requests").one()
-        if row and row.c > 0:
-            return _dataset_info_from_cassandra(session, row.c)
+    with _ingest_lock:
+        cluster, session = _connect_cassandra()
+        try:
+            row = session.execute(f"SELECT COUNT(*) AS c FROM {KEYSPACE}.requests").one()
+            if row and row.c > 0:
+                return _dataset_info_from_cassandra(session, row.c)
 
-        path = _resolve_dataset_path()
-        if not path.exists():
-            raise CassandraGrpcError(
-                f"Dataset not found at '{path}' (CASSANDRA_GRPC_DATASET_PATH="
-                f"{CASSANDRA_GRPC_DATASET_PATH}). This reuses AutoTopic's real "
-                "labeled_requests.parquet -- see AutoTopic/data/README.md."
+            path = _resolve_dataset_path()
+            if not path.exists():
+                raise CassandraGrpcError(
+                    f"Dataset not found at '{path}' (CASSANDRA_GRPC_DATASET_PATH="
+                    f"{CASSANDRA_GRPC_DATASET_PATH}). This reuses AutoTopic's real "
+                    "labeled_requests.parquet -- see AutoTopic/data/README.md."
+                )
+
+            df = pd.read_parquet(path, columns=["cleaned_text", "topic_id", "topic_name"])
+            df = df.dropna(subset=["cleaned_text"])
+            df = df[df["cleaned_text"].str.strip() != ""]
+            sampled = stratified_sample(df, CASSANDRA_GRPC_SAMPLE_SIZE)
+
+            insert_stmt = session.prepare(
+                f"INSERT INTO {KEYSPACE}.requests "
+                "(id, text, cleaned_text, topic_id, topic_name, split, ingested_at) "
+                "VALUES (uuid(), ?, ?, ?, ?, ?, toTimestamp(now()))"
             )
-
-        df = pd.read_parquet(path, columns=["cleaned_text", "topic_id", "topic_name"])
-        df = df.dropna(subset=["cleaned_text"])
-        df = df[df["cleaned_text"].str.strip() != ""]
-        sampled = stratified_sample(df, CASSANDRA_GRPC_SAMPLE_SIZE)
-
-        insert_stmt = session.prepare(
-            f"INSERT INTO {KEYSPACE}.requests "
-            "(id, text, cleaned_text, topic_id, topic_name, split, ingested_at) "
-            "VALUES (uuid(), ?, ?, ?, ?, ?, toTimestamp(now()))"
-        )
-        params = [
-            (r.cleaned_text, r.cleaned_text, int(r.topic_id), r.topic_name, r.split)
-            for r in sampled.itertuples()
-        ]
-        execute_concurrent_with_args(session, insert_stmt, params, concurrency=50)
-        logger.info(f"Ingested {len(sampled)} rows into {KEYSPACE}.requests")
-        return _dataset_info_from_cassandra(session, len(sampled))
-    finally:
-        cluster.shutdown()
+            params = [
+                (r.cleaned_text, r.cleaned_text, int(r.topic_id), r.topic_name, r.split)
+                for r in sampled.itertuples()
+            ]
+            execute_concurrent_with_args(session, insert_stmt, params, concurrency=50)
+            logger.info(f"Ingested {len(sampled)} rows into {KEYSPACE}.requests")
+            return _dataset_info_from_cassandra(session, len(sampled))
+        finally:
+            cluster.shutdown()
 
 
 def get_dataset_info() -> DatasetInfo:

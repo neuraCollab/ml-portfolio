@@ -6,7 +6,7 @@ import { MetricCard } from '../shared/MetricCard';
 import { ConfusionMatrixTable } from './ConfusionMatrixTable';
 import { Target, Play, Loader2 } from 'lucide-react';
 
-export const TrainingPanel: React.FC = () => {
+export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ onTrainingComplete }) => {
   const [sampleSize, setSampleSize] = useState(40000);
   const [job, setJob] = useState<CassandraGrpcTrainJobStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,11 +17,14 @@ export const TrainingPanel: React.FC = () => {
       setJob(status);
       if (status.status === 'running') {
         startPolling();
+      } else {
+        onTrainingComplete?.();
       }
     }).catch(() => {});
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startPolling = () => {
@@ -32,6 +35,7 @@ export const TrainingPanel: React.FC = () => {
       if (status.status !== 'running' && pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
+        onTrainingComplete?.();
       }
     }, 5000);
   };
