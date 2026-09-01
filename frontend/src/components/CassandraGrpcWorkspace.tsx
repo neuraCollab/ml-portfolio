@@ -1,6 +1,7 @@
 import React from 'react';
 import { Database } from 'lucide-react';
 import { OverviewPanel } from './cassandragrpc/OverviewPanel';
+import { DatasetPanel } from './cassandragrpc/DatasetPanel';
 
 export const CassandraGrpcWorkspace: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
         </p>
       </div>
       <OverviewPanel />
+      <DatasetPanel />
     </div>
   );
 };
