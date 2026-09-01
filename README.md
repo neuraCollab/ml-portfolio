@@ -1,10 +1,10 @@
 # ML Portfolio
 
-One web interface over three ML projects: an NLP topic-modeling pipeline (**AutoTopic**), an
-RL/computer-vision autonomous-driving project (**RL Car Autopilot**), and an edge-AI ECG monitor
-(**Raspberry Pi 5 ECG**). The frontend is a React app originally prototyped in Google AI Studio; a
-FastAPI backend wraps each project's existing Python code so the UI calls real ML code, not mocked
-data.
+One web interface over four ML projects: an NLP topic-modeling pipeline (**AutoTopic**), an
+RL/computer-vision autonomous-driving project (**RL Car Autopilot**), an edge-AI ECG monitor
+(**Raspberry Pi 5 ECG**), and a distributed Cassandra+gRPC ML pipeline (**Cassandra gRPC ML**).
+The frontend is a React app originally prototyped in Google AI Studio; a FastAPI backend wraps
+each project's existing Python code so the UI calls real ML code, not mocked data.
 
 ## Projects
 
@@ -114,6 +114,34 @@ data.
   - The source repo's `frp/` reverse-tunnel setup (committed binaries, a real VPS IP, an SSH
     port-forward, no auth token) was deliberately **not** brought into this repo -- see that same
     README's "Security findings" section.
+
+### 4. Cassandra + gRPC ML (`cassandra-grpc-ml/`)
+
+> Originated from [neuraCollab/cassandra-grpc-dev](https://github.com/neuraCollab/cassandra-grpc-dev),
+> a C++ distributed web crawler (coordinator hands URLs to workers over gRPC; workers fetch pages
+> and extract links into Cassandra). This integration keeps the Cassandra-for-storage +
+> gRPC-coordinator/worker pattern but reimplements it in Python around a real ML task; the
+> original C++ source is not included in this repository.
+
+- **Problem**: distill AutoTopic's slow unsupervised topic discovery (BERTopic, minutes per run)
+  into a fast supervised classifier suitable for real-time inference, on top of a genuinely
+  distributed architecture -- a separate worker process reached over the network, not an in-process
+  function call.
+- **ML approach**: TF-IDF vectorization + Logistic Regression multi-class classification, trained
+  on a stratified sample (capped at 40,000 rows, configurable) of AutoTopic's real labeled request
+  corpus (`AutoTopic/data/raw/labeled_requests.parquet`, 373,657 real rows total), predicting one
+  of 50 real topic categories with a 90/10 train/test split per class. The latest training run
+  (40,000-row sample, 68 seconds) reached 52.8% accuracy / 0.315 macro F1 on the held-out test
+  split.
+- **Technologies**: Apache Cassandra 5 (storage), gRPC + Protocol Buffers (inter-service
+  communication), scikit-learn (TfidfVectorizer + LogisticRegression), grpcio + cassandra-driver
+  (the separate `grpc-worker` container), FastAPI (coordinator/gateway -- the existing backend,
+  reused).
+- **How to use**: open the *Cassandra gRPC ML* tab, click **Train Model** in the Training section
+  to trigger ingestion (if needed) and a real gRPC `Train` call to the `grpc-worker` container --
+  tracked as a background job polled for status, same pattern as AutoTopic's pipeline -- then use
+  the Inference section to send text over a real gRPC call for a real prediction. Every training
+  run and every prediction is logged to Cassandra (`training_runs`, `predictions` tables).
 
 ## Architecture
 
