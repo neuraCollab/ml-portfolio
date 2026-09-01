@@ -30,6 +30,7 @@ import {
   XCircle,
   CheckCircle2,
   Globe2,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const PIPELINE_STEPS = [
@@ -72,6 +73,13 @@ export const AutoTopicWorkspace: React.FC = () => {
   const [fullPipelineError, setFullPipelineError] = useState<string | null>(null);
   const fullPipelinePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Static snapshot of a real full-dataset run (backend/scripts/generate_static_results.py).
+  // Fetched at runtime from public/ (not bundled into the JS -- it's ~500KB
+  // of real topics/documents) so it's visible even if the live background
+  // job above has never been run in this session or the backend restarted.
+  const [staticFullPipelineResults, setStaticFullPipelineResults] = useState<AutoTopicResults | null>(null);
+  const [staticFullPipelineError, setStaticFullPipelineError] = useState<string | null>(null);
+
   useEffect(() => () => {
     if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
     if (fullPipelinePollRef.current) clearInterval(fullPipelinePollRef.current);
@@ -81,6 +89,17 @@ export const AutoTopicWorkspace: React.FC = () => {
     getAutoTopicDatasetInfo()
       .then(setDatasetInfo)
       .catch((err) => setDatasetInfoError(err instanceof ApiError ? err.message : 'Could not reach the backend.'));
+  }, []);
+
+  useEffect(() => {
+    const base = (import.meta as any).env.BASE_URL;
+    fetch(`${base}static-results/autotopic/full_pipeline_results.json`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(setStaticFullPipelineResults)
+      .catch(() => setStaticFullPipelineError('Could not load the static full-dataset results snapshot.'));
   }, []);
 
   const pollFullPipeline = () => {
@@ -653,6 +672,44 @@ export const AutoTopicWorkspace: React.FC = () => {
           />
         </div>
       )}
+
+      {/* Static snapshot of a real full-dataset run (see
+          backend/scripts/generate_static_results.py) -- always visible
+          regardless of whether the live background job above has ever been
+          run in this session, so the charts/keywords/metrics are visible
+          immediately, the same way the Autopilot and ECG pages work. */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
+          <ClipboardCheck className="w-4 h-4" />
+          <span>Results</span>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight">Real Full-Dataset Pipeline Results</h2>
+          <p className="text-sm text-slate-400 max-w-3xl mt-1">
+            {staticFullPipelineResults ? (
+              <>
+                A saved snapshot of a real run of the full pipeline above, over every real row in{' '}
+                <span className="font-mono text-emerald-400">{staticFullPipelineResults.datasetInfo?.resolvedPath}</span>{' '}
+                -- {staticFullPipelineResults.metrics.documentsAnalyzed.toLocaleString()} real documents
+                clustered into {staticFullPipelineResults.metrics.nTopics} real topics. Visible immediately,
+                no need to run the (~45-70 minute) job yourself.
+              </>
+            ) : (
+              'A saved snapshot of a real full-dataset pipeline run -- visible immediately, no need to run the (~45-70 minute) job yourself.'
+            )}
+          </p>
+        </div>
+        {staticFullPipelineError ? (
+          <p className="text-xs text-red-400">{staticFullPipelineError}</p>
+        ) : !staticFullPipelineResults ? (
+          <p className="text-xs text-slate-500">Loading saved results...</p>
+        ) : (
+          <ResultsPanel
+            results={staticFullPipelineResults}
+            documentsHeading={`Classified Log Documents (random preview of ${staticFullPipelineResults.documents.length})`}
+          />
+        )}
+      </div>
     </div>
   );
 };

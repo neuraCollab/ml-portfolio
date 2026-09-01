@@ -11,9 +11,11 @@ Usage (with the stack running via docker-compose, from the repo root):
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/autopilot/lidar_overlay.png frontend/public/static-results/autopilot/lidar_overlay.png
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/autopilot/results.json      frontend/src/data/staticResults/autopilotResults.json
     docker cp portfolio-integration-backend-1:/tmp/static_results_out/ecg/results.json            frontend/src/data/staticResults/ecgResults.json
+    docker cp portfolio-integration-backend-1:/tmp/static_results_out/autotopic/full_pipeline_results.json frontend/src/data/staticResults/autotopicFullPipelineResults.json
 
 Re-run and re-copy whenever the underlying models/pipeline change and the
-static portfolio numbers should be refreshed.
+static portfolio numbers should be refreshed. The AutoTopic snapshot only
+writes if a full-dataset run has already completed (see that section below).
 """
 import base64
 import json
@@ -128,5 +130,38 @@ ecg_results = {
 }
 (OUT / "ecg" / "results.json").write_text(json.dumps(ecg_results, ensure_ascii=False, indent=2))
 print("ECG done. microF1:", evaluation["microF1"], "topClass:", public_demo["topClass"])
+
+
+# ---------------------------------------------------------------------------
+# AutoTopic: a snapshot of the real full-dataset background job (see
+# POST /api/autotopic/full-pipeline/start), for a permanent "Results" section
+# at the bottom of the AutoTopic page that doesn't depend on that job's
+# in-memory state surviving a backend restart. This does NOT start the job --
+# it only reads whatever the last completed run left behind, so run
+# POST /api/autotopic/full-pipeline/start yourself first (it takes ~45-70
+# minutes on the full ~370k-row dataset) if there's no completed run yet.
+# ---------------------------------------------------------------------------
+def get(path):
+    with urllib.request.urlopen(f"{BASE}{path}", timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+(OUT / "autotopic").mkdir(parents=True, exist_ok=True)
+full_pipeline_status = get("/api/autotopic/full-pipeline/status")
+if full_pipeline_status["status"] == "completed" and full_pipeline_status.get("result"):
+    (OUT / "autotopic" / "full_pipeline_results.json").write_text(
+        json.dumps(full_pipeline_status["result"], ensure_ascii=False)
+    )
+    print(
+        "AutoTopic full-pipeline snapshot done. documentsAnalyzed:",
+        full_pipeline_status["result"]["metrics"]["documentsAnalyzed"],
+        "nTopics:", full_pipeline_status["result"]["metrics"]["nTopics"],
+    )
+else:
+    print(
+        f"AutoTopic full-pipeline status is '{full_pipeline_status['status']}', not 'completed' -- "
+        "skipping the snapshot. Run POST /api/autotopic/full-pipeline/start and wait for it to "
+        "finish, then re-run this script."
+    )
 
 print("\nAll static results written to", OUT)
