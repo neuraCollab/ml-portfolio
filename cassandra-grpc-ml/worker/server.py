@@ -1,6 +1,7 @@
 # cassandra-grpc-ml/worker/server.py
 import logging
 import os
+import random
 import time
 from concurrent import futures
 from pathlib import Path
@@ -24,7 +25,11 @@ KEYSPACE = "cassandra_grpc_ml"
 
 def _cassandra_session():
     cluster = Cluster([CASSANDRA_HOST])
-    session = cluster.connect(KEYSPACE)
+    try:
+        session = cluster.connect(KEYSPACE)
+    except Exception:
+        cluster.shutdown()
+        raise
     return cluster, session
 
 
@@ -66,6 +71,11 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
 
         try:
             rows = list(session.execute("SELECT cleaned_text, topic_id, topic_name, split FROM requests"))
+        except Exception as exc:
+            logger.exception("Could not read training data from Cassandra")
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details(f"Could not read training data from Cassandra (has ingestion run yet?): {exc}")
+            return ml_worker_pb2.TrainResponse(success=False, message=str(exc))
         finally:
             cluster.shutdown()
 
@@ -73,6 +83,9 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
             context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             context.set_details("No ingested rows found in Cassandra -- has the backend run ingestion yet?")
             return ml_worker_pb2.TrainResponse(success=False, message="No data ingested yet")
+
+        if 0 < request.sample_size < len(rows):
+            rows = random.Random(42).sample(rows, request.sample_size)
 
         train_texts, train_labels, test_texts, test_labels = [], [], [], []
         label_names: dict[int, str] = {}
