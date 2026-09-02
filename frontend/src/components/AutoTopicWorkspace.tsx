@@ -14,6 +14,8 @@ import {
   startFullPipeline, getFullPipelineStatus, ApiError,
 } from '../api/client';
 import { ResultsPanel } from './autotopic/ResultsPanel';
+import { ProjectSection } from './shared/ProjectSection';
+import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation } from '../i18n/I18nContext';
 import {
   Sparkles,
@@ -32,6 +34,13 @@ import {
   CheckCircle2,
   Globe2,
   ClipboardCheck,
+  Layers,
+  Workflow,
+  GitCompare,
+  Brain,
+  Target,
+  Bug,
+  ShieldCheck,
 } from 'lucide-react';
 
 const EMPTY_RESULTS: AutoTopicResults = {
@@ -44,6 +53,8 @@ const EMPTY_RESULTS: AutoTopicResults = {
   trials: [],
 };
 
+const ACCENT = 'text-indigo-400';
+
 export const AutoTopicWorkspace: React.FC = () => {
   const { t } = useTranslation();
   const PIPELINE_STEPS = useMemo(
@@ -53,6 +64,21 @@ export const AutoTopicWorkspace: React.FC = () => {
       t('autotopic.pipeline.stage3'),
       t('autotopic.pipeline.stage4'),
       t('autotopic.pipeline.stage5'),
+    ],
+    [t]
+  );
+  const SECTION_ITEMS = useMemo(
+    () => [
+      { id: 'overview', label: t('common.projectSections.overview'), icon: Sparkles },
+      { id: 'architecture', label: t('common.projectSections.architecture'), icon: Layers },
+      { id: 'dataset', label: t('common.projectSections.dataset'), icon: Database },
+      { id: 'methodology', label: t('common.projectSections.methodology'), icon: Workflow },
+      { id: 'baseline', label: t('common.projectSections.baseline'), icon: GitCompare },
+      { id: 'model', label: t('common.projectSections.model'), icon: Brain },
+      { id: 'metrics', label: t('common.projectSections.metrics'), icon: Target },
+      { id: 'errorAnalysis', label: t('common.projectSections.errorAnalysis'), icon: Bug },
+      { id: 'regressionTests', label: t('common.projectSections.regressionTests'), icon: ShieldCheck },
+      { id: 'results', label: t('common.projectSections.results'), icon: ClipboardCheck },
     ],
     [t]
   );
@@ -226,252 +252,112 @@ export const AutoTopicWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 rounded-2xl p-6 border border-indigo-500/20 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-indigo-500/5 blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 text-indigo-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
-              <Sparkles className="w-4 h-4" />
-              <span>{t('autotopic.banner.eyebrow')}</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              {t('autotopic.banner.title')}
-            </h2>
-            <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              {t('autotopic.banner.description')}
-            </p>
-          </div>
+    <div className="flex flex-col lg:flex-row gap-6 pb-12 lg:items-start">
+      <ProjectSectionNav items={SECTION_ITEMS} accentClassName={ACCENT} />
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleRunPipeline}
-              disabled={isProcessing}
-              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition disabled:opacity-50 cursor-pointer"
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{t('autotopic.banner.processingLabel')}</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>{csvFile ? t('autotopic.banner.analyzeFileLabel', { fileName: csvFile.name }) : t('autotopic.banner.executeButtonLabel')}</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleExportJson}
-              disabled={!hasRun}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-xl transition text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
-              <span>{t('autotopic.banner.exportJsonButton')}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Processing Progress Status Indicator */}
-        {isProcessing && activeStep && (
-          <div className="mt-4 pt-4 border-t border-indigo-500/20 flex items-center space-x-3 animate-pulse">
-            <Cpu className="w-5 h-5 text-indigo-400 animate-spin" />
-            <span className="text-sm font-mono text-indigo-300">{activeStep}</span>
-          </div>
-        )}
-
-        {/* Error state */}
-        {error && (
-          <div className="mt-4 pt-4 border-t border-red-500/20 flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="text-sm text-red-300">
-              <span className="font-semibold">{t('autotopic.banner.pipelineFailedPrefix')}</span>
-              {error}
-            </div>
-          </div>
-        )}
-
-        {/* Transparency note about real pipeline behavior (e.g. dropped documents) */}
-        {!error && note && (
-          <div className="mt-4 pt-4 border-t border-indigo-500/20 flex items-start space-x-3">
-            <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-300">{note}</div>
-          </div>
-        )}
-
-        {/* Real dataset provenance, when results came from analyze-dataset */}
-        {!error && results.datasetInfo && (
-          <div className="mt-4 pt-4 border-t border-emerald-500/20 flex items-start space-x-3">
-            <Database className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-300">
-              {t('autotopic.banner.datasetProvenance.prefix')}
-              <span className="font-mono text-emerald-400">{results.datasetInfo.sampledRows}</span>
-              {t('autotopic.banner.datasetProvenance.middle')}
-              <span className="font-mono text-emerald-400">{results.datasetInfo.totalRows?.toLocaleString()}</span>
-              {t('autotopic.banner.datasetProvenance.rowsLoadedFrom')}
-              <span className="font-mono text-slate-400">{results.datasetInfo.resolvedPath}</span>
-              {t('autotopic.banner.datasetProvenance.suffix')}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Main Grid: Control Drawer vs Results Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Hyperparameters & Pipeline Controls (4 cols) */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* Cleaning Pipeline Controls */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-                <Sliders className="w-4 h-4 text-indigo-400" />
-                <span>{t('autotopic.config.cleaningHeading')}</span>
-              </div>
-              <span className="text-xs text-slate-500 font-mono">stages/cleaning.py</span>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">{t('autotopic.config.removeHtmlLabel')}</span>
-                <input
-                  type="checkbox"
-                  checked={config.removeHtml}
-                  onChange={(e) => setConfig({ ...config, removeHtml: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">{t('autotopic.config.removeEmojisLabel')}</span>
-                <input
-                  type="checkbox"
-                  checked={config.removeEmojis}
-                  onChange={(e) => setConfig({ ...config, removeEmojis: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">{t('autotopic.config.removeCodeLabel')}</span>
-                <input
-                  type="checkbox"
-                  checked={config.removeCode}
-                  onChange={(e) => setConfig({ ...config, removeCode: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
-                <span className="text-slate-300">{t('autotopic.config.removeLlmPrefixLabel')}</span>
-                <input
-                  type="checkbox"
-                  checked={config.removeLlmPrefix}
-                  onChange={(e) => setConfig({ ...config, removeLlmPrefix: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* BERTopic & Optuna Parameters */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-                <Settings2 className="w-4 h-4 text-purple-400" />
-                <span>{t('autotopic.config.bertopicHeading')}</span>
-              </div>
-              <span className="text-xs text-slate-500 font-mono">config.yaml</span>
-            </div>
-
-            <div className="space-y-4 text-xs">
+      <div className="flex-1 min-w-0 space-y-6">
+        <ProjectSection id="overview" title={t('common.projectSections.overview')} icon={Sparkles} accentClassName={ACCENT}>
+          {/* Top Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 rounded-2xl p-6 border border-indigo-500/20 shadow-xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-indigo-500/5 blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-400">min_topic_size (HDBSCAN)</span>
-                  <span className="font-mono text-indigo-400 font-bold">{config.minTopicSize}</span>
+                <div className="flex items-center space-x-2 text-indigo-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                  <Sparkles className="w-4 h-4" />
+                  <span>{t('autotopic.banner.eyebrow')}</span>
                 </div>
-                <input
-                  type="range"
-                  min="2"
-                  max="20"
-                  value={config.minTopicSize}
-                  onChange={(e) => setConfig({ ...config, minTopicSize: Number(e.target.value) })}
-                  className="w-full accent-indigo-500 bg-slate-800"
-                />
+                <h2 className="text-2xl font-bold text-white tracking-tight">
+                  {t('autotopic.banner.title')}
+                </h2>
+                <p className="text-sm text-slate-300 max-w-2xl mt-1">
+                  {t('autotopic.banner.description')}
+                </p>
               </div>
 
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-400">umap_n_neighbors</span>
-                  <span className="font-mono text-indigo-400 font-bold">{config.umapNeighbors}</span>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max="50"
-                  value={config.umapNeighbors}
-                  onChange={(e) => setConfig({ ...config, umapNeighbors: Number(e.target.value) })}
-                  className="w-full accent-indigo-500 bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-400">{t('autotopic.config.topNWordsLabel')}</span>
-                  <span className="font-mono text-indigo-400 font-bold">{config.topNWords}</span>
-                </div>
-                <input
-                  type="range"
-                  min="4"
-                  max="15"
-                  value={config.topNWords}
-                  onChange={(e) => setConfig({ ...config, topNWords: Number(e.target.value) })}
-                  className="w-full accent-indigo-500 bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-1">{t('autotopic.config.languageModeLabel')}</span>
-                <select
-                  value={config.languageMode}
-                  onChange={(e) => setConfig({ ...config, languageMode: e.target.value as any })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:border-indigo-500"
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleRunPipeline}
+                  disabled={isProcessing}
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition disabled:opacity-50 cursor-pointer"
                 >
-                  <option value="mixed">{t('autotopic.config.languageModeMixed')}</option>
-                  <option value="ru">{t('autotopic.config.languageModeRu')}</option>
-                  <option value="en">{t('autotopic.config.languageModeEn')}</option>
-                </select>
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{t('autotopic.banner.processingLabel')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>{csvFile ? t('autotopic.banner.analyzeFileLabel', { fileName: csvFile.name }) : t('autotopic.banner.executeButtonLabel')}</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleExportJson}
+                  disabled={!hasRun}
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-xl transition text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{t('autotopic.banner.exportJsonButton')}</span>
+                </button>
               </div>
             </div>
-          </div>
 
-          {/* Upload your own CSV */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-              <Upload className="w-4 h-4 text-indigo-400" />
-              <span>{t('autotopic.upload.heading')}</span>
-            </div>
-            <p className="text-xs text-slate-400">
-              {t('autotopic.upload.helpPrefix')}<code className="text-slate-300">log_text</code>{t('autotopic.upload.helpSuffix', { count: rawLogs.length })}
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:text-xs hover:file:bg-slate-700"
-            />
-            {csvFile && (
-              <div className="flex items-center justify-between text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
-                <span className="text-slate-300 truncate">{csvFile.name}</span>
-                <button onClick={() => setCsvFile(null)} className="text-slate-500 hover:text-slate-300">
-                  {t('autotopic.upload.clearButton')}
-                </button>
+            {/* Processing Progress Status Indicator */}
+            {isProcessing && activeStep && (
+              <div className="mt-4 pt-4 border-t border-indigo-500/20 flex items-center space-x-3 animate-pulse">
+                <Cpu className="w-5 h-5 text-indigo-400 animate-spin" />
+                <span className="text-sm font-mono text-indigo-300">{activeStep}</span>
+              </div>
+            )}
+
+            {/* Error state */}
+            {error && (
+              <div className="mt-4 pt-4 border-t border-red-500/20 flex items-start space-x-3">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-300">
+                  <span className="font-semibold">{t('autotopic.banner.pipelineFailedPrefix')}</span>
+                  {error}
+                </div>
+              </div>
+            )}
+
+            {/* Transparency note about real pipeline behavior (e.g. dropped documents) */}
+            {!error && note && (
+              <div className="mt-4 pt-4 border-t border-indigo-500/20 flex items-start space-x-3">
+                <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-300">{note}</div>
+              </div>
+            )}
+
+            {/* Real dataset provenance, when results came from analyze-dataset */}
+            {!error && results.datasetInfo && (
+              <div className="mt-4 pt-4 border-t border-emerald-500/20 flex items-start space-x-3">
+                <Database className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-300">
+                  {t('autotopic.banner.datasetProvenance.prefix')}
+                  <span className="font-mono text-emerald-400">{results.datasetInfo.sampledRows}</span>
+                  {t('autotopic.banner.datasetProvenance.middle')}
+                  <span className="font-mono text-emerald-400">{results.datasetInfo.totalRows?.toLocaleString()}</span>
+                  {t('autotopic.banner.datasetProvenance.rowsLoadedFrom')}
+                  <span className="font-mono text-slate-400">{results.datasetInfo.resolvedPath}</span>
+                  {t('autotopic.banner.datasetProvenance.suffix')}
+                </div>
               </div>
             )}
           </div>
+        </ProjectSection>
 
+        <ProjectSection
+          id="architecture"
+          title={t('common.projectSections.architecture')}
+          icon={Layers}
+          accentClassName={ACCENT}
+          unavailable
+          unavailableReason={t('common.projectSections.comingSoonReason')}
+        />
+
+        <ProjectSection id="dataset" title={t('common.projectSections.dataset')} icon={Database} accentClassName={ACCENT}>
           {/* Real Dataset (configurable location, e.g. AutoTopic/data/raw/labeled_requests.parquet) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
@@ -535,198 +421,397 @@ export const AutoTopicWorkspace: React.FC = () => {
               {t('autotopic.dataset.runOnDatasetButton')}
             </button>
           </div>
+        </ProjectSection>
 
-          {/* Add Custom Log Entry */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              <span>{t('autotopic.customLog.heading')}</span>
-            </div>
-
-            <form onSubmit={handleAddCustomLog} className="space-y-3">
-              <textarea
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                placeholder={t('autotopic.customLog.placeholder')}
-                className="w-full h-24 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
-              />
+        <ProjectSection id="methodology" title={t('common.projectSections.methodology')} icon={Workflow} accentClassName={ACCENT}>
+          {/* Full Dataset Pipeline: real end-to-end run on every real row in the
+              configured dataset (see AutoTopic/data/README.md), not a capped
+              sample. This is a genuinely long-running job on CPU, so it runs as
+              a background job on the backend rather than inside this request. */}
+          <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 rounded-2xl p-6 border border-emerald-500/20 shadow-xl space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center space-x-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                  <Globe2 className="w-4 h-4" />
+                  <span>{t('autotopic.fullPipeline.eyebrow')}</span>
+                </div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {t('autotopic.fullPipeline.title')}
+                </h2>
+                <p className="text-sm text-slate-300 max-w-2xl mt-1">
+                  {t('autotopic.fullPipeline.descriptionPrefix')}
+                  {datasetInfo ? (
+                    <span className="font-mono text-emerald-400">{datasetInfo.resolvedPath}</span>
+                  ) : (
+                    t('autotopic.fullPipeline.configuredDatasetFallback')
+                  )}
+                  {t('autotopic.fullPipeline.descriptionMiddle')}<code className="text-slate-400">AutoTopic/main.py</code>
+                  {t('autotopic.fullPipeline.descriptionSuffix')}
+                </p>
+              </div>
               <button
-                type="submit"
-                disabled={!customText.trim()}
-                className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition"
+                onClick={handleStartFullPipeline}
+                disabled={fullPipelineStatus?.status === 'running' || !datasetInfo?.exists}
+                className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 cursor-pointer shrink-0"
               >
-                {t('autotopic.customLog.addButton', { count: rawLogs.length })}
-              </button>
-            </form>
-          </div>
-
-        </div>
-
-        {/* Right Column: Results & Analytics Dashboard (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          {isProcessing ? (
-            <div className="bg-slate-900 border border-dashed border-indigo-500/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
-              <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.runningHeading')}</h3>
-              <p className="text-xs text-slate-500 max-w-sm">{activeStep}</p>
-            </div>
-          ) : !hasRun ? (
-            <div className="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
-              <Sparkles className="w-8 h-8 text-slate-600" />
-              <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.noResultsHeading')}</h3>
-              <p className="text-xs text-slate-500 max-w-sm">
-                {t('autotopic.demo.noResultsPrefix')}<span className="text-indigo-400 font-medium">{t('autotopic.banner.executeButtonLabel')}</span>
-                {t('autotopic.demo.noResultsSuffix', { count: rawLogs.length })}
-              </p>
-            </div>
-          ) : (
-            <ResultsPanel results={results} />
-          )}
-
-        </div>
-
-      </div>
-
-      {/* Full Dataset Pipeline: real end-to-end run on every real row in the
-          configured dataset (see AutoTopic/data/README.md), not a capped
-          sample. This is a genuinely long-running job on CPU, so it runs as
-          a background job on the backend rather than inside this request. */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 rounded-2xl p-6 border border-emerald-500/20 shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
-              <Globe2 className="w-4 h-4" />
-              <span>{t('autotopic.fullPipeline.eyebrow')}</span>
-            </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              {t('autotopic.fullPipeline.title')}
-            </h2>
-            <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              {t('autotopic.fullPipeline.descriptionPrefix')}
-              {datasetInfo ? (
-                <span className="font-mono text-emerald-400">{datasetInfo.resolvedPath}</span>
-              ) : (
-                t('autotopic.fullPipeline.configuredDatasetFallback')
-              )}
-              {t('autotopic.fullPipeline.descriptionMiddle')}<code className="text-slate-400">AutoTopic/main.py</code>
-              {t('autotopic.fullPipeline.descriptionSuffix')}
-            </p>
-          </div>
-          <button
-            onClick={handleStartFullPipeline}
-            disabled={fullPipelineStatus?.status === 'running' || !datasetInfo?.exists}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 cursor-pointer shrink-0"
-          >
-            {fullPipelineStatus?.status === 'running' ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>{t('autotopic.fullPipeline.runningButton')}</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-white" />
-                <span>{t('autotopic.fullPipeline.runButton')}</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {fullPipelineError && (
-          <div className="flex items-start space-x-3 pt-4 border-t border-red-500/20">
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="text-sm text-red-300">{fullPipelineError}</div>
-          </div>
-        )}
-
-        {fullPipelineStatus && fullPipelineStatus.status !== 'idle' && (
-          <div className="pt-4 border-t border-emerald-500/20 space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-300">
-                {fullPipelineStatus.status === 'running' && (fullPipelineStatus.stage ?? t('autotopic.fullPipeline.workingFallback'))}
-                {fullPipelineStatus.status === 'completed' && t('autotopic.fullPipeline.completedStatus')}
-                {fullPipelineStatus.status === 'failed' && t('autotopic.fullPipeline.failedStatus')}
-              </span>
-              {fullPipelineStatus.progressPercent != null && (
-                <span className="text-emerald-400">{fullPipelineStatus.progressPercent.toFixed(0)}%</span>
-              )}
-            </div>
-            {fullPipelineStatus.status === 'running' && (
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
-                  style={{ width: `${fullPipelineStatus.progressPercent ?? 0}%` }}
-                />
-              </div>
-            )}
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-slate-400 font-mono">
-              {fullPipelineStatus.totalRows != null && (
-                <span>{t('autotopic.fullPipeline.totalRows', { count: fullPipelineStatus.totalRows.toLocaleString() })}</span>
-              )}
-              {fullPipelineStatus.survivingRows != null && (
-                <span>{t('autotopic.fullPipeline.surviving', { count: fullPipelineStatus.survivingRows.toLocaleString() })}</span>
-              )}
-              {fullPipelineStatus.elapsedSeconds != null && (
-                <span>{t('autotopic.fullPipeline.elapsed', { minutes: (fullPipelineStatus.elapsedSeconds / 60).toFixed(1) })}</span>
-              )}
-            </div>
-            {fullPipelineStatus.status === 'failed' && fullPipelineStatus.error && (
-              <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-300">{fullPipelineStatus.error}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Full-dataset results: a single spot, not two. Prefers a result from
-          a job that JUST completed live in this session (freshest data) and
-          falls back to the saved snapshot (backend/scripts/generate_static_results.py)
-          otherwise, so this is always visible without duplicating the same
-          numbers/charts in two places when both happen to be the same run. */}
-      {(() => {
-        const liveResult = fullPipelineStatus?.status === 'completed' ? fullPipelineStatus.result : null;
-        const effectiveResults = liveResult ?? staticFullPipelineResults;
-        const isLive = !!liveResult;
-        return (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
-              <ClipboardCheck className="w-4 h-4" />
-              <span>{t('autotopic.staticResults.eyebrow')}</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">{t('autotopic.staticResults.title')}</h2>
-              <p className="text-sm text-slate-400 max-w-3xl mt-1">
-                {effectiveResults ? (
+                {fullPipelineStatus?.status === 'running' ? (
                   <>
-                    {isLive
-                      ? t('autotopic.staticResults.liveResultsPrefix')
-                      : t('autotopic.staticResults.snapshotResultsPrefix')}
-                    <span className="font-mono text-emerald-400">{effectiveResults.datasetInfo?.resolvedPath}</span>
-                    {t('autotopic.staticResults.documentsClusteredSuffix', {
-                      docCount: effectiveResults.metrics.documentsAnalyzed.toLocaleString(),
-                      topicCount: effectiveResults.metrics.nTopics,
-                    })}
-                    {!isLive && t('autotopic.staticResults.visibleImmediatelyNote')}
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{t('autotopic.fullPipeline.runningButton')}</span>
                   </>
                 ) : (
-                  t('autotopic.staticResults.noResultsDescription')
+                  <>
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>{t('autotopic.fullPipeline.runButton')}</span>
+                  </>
                 )}
-              </p>
+              </button>
             </div>
-            {staticFullPipelineErrorText && !effectiveResults ? (
-              <p className="text-xs text-red-400">{staticFullPipelineErrorText}</p>
-            ) : !effectiveResults ? (
-              <p className="text-xs text-slate-500">{t('autotopic.staticResults.loadingSnapshot')}</p>
-            ) : (
-              <ResultsPanel
-                results={effectiveResults}
-                documentsHeading={t('autotopic.staticResults.documentsHeadingPreview', { count: effectiveResults.documents.length })}
-              />
+
+            {fullPipelineError && (
+              <div className="flex items-start space-x-3 pt-4 border-t border-red-500/20">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-300">{fullPipelineError}</div>
+              </div>
+            )}
+
+            {fullPipelineStatus && fullPipelineStatus.status !== 'idle' && (
+              <div className="pt-4 border-t border-emerald-500/20 space-y-3">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-300">
+                    {fullPipelineStatus.status === 'running' && (fullPipelineStatus.stage ?? t('autotopic.fullPipeline.workingFallback'))}
+                    {fullPipelineStatus.status === 'completed' && t('autotopic.fullPipeline.completedStatus')}
+                    {fullPipelineStatus.status === 'failed' && t('autotopic.fullPipeline.failedStatus')}
+                  </span>
+                  {fullPipelineStatus.progressPercent != null && (
+                    <span className="text-emerald-400">{fullPipelineStatus.progressPercent.toFixed(0)}%</span>
+                  )}
+                </div>
+                {fullPipelineStatus.status === 'running' && (
+                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+                      style={{ width: `${fullPipelineStatus.progressPercent ?? 0}%` }}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-slate-400 font-mono">
+                  {fullPipelineStatus.totalRows != null && (
+                    <span>{t('autotopic.fullPipeline.totalRows', { count: fullPipelineStatus.totalRows.toLocaleString() })}</span>
+                  )}
+                  {fullPipelineStatus.survivingRows != null && (
+                    <span>{t('autotopic.fullPipeline.surviving', { count: fullPipelineStatus.survivingRows.toLocaleString() })}</span>
+                  )}
+                  {fullPipelineStatus.elapsedSeconds != null && (
+                    <span>{t('autotopic.fullPipeline.elapsed', { minutes: (fullPipelineStatus.elapsedSeconds / 60).toFixed(1) })}</span>
+                  )}
+                </div>
+                {fullPipelineStatus.status === 'failed' && fullPipelineStatus.error && (
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-300">{fullPipelineStatus.error}</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-        );
-      })()}
+        </ProjectSection>
+
+        <ProjectSection
+          id="baseline"
+          title={t('common.projectSections.baseline')}
+          icon={GitCompare}
+          accentClassName={ACCENT}
+          unavailable
+          unavailableReason={t('common.projectSections.comingSoonReason')}
+        />
+
+        <ProjectSection id="model" title={t('common.projectSections.model')} icon={Brain} accentClassName={ACCENT}>
+          {/* Main Grid: Control Drawer vs Results Workspace */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Left Column: Hyperparameters & Pipeline Controls (4 cols) */}
+            <div className="lg:col-span-4 space-y-6">
+
+              {/* Cleaning Pipeline Controls */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
+                    <Sliders className="w-4 h-4 text-indigo-400" />
+                    <span>{t('autotopic.config.cleaningHeading')}</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-mono">stages/cleaning.py</span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
+                    <span className="text-slate-300">{t('autotopic.config.removeHtmlLabel')}</span>
+                    <input
+                      type="checkbox"
+                      checked={config.removeHtml}
+                      onChange={(e) => setConfig({ ...config, removeHtml: e.target.checked })}
+                      className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
+                    <span className="text-slate-300">{t('autotopic.config.removeEmojisLabel')}</span>
+                    <input
+                      type="checkbox"
+                      checked={config.removeEmojis}
+                      onChange={(e) => setConfig({ ...config, removeEmojis: e.target.checked })}
+                      className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
+                    <span className="text-slate-300">{t('autotopic.config.removeCodeLabel')}</span>
+                    <input
+                      type="checkbox"
+                      checked={config.removeCode}
+                      onChange={(e) => setConfig({ ...config, removeCode: e.target.checked })}
+                      className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700">
+                    <span className="text-slate-300">{t('autotopic.config.removeLlmPrefixLabel')}</span>
+                    <input
+                      type="checkbox"
+                      checked={config.removeLlmPrefix}
+                      onChange={(e) => setConfig({ ...config, removeLlmPrefix: e.target.checked })}
+                      className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* BERTopic & Optuna Parameters */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
+                    <Settings2 className="w-4 h-4 text-purple-400" />
+                    <span>{t('autotopic.config.bertopicHeading')}</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-mono">config.yaml</span>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-400">min_topic_size (HDBSCAN)</span>
+                      <span className="font-mono text-indigo-400 font-bold">{config.minTopicSize}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="20"
+                      value={config.minTopicSize}
+                      onChange={(e) => setConfig({ ...config, minTopicSize: Number(e.target.value) })}
+                      className="w-full accent-indigo-500 bg-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-400">umap_n_neighbors</span>
+                      <span className="font-mono text-indigo-400 font-bold">{config.umapNeighbors}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="50"
+                      value={config.umapNeighbors}
+                      onChange={(e) => setConfig({ ...config, umapNeighbors: Number(e.target.value) })}
+                      className="w-full accent-indigo-500 bg-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-400">{t('autotopic.config.topNWordsLabel')}</span>
+                      <span className="font-mono text-indigo-400 font-bold">{config.topNWords}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="4"
+                      max="15"
+                      value={config.topNWords}
+                      onChange={(e) => setConfig({ ...config, topNWords: Number(e.target.value) })}
+                      className="w-full accent-indigo-500 bg-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block mb-1">{t('autotopic.config.languageModeLabel')}</span>
+                    <select
+                      value={config.languageMode}
+                      onChange={(e) => setConfig({ ...config, languageMode: e.target.value as any })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:border-indigo-500"
+                    >
+                      <option value="mixed">{t('autotopic.config.languageModeMixed')}</option>
+                      <option value="ru">{t('autotopic.config.languageModeRu')}</option>
+                      <option value="en">{t('autotopic.config.languageModeEn')}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload your own CSV */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
+                  <Upload className="w-4 h-4 text-indigo-400" />
+                  <span>{t('autotopic.upload.heading')}</span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {t('autotopic.upload.helpPrefix')}<code className="text-slate-300">log_text</code>{t('autotopic.upload.helpSuffix', { count: rawLogs.length })}
+                </p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:text-xs hover:file:bg-slate-700"
+                />
+                {csvFile && (
+                  <div className="flex items-center justify-between text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+                    <span className="text-slate-300 truncate">{csvFile.name}</span>
+                    <button onClick={() => setCsvFile(null)} className="text-slate-500 hover:text-slate-300">
+                      {t('autotopic.upload.clearButton')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Custom Log Entry */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span>{t('autotopic.customLog.heading')}</span>
+                </div>
+
+                <form onSubmit={handleAddCustomLog} className="space-y-3">
+                  <textarea
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder={t('autotopic.customLog.placeholder')}
+                    className="w-full h-24 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!customText.trim()}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition"
+                  >
+                    {t('autotopic.customLog.addButton', { count: rawLogs.length })}
+                  </button>
+                </form>
+              </div>
+
+            </div>
+
+            {/* Right Column: Results & Analytics Dashboard (8 cols) */}
+            <div className="lg:col-span-8 space-y-6">
+              {isProcessing ? (
+                <div className="bg-slate-900 border border-dashed border-indigo-500/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.runningHeading')}</h3>
+                  <p className="text-xs text-slate-500 max-w-sm">{activeStep}</p>
+                </div>
+              ) : !hasRun ? (
+                <div className="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-3">
+                  <Sparkles className="w-8 h-8 text-slate-600" />
+                  <h3 className="text-slate-300 font-semibold">{t('autotopic.demo.noResultsHeading')}</h3>
+                  <p className="text-xs text-slate-500 max-w-sm">
+                    {t('autotopic.demo.noResultsPrefix')}<span className="text-indigo-400 font-medium">{t('autotopic.banner.executeButtonLabel')}</span>
+                    {t('autotopic.demo.noResultsSuffix', { count: rawLogs.length })}
+                  </p>
+                </div>
+              ) : (
+                <ResultsPanel results={results} />
+              )}
+
+            </div>
+
+          </div>
+        </ProjectSection>
+
+        <ProjectSection
+          id="metrics"
+          title={t('common.projectSections.metrics')}
+          icon={Target}
+          accentClassName={ACCENT}
+          unavailable
+          unavailableReason={t('common.projectSections.notEvaluatedReason')}
+        />
+
+        <ProjectSection
+          id="errorAnalysis"
+          title={t('common.projectSections.errorAnalysis')}
+          icon={Bug}
+          accentClassName={ACCENT}
+          unavailable
+          unavailableReason={t('common.projectSections.comingSoonReason')}
+        />
+
+        <ProjectSection
+          id="regressionTests"
+          title={t('common.projectSections.regressionTests')}
+          icon={ShieldCheck}
+          accentClassName={ACCENT}
+          unavailable
+          unavailableReason={t('common.projectSections.comingSoonReason')}
+        />
+
+        <ProjectSection id="results" title={t('common.projectSections.results')} icon={ClipboardCheck} accentClassName={ACCENT}>
+          {/* Full-dataset results: a single spot, not two. Prefers a result from
+              a job that JUST completed live in this session (freshest data) and
+              falls back to the saved snapshot (backend/scripts/generate_static_results.py)
+              otherwise, so this is always visible without duplicating the same
+              numbers/charts in two places when both happen to be the same run. */}
+          {(() => {
+            const liveResult = fullPipelineStatus?.status === 'completed' ? fullPipelineStatus.result : null;
+            const effectiveResults = liveResult ?? staticFullPipelineResults;
+            const isLive = !!liveResult;
+            return (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-semibold uppercase tracking-wider">
+                  <ClipboardCheck className="w-4 h-4" />
+                  <span>{t('autotopic.staticResults.eyebrow')}</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">{t('autotopic.staticResults.title')}</h2>
+                  <p className="text-sm text-slate-400 max-w-3xl mt-1">
+                    {effectiveResults ? (
+                      <>
+                        {isLive
+                          ? t('autotopic.staticResults.liveResultsPrefix')
+                          : t('autotopic.staticResults.snapshotResultsPrefix')}
+                        <span className="font-mono text-emerald-400">{effectiveResults.datasetInfo?.resolvedPath}</span>
+                        {t('autotopic.staticResults.documentsClusteredSuffix', {
+                          docCount: effectiveResults.metrics.documentsAnalyzed.toLocaleString(),
+                          topicCount: effectiveResults.metrics.nTopics,
+                        })}
+                        {!isLive && t('autotopic.staticResults.visibleImmediatelyNote')}
+                      </>
+                    ) : (
+                      t('autotopic.staticResults.noResultsDescription')
+                    )}
+                  </p>
+                </div>
+                {staticFullPipelineErrorText && !effectiveResults ? (
+                  <p className="text-xs text-red-400">{staticFullPipelineErrorText}</p>
+                ) : !effectiveResults ? (
+                  <p className="text-xs text-slate-500">{t('autotopic.staticResults.loadingSnapshot')}</p>
+                ) : (
+                  <ResultsPanel
+                    results={effectiveResults}
+                    documentsHeading={t('autotopic.staticResults.documentsHeadingPreview', { count: effectiveResults.documents.length })}
+                  />
+                )}
+              </div>
+            );
+          })()}
+        </ProjectSection>
+      </div>
     </div>
   );
 };
