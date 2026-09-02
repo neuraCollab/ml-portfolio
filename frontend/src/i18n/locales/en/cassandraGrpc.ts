@@ -120,7 +120,6 @@ export const cassandraGrpc = {
   },
   systemStatus: {
     backendLabel: 'Backend',
-    workerLabel: 'gRPC Worker',
     cassandraLabel: 'Cassandra',
     cpuLabel: 'CPU',
     memoryLabel: 'Memory',
@@ -132,18 +131,15 @@ export const cassandraGrpc = {
     selfReportNote:
       'Backend and worker stats are real, self-reported process readings (psutil: CPU%, RSS memory, process uptime) -- not a Docker-API container-level reading, since that would need Docker socket access this deployment intentionally avoids.',
     fetchError: 'Could not reach the backend status endpoint.',
+    workerPodsLabel: '{{count}} Worker Pods',
+    noPodsReady: 'No worker pods are currently Ready.',
   },
-  workerSim: {
-    badgeTitle: 'Simulation',
-    badgeBody:
-      "There is only one real grpc-worker container in this deployment (see docker-compose.yml) -- no live pool to add or remove workers from. This visualization illustrates horizontal scaling using the real (but never-deployed) numbers from cassandra-grpc-ml/k8s/grpc-worker-hpa.yaml. It does not control real infrastructure.",
-    replicaCount: '{{count}} of {{min}}-{{max}} replicas (simulated)',
-    cpuTarget: 'CPU target: {{target}}% (from grpc-worker-hpa.yaml)',
-    addButton: 'add',
-    removeButtonTitle: 'Remove this simulated worker',
-    simCpuLabel: 'Simulated CPU',
-    simRequestsLabel: 'Simulated requests handled',
-    inspectSimNote: 'These numbers are randomly generated for illustration, not read from any real process.',
+  workerPool: {
+    replicaCount: '{{count}} of {{min}}-{{max}} replicas',
+    addButtonTitle: 'Scale up by one real worker replica',
+    removeButtonTitle: 'Scale down by one real worker replica',
+    scaleErrorFallback: 'Could not scale the worker pool.',
+    realNote: 'Real pods, running on a local kind Kubernetes cluster -- scaling patches the real Deployment via the Coordinator. See cassandra-grpc-ml/README.md for cluster setup.',
   },
   methodologySection: {
     eyebrow: 'Methodology',

@@ -251,15 +251,29 @@ export interface CassandraSystemInfo {
   hostId: string;
 }
 
+export interface PodStatus {
+  address: string;
+  modelLoaded: boolean;
+  numClasses: number;
+  trainedAt?: string | null;
+  stats?: ServiceSelfStats | null;
+  error?: string | null;
+}
+
 export interface CassandraGrpcStatus {
   cassandra: 'connected' | 'unreachable';
-  worker: 'connected' | 'unreachable';
+  coordinator: 'connected' | 'unreachable';
   modelLoaded: boolean;
   numClasses: number;
   trainedAt?: string | null;
   backendStats?: ServiceSelfStats | null;
-  workerStats?: ServiceSelfStats | null;
+  pods: PodStatus[];
   cassandraInfo?: CassandraSystemInfo | null;
+}
+
+export interface PoolScaleResult {
+  requestedReplicas: number;
+  readyReplicas: number;
 }
 
 export interface ClassDistributionEntry {

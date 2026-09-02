@@ -121,7 +121,6 @@ export const cassandraGrpc = {
   },
   systemStatus: {
     backendLabel: 'Бэкенд',
-    workerLabel: 'gRPC-воркер',
     cassandraLabel: 'Cassandra',
     cpuLabel: 'CPU',
     memoryLabel: 'Память',
@@ -133,18 +132,15 @@ export const cassandraGrpc = {
     selfReportNote:
       'Показатели бэкенда и воркера — это реальные, самоотчётные показания процесса (psutil: CPU%, память RSS, время работы процесса), а не показания на уровне контейнера через Docker API, поскольку это потребовало бы доступа к сокету Docker, которого это развёртывание намеренно избегает.',
     fetchError: 'Не удалось подключиться к эндпоинту статуса бэкенда.',
+    workerPodsLabel: '{{count}} рабочих подов',
+    noPodsReady: 'Сейчас нет ни одного пода-воркера в состоянии Ready.',
   },
-  workerSim: {
-    badgeTitle: 'Симуляция',
-    badgeBody:
-      'В этом развёртывании существует только один реальный контейнер grpc-worker (см. docker-compose.yml) — нет живого пула, из которого можно добавлять или удалять воркеров. Эта визуализация иллюстрирует горизонтальное масштабирование, используя реальные (но никогда не развёрнутые) числа из cassandra-grpc-ml/k8s/grpc-worker-hpa.yaml. Она не управляет реальной инфраструктурой.',
-    replicaCount: '{{count}} из {{min}}-{{max}} реплик (симуляция)',
-    cpuTarget: 'Целевая загрузка CPU: {{target}}% (из grpc-worker-hpa.yaml)',
-    addButton: 'добавить',
-    removeButtonTitle: 'Удалить этого симулированного воркера',
-    simCpuLabel: 'Симулированная загрузка CPU',
-    simRequestsLabel: 'Симулировано обработанных запросов',
-    inspectSimNote: 'Эти числа генерируются случайно для иллюстрации, а не считываются с какого-либо реального процесса.',
+  workerPool: {
+    replicaCount: '{{count}} из {{min}}-{{max}} реплик',
+    addButtonTitle: 'Увеличить пул на одну реальную реплику воркера',
+    removeButtonTitle: 'Уменьшить пул на одну реальную реплику воркера',
+    scaleErrorFallback: 'Не удалось изменить масштаб пула воркеров.',
+    realNote: 'Реальные поды, работающие в локальном кластере kind Kubernetes — масштабирование изменяет реальный Deployment через координатора. См. cassandra-grpc-ml/README.md по настройке кластера.',
   },
   methodologySection: {
     eyebrow: 'Методология',

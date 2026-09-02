@@ -1,4 +1,4 @@
-import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgEvaluationResult, EcgHealth } from '../types';
+import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgEvaluationResult, EcgHealth, PoolScaleResult } from '../types';
 
 const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL: string = API_BASE_URL.replace(/^http/, 'ws');
@@ -184,6 +184,14 @@ export function openEcgLiveSocket(onMessage: (data: any) => void, onClose?: () =
 
 export function getCassandraGrpcStatus(): Promise<CassandraGrpcStatus> {
   return request<CassandraGrpcStatus>('/api/cassandra-grpc/status');
+}
+
+export function scaleCassandraGrpcPool(replicas: number): Promise<PoolScaleResult> {
+  return request<PoolScaleResult>('/api/cassandra-grpc/pool/scale', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ replicas }),
+  });
 }
 
 export function getCassandraGrpcDatasetInfo(): Promise<CassandraGrpcDatasetInfo> {

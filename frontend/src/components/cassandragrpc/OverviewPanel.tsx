@@ -56,7 +56,7 @@ export const OverviewPanel: React.FC = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
         <StatusBadge label={t('cassandraGrpc.overview.cassandraLabel')} ok={status?.cassandra === 'connected'} />
-        <StatusBadge label={t('cassandraGrpc.overview.workerLabel')} ok={status?.worker === 'connected'} />
+        <StatusBadge label={t('cassandraGrpc.overview.workerLabel')} ok={status?.coordinator === 'connected'} />
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800">
           <Server className="w-4 h-4 text-cyan-400" />
           <span className="text-xs text-slate-300">

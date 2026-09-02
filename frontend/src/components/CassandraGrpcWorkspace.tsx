@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Database, Info, Layers, Workflow, GitCompare, Brain, Target, Bug, ShieldCheck, ClipboardCheck,
   CheckCircle2, Server, Boxes,
@@ -10,7 +10,9 @@ import { InferencePanel } from './cassandragrpc/InferencePanel';
 import { MetricsPanel } from './cassandragrpc/MetricsPanel';
 import { StaticResultsSection } from './cassandragrpc/StaticResultsSection';
 import { SystemStatusPanel } from './cassandragrpc/SystemStatusPanel';
-import { WorkerPoolSimulation } from './cassandragrpc/WorkerPoolSimulation';
+import { WorkerPool } from './cassandragrpc/WorkerPool';
+import { CassandraGrpcStatus } from '../types';
+import { getCassandraGrpcStatus } from '../api/client';
 import { ProjectSection } from './shared/ProjectSection';
 import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation } from '../i18n/I18nContext';
@@ -21,6 +23,10 @@ const ARCHITECTURE_STEP_KEYS = ['s1', 's2', 's3', 's4', 's5'] as const;
 export const CassandraGrpcWorkspace: React.FC = () => {
   const { t } = useTranslation();
   const [metricsRefreshKey, setMetricsRefreshKey] = useState(0);
+  const [poolStatus, setPoolStatus] = useState<CassandraGrpcStatus | null>(null);
+  useEffect(() => {
+    getCassandraGrpcStatus().then(setPoolStatus).catch(() => {});
+  }, []);
 
   const SECTION_ITEMS = useMemo(
     () => [
@@ -102,7 +108,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
                 <Boxes className="w-4 h-4 text-cyan-400" />
                 {t('cassandraGrpc.architecture.workerPoolHeading')}
               </h3>
-              <WorkerPoolSimulation />
+              <WorkerPool status={poolStatus} onStatusChange={setPoolStatus} />
             </div>
           </div>
         </ProjectSection>
