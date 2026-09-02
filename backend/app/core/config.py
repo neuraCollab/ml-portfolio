@@ -44,9 +44,12 @@ ECG_MAX_EVAL_UPLOAD_BYTES = int(os.environ.get("ECG_MAX_EVAL_UPLOAD_BYTES", str(
 ECG_MAX_EVAL_SAMPLES = int(os.environ.get("ECG_MAX_EVAL_SAMPLES", "500"))
 
 # Cassandra + gRPC ML project: reuses AutoTopic's real labeled dataset (see
-# AutoTopic/data/README.md) to train a fast supervised topic classifier
-# served over gRPC by the grpc-worker container, backed by a Cassandra
-# keyspace. See cassandra-grpc-ml/README.md for the full architecture.
+# AutoTopic/data/README.md) to train a fast supervised topic classifier.
+# The backend talks HTTP to the Coordinator (a k8s pod), which discovers
+# real worker pods via the k8s API and round-robin dispatches gRPC calls to
+# them; workers persist/share their trained model through a Cassandra
+# keyspace running in the same cluster. See cassandra-grpc-ml/README.md for
+# the full architecture.
 CASSANDRA_GRPC_DATASET_PATH = os.environ.get(
     "CASSANDRA_GRPC_DATASET_PATH", "AutoTopic/data/raw/labeled_requests.parquet"
 )

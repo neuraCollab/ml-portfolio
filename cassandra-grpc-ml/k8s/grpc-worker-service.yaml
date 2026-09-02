@@ -1,4 +1,4 @@
-# UNVERIFIED: see grpc-worker-deployment.yaml.
+# UNVERIFIED -> verified during this plan's Task 8. See grpc-worker-deployment.yaml.
 apiVersion: v1
 kind: Service
 metadata:

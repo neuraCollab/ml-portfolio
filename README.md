@@ -135,13 +135,16 @@ each project's existing Python code so the UI calls real ML code, not mocked dat
   split.
 - **Technologies**: Apache Cassandra 5 (storage), gRPC + Protocol Buffers (inter-service
   communication), scikit-learn (TfidfVectorizer + LogisticRegression), grpcio + cassandra-driver
-  (the separate `grpc-worker` container), FastAPI (coordinator/gateway -- the existing backend,
-  reused).
+  (real worker pods running in a local `kind` Kubernetes cluster), a real Coordinator FastAPI pod
+  that discovers those pods via the k8s API and round-robin dispatches gRPC calls to them, FastAPI
+  (gateway -- the existing backend, reused, proxying to the Coordinator over HTTP).
 - **How to use**: open the *Cassandra gRPC ML* tab, click **Train Model** in the Training section
-  to trigger ingestion (if needed) and a real gRPC `Train` call to the `grpc-worker` container --
-  tracked as a background job polled for status, same pattern as AutoTopic's pipeline -- then use
-  the Inference section to send text over a real gRPC call for a real prediction. Every training
-  run and every prediction is logged to Cassandra (`training_runs`, `predictions` tables).
+  to trigger ingestion (if needed) and a real gRPC `Train` call, proxied by the backend over HTTP to
+  the Coordinator pod, which dispatches it to one of the real worker pods -- tracked as a background
+  job polled for status, same pattern as AutoTopic's pipeline -- then use the Inference section to
+  send text the same way for a real prediction. Every training run and every prediction is logged to
+  Cassandra (`training_runs`, `predictions` tables). The worker pool's scale up/down buttons patch a
+  real Kubernetes Deployment's replica count via the Coordinator.
 
 ## Architecture
 
@@ -156,15 +159,19 @@ FastAPI backend (backend/)
              rl_cv_car-autopilot/policy_inference.py        the rest of that project is unchanged)
         +--> raspberry-pi-ecg/ecg_pipeline.py              (Project 3 adapter, new file, fixes
                                                               3 bugs found in the source project)
-        +--> app/services/cassandra_grpc_service.py        (Project 4 coordinator/gateway logic)
+        +--> app/services/cassandra_grpc_service.py        (Project 4 gateway logic)
                 |
                 +--> Cassandra (storage: requests, predictions, training_runs)
-                +--> gRPC --> grpc-worker container         (separate process, holds the
-                                                               trained TF-IDF + LogisticRegression
-                                                               model; reached over a real network
-                                                               call, not an in-process function)
-                                |
-                                +--> Cassandra (reads `requests` for training)
+                +--> HTTP --> Coordinator (FastAPI, real k8s pod)  (discovers Ready worker
+                                |                                    pods via the k8s API)
+                                +--> gRPC (round-robin) --> one of N real worker pods
+                                |         (k8s Deployment, 1-5 replicas, holds the trained
+                                |          TF-IDF + LogisticRegression model; reached over a
+                                |          real network call, not an in-process function)
+                                |               |
+                                |               +--> Cassandra (k8s pod; reads `requests` for
+                                |                    training, persists/loads the trained model)
+                                +--> k8s API --> scales the worker Deployment's replica count
 ```
 
 The backend is a thin adapter layer (`backend/app/services/*`) around each project's existing
@@ -195,13 +202,14 @@ one project.
 | POST | `/api/ecg/demo` | `{source: "sample"\|"synthetic", heartRate, seed}` -> `EcgAnalysisResponse` |
 | POST | `/api/ecg/analyze` | multipart `.npy` upload (shape `(1000,6)` or `(6,1000)`) -> `EcgAnalysisResponse` |
 | WS | `/api/ecg/live` | Live sensor stream if 2 serial devices are detected; otherwise a status message explaining why not |
-| GET | `/api/cassandra-grpc/status` | Cassandra/worker reachability, model-loaded flag, class count, last-trained timestamp |
+| GET | `/api/cassandra-grpc/status` | Cassandra/Coordinator/worker-pool reachability, model-loaded flag, class count, last-trained timestamp |
 | GET | `/api/cassandra-grpc/dataset-info` | Triggers ingestion-if-needed, then returns row counts and class distribution for the ingested sample |
-| POST | `/api/cassandra-grpc/train` | `{sampleSize}` -> starts a background training job (ingest + real gRPC `Train` call) |
+| POST | `/api/cassandra-grpc/train` | `{sampleSize}` -> starts a background training job (ingest + HTTP call to the Coordinator, which dispatches a real gRPC `Train` call to a worker pod) |
 | GET | `/api/cassandra-grpc/train/status` | Polls the current/last training job's status and, once completed, its result metrics |
 | GET | `/api/cassandra-grpc/metrics` | Latest completed training run's real metrics, or `null` if none yet this process |
-| POST | `/api/cassandra-grpc/predict` | `{text}` -> real gRPC `Predict` call to `grpc-worker` -> `topicId`/`topicName`/confidence |
-| GET | `/api/cassandra-grpc/grpc-log` | Recent gRPC calls made by the backend (method, status, latency), for the UI's live log stream |
+| POST | `/api/cassandra-grpc/predict` | `{text}` -> HTTP to the Coordinator -> real gRPC `Predict` call to one of N real worker pods -> `topicId`/`topicName`/confidence |
+| GET | `/api/cassandra-grpc/grpc-log` | Recent gRPC calls made by the Coordinator/workers (method, status, latency), for the UI's live log stream |
+| POST | `/api/cassandra-grpc/pool/scale` | `{replicas}` -> proxies to the Coordinator, which patches the real worker Deployment's replica count (bounds `[1, 5]`) |
 
 Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the backend is running.
 
@@ -233,16 +241,19 @@ embedding model).
 | `ECG_MAX_UPLOAD_BYTES` | backend | `2097152` (2MB) | Caps `.npy` upload size for `/api/ecg/analyze` |
 | `CASSANDRA_GRPC_DATASET_PATH` | backend | `AutoTopic/data/raw/labeled_requests.parquet` | Reuses AutoTopic's real dataset -- a path relative to the repo root, or an absolute local path |
 | `CASSANDRA_GRPC_SAMPLE_SIZE` | backend | `40000` | Caps the stratified sample ingested into Cassandra for training |
-| `CASSANDRA_HOST` | backend | `cassandra` | Hostname of the Cassandra node (the `cassandra` service name under docker-compose) |
-| `GRPC_WORKER_ADDRESS` | backend | `grpc-worker:50061` | Host:port of the `grpc-worker` container the backend calls over gRPC |
+| `CASSANDRA_HOST` | backend | `host.docker.internal` | Hostname of the Cassandra node running in the local `kind` k8s cluster (see `cassandra-grpc-ml/README.md`'s `## Kubernetes` section) |
+| `CASSANDRA_PORT` | backend | `30942` | NodePort the in-cluster Cassandra pod is exposed on |
+| `CASSANDRA_GRPC_COORDINATOR_URL` | backend | `http://host.docker.internal:30080` | Base URL of the real Coordinator pod (NodePort `:30080`) the backend proxies `/api/cassandra-grpc/*` requests to |
 
 See `.env.example`, `backend/.env.example`, and `frontend/.env.example`. None of the four projects
 need any API keys or credentials -- the AI Studio scaffold's `GEMINI_API_KEY` placeholder was
 unused dead boilerplate (no code ever read it) and has been removed, the ECG project's real
 infrastructure secrets (VPS IP, tunnel binaries) were deliberately excluded, not parameterized, and
-Cassandra runs in dev mode with no auth. (`CASSANDRA_HOST` and `GRPC_WORKER_ADDRESS` are set
-directly in `docker-compose.yml` to the in-network service names/ports rather than exposed in the
-`.env.example` files, since overriding them only makes sense for a non-Docker run.)
+Cassandra runs in dev mode with no auth. (`CASSANDRA_HOST`, `CASSANDRA_PORT`, and
+`CASSANDRA_GRPC_COORDINATOR_URL` are set directly in `docker-compose.yml` to the real `kind`
+cluster's `host.docker.internal` NodePorts rather than exposed in the `.env.example` files, since
+overriding them only makes sense for a non-Docker run. There is no `cassandra` docker-compose
+service any more -- Cassandra runs as a pod inside the `kind` cluster, not as a compose container.)
 
 ## Running the Portfolio
 
@@ -252,6 +263,20 @@ docker compose up --build
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000 (docs at `/docs`)
+
+**Cassandra + gRPC ML needs one extra prerequisite step.** That project's Architecture section
+(worker pool status, training, and inference) talks to a real local Kubernetes cluster (`kind`) --
+without it running, only that one project's page will fail (Cassandra/Coordinator/worker-pool
+unreachable); the rest of the portfolio (AutoTopic, RL Car Autopilot, ECG) is unaffected. Before
+`docker compose up`, run:
+
+```bash
+bash cassandra-grpc-ml/k8s/setup-kind.sh
+docker compose up -d --build backend frontend
+```
+
+See `cassandra-grpc-ml/README.md`'s `## How to run (Kubernetes worker pool)` and `## Kubernetes`
+sections for details and teardown (`kind delete cluster --name cassandra-grpc-ml`).
 
 Without Docker, you'd need Node 20+ for `frontend/` (`npm install && npm run dev`) and a Python
 environment matching `backend/requirements.txt` for `backend/` (`uvicorn app.main:app --reload`,
@@ -308,17 +333,27 @@ ECG) to preserve/extend; those were verified by running all three flows end-to-e
 browser: sample-data runs, CSV/`.npy` upload, invalid input, backend-down, and mobile viewport. See
 the final report for the exact scenarios exercised in this session.
 
-The fourth project (Cassandra + gRPC ML) additionally has a minimal pytest suite covering its
-pure-function logic that needs no live Cassandra/gRPC/Docker service (ML training math and
-stratified sampling in `cassandra-grpc-ml/worker/tests/test_ml_core.py` and
-`test_model_store.py`; request/schema validation in
-`backend/tests/test_cassandra_grpc_schemas.py` and `test_cassandra_grpc_ingestion.py`) --
-everything else for this project (gRPC wiring, Cassandra I/O, Docker, frontend) is still verified
-live, the same way as the other three. Run it in a throwaway container, e.g.:
+The fourth project (Cassandra + gRPC ML) additionally has a real pytest suite, 55 tests total:
+
+- `cassandra-grpc-ml/worker/tests/` (11: `test_ml_core.py`, `test_model_store.py`) -- pure-function
+  ML training math, stratified sampling, and model (de)serialization logic that needs no live
+  Cassandra/gRPC/k8s.
+- `cassandra-grpc-ml/coordinator/tests/` (19: `test_dispatch.py`, `test_k8s_client.py`,
+  `test_app.py`) -- the round-robin dispatcher's retry-on-`RpcError` behavior, k8s pod-discovery
+  filtering, and the Coordinator's FastAPI routes, against a mocked k8s API/gRPC layer.
+- `backend/tests/` (25: `test_cassandra_grpc_schemas.py`, `test_cassandra_grpc_ingestion.py`,
+  `test_cassandra_grpc_service.py`) -- request/schema validation, ingestion, and the
+  backend-to-Coordinator HTTP proxying logic.
+
+Everything else for this project (the real `kind` cluster, live Cassandra/gRPC/k8s wiring,
+Docker, frontend) is still verified live, the same way as the other three. Run the suites in a
+throwaway container, e.g.:
 
 ```bash
 docker run --rm -v "$(pwd)/cassandra-grpc-ml/worker:/app" -w /app python:3.11-slim \
   bash -c "pip install --no-cache-dir -q scikit-learn numpy pytest joblib && pytest -v"
+docker run --rm -v "$(pwd)/cassandra-grpc-ml/coordinator:/app" -w /app python:3.11-slim \
+  bash -c "pip install --no-cache-dir -q -r requirements.txt httpx pytest && pytest -v"
 docker run --rm -v "$(pwd)/backend:/app" -w /app python:3.11-slim \
-  bash -c "pip install --no-cache-dir -q pydantic pandas pyarrow pytest && pytest tests/test_cassandra_grpc_schemas.py tests/test_cassandra_grpc_ingestion.py -v"
+  bash -c "pip install --no-cache-dir -q pydantic pandas pyarrow httpx pytest && pytest tests/test_cassandra_grpc_schemas.py tests/test_cassandra_grpc_ingestion.py tests/test_cassandra_grpc_service.py -v"
 ```
