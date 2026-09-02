@@ -1,13 +1,13 @@
 {
   "available": true,
   "datasetSize": 40000,
-  "modelType": "TF-IDF + Logistic Regression (multinomial)",
-  "trainingTimeSeconds": 68.02101802825928,
-  "inferenceLatencyMs": 7.3,
-  "accuracy": 0.5276659959758552,
-  "macroPrecision": 0.684418016493003,
-  "macroRecall": 0.23692235278110807,
-  "macroF1": 0.31518778435502204,
+  "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
+  "trainingTimeSeconds": 30.137547969818115,
+  "inferenceLatencyMs": 63.63,
+  "accuracy": 0.5153420523138833,
+  "macroPrecision": 0.6497703143879252,
+  "macroRecall": 0.22097512882446582,
+  "macroF1": 0.29416996916169663,
   "topClasses": [
     {
       "topicId": 26,
@@ -89,22 +89,17 @@
     {
       "trueTopicId": 26,
       "predictedTopicId": 26,
-      "count": 1165
+      "count": 1172
     },
     {
       "trueTopicId": 26,
       "predictedTopicId": 18,
-      "count": 96
+      "count": 91
     },
     {
       "trueTopicId": 26,
       "predictedTopicId": 0,
       "count": 3
-    },
-    {
-      "trueTopicId": 26,
-      "predictedTopicId": 32,
-      "count": 1
     },
     {
       "trueTopicId": 26,
@@ -114,17 +109,17 @@
     {
       "trueTopicId": 26,
       "predictedTopicId": 17,
-      "count": 4
+      "count": 3
     },
     {
       "trueTopicId": 26,
       "predictedTopicId": 43,
-      "count": 2
+      "count": 1
     },
     {
       "trueTopicId": 26,
       "predictedTopicId": 25,
-      "count": 1
+      "count": 2
     },
     {
       "trueTopicId": 26,
@@ -133,18 +128,18 @@
     },
     {
       "trueTopicId": 26,
-      "predictedTopicId": 48,
+      "predictedTopicId": 14,
       "count": 1
     },
     {
       "trueTopicId": 18,
       "predictedTopicId": 26,
-      "count": 181
+      "count": 201
     },
     {
       "trueTopicId": 18,
       "predictedTopicId": 18,
-      "count": 401
+      "count": 383
     },
     {
       "trueTopicId": 18,
@@ -154,7 +149,7 @@
     {
       "trueTopicId": 18,
       "predictedTopicId": 32,
-      "count": 3
+      "count": 1
     },
     {
       "trueTopicId": 18,
@@ -184,17 +179,17 @@
     {
       "trueTopicId": 0,
       "predictedTopicId": 26,
-      "count": 97
+      "count": 104
     },
     {
       "trueTopicId": 0,
       "predictedTopicId": 18,
-      "count": 14
+      "count": 15
     },
     {
       "trueTopicId": 0,
       "predictedTopicId": 0,
-      "count": 27
+      "count": 21
     },
     {
       "trueTopicId": 0,
@@ -209,7 +204,7 @@
     {
       "trueTopicId": 32,
       "predictedTopicId": 26,
-      "count": 69
+      "count": 78
     },
     {
       "trueTopicId": 32,
@@ -219,12 +214,12 @@
     {
       "trueTopicId": 32,
       "predictedTopicId": 0,
-      "count": 2
+      "count": 1
     },
     {
       "trueTopicId": 32,
       "predictedTopicId": 32,
-      "count": 34
+      "count": 26
     },
     {
       "trueTopicId": 32,
@@ -249,7 +244,7 @@
     {
       "trueTopicId": 33,
       "predictedTopicId": 26,
-      "count": 59
+      "count": 61
     },
     {
       "trueTopicId": 33,
@@ -264,22 +259,22 @@
     {
       "trueTopicId": 33,
       "predictedTopicId": 33,
-      "count": 36
+      "count": 34
     },
     {
       "trueTopicId": 41,
       "predictedTopicId": 26,
-      "count": 45
+      "count": 46
     },
     {
       "trueTopicId": 41,
       "predictedTopicId": 18,
-      "count": 40
+      "count": 42
     },
     {
       "trueTopicId": 41,
       "predictedTopicId": 0,
-      "count": 3
+      "count": 2
     },
     {
       "trueTopicId": 41,
@@ -289,7 +284,7 @@
     {
       "trueTopicId": 41,
       "predictedTopicId": 41,
-      "count": 11
+      "count": 9
     },
     {
       "trueTopicId": 41,
@@ -329,7 +324,7 @@
     {
       "trueTopicId": 43,
       "predictedTopicId": 26,
-      "count": 16
+      "count": 18
     },
     {
       "trueTopicId": 43,
@@ -344,12 +339,12 @@
     {
       "trueTopicId": 43,
       "predictedTopicId": 43,
-      "count": 54
+      "count": 52
     },
     {
       "trueTopicId": 43,
       "predictedTopicId": 25,
-      "count": 4
+      "count": 3
     },
     {
       "trueTopicId": 38,
@@ -359,7 +354,7 @@
     {
       "trueTopicId": 38,
       "predictedTopicId": 18,
-      "count": 16
+      "count": 18
     },
     {
       "trueTopicId": 38,
@@ -374,17 +369,17 @@
     {
       "trueTopicId": 38,
       "predictedTopicId": 38,
-      "count": 11
+      "count": 10
     },
     {
       "trueTopicId": 38,
       "predictedTopicId": 14,
-      "count": 2
+      "count": 1
     },
     {
       "trueTopicId": 15,
       "predictedTopicId": 26,
-      "count": 27
+      "count": 29
     },
     {
       "trueTopicId": 15,
@@ -393,12 +388,7 @@
     },
     {
       "trueTopicId": 15,
-      "predictedTopicId": 0,
-      "count": 2
-    },
-    {
-      "trueTopicId": 15,
-      "predictedTopicId": 32,
+      "predictedTopicId": 17,
       "count": 1
     },
     {
@@ -414,22 +404,22 @@
     {
       "trueTopicId": 5,
       "predictedTopicId": 26,
-      "count": 21
+      "count": 22
     },
     {
       "trueTopicId": 5,
       "predictedTopicId": 18,
-      "count": 17
+      "count": 19
     },
     {
       "trueTopicId": 5,
       "predictedTopicId": 0,
-      "count": 2
+      "count": 1
     },
     {
       "trueTopicId": 5,
       "predictedTopicId": 33,
-      "count": 2
+      "count": 1
     },
     {
       "trueTopicId": 5,
@@ -439,17 +429,12 @@
     {
       "trueTopicId": 5,
       "predictedTopicId": 5,
-      "count": 10
-    },
-    {
-      "trueTopicId": 5,
-      "predictedTopicId": 48,
-      "count": 1
+      "count": 8
     },
     {
       "trueTopicId": 25,
       "predictedTopicId": 26,
-      "count": 16
+      "count": 17
     },
     {
       "trueTopicId": 25,
@@ -518,23 +503,18 @@
     },
     {
       "trueTopicId": 14,
-      "predictedTopicId": 41,
-      "count": 1
-    },
-    {
-      "trueTopicId": 14,
       "predictedTopicId": 14,
-      "count": 26
+      "count": 27
     },
     {
       "trueTopicId": 48,
       "predictedTopicId": 26,
-      "count": 33
+      "count": 32
     },
     {
       "trueTopicId": 48,
       "predictedTopicId": 18,
-      "count": 6
+      "count": 8
     },
     {
       "trueTopicId": 48,
@@ -549,13 +529,13 @@
     {
       "trueTopicId": 48,
       "predictedTopicId": 48,
-      "count": 6
+      "count": 5
     }
   ],
   "examplePrediction": {
     "inputText": "Подбери синонимы к слову веселый",
     "topicName": "Анализ персонажей",
-    "confidence": 0.6367891761099003
+    "confidence": 0.5127505539456865
   },
   "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md."
 }

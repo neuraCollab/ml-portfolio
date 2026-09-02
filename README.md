@@ -130,9 +130,11 @@ each project's existing Python code so the UI calls real ML code, not mocked dat
 - **ML approach**: TF-IDF vectorization + Logistic Regression multi-class classification, trained
   on a stratified sample (capped at 40,000 rows, configurable) of AutoTopic's real labeled request
   corpus (`AutoTopic/data/raw/labeled_requests.parquet`, 373,657 real rows total), predicting one
-  of 50 real topic categories with a 90/10 train/test split per class. The latest training run
-  (40,000-row sample, 68 seconds) reached 52.8% accuracy / 0.315 macro F1 on the held-out test
-  split.
+  of 50 real topic categories with a 90/10 train/test split per class. The classifier trains as
+  One-vs-Rest with `n_jobs=-1` so each class's binary sub-classifier fits on its own CPU core
+  (confirmed live: ~10x faster than the single-core multinomial fit it replaced). The latest
+  training run (40,000-row sample, 30.1 seconds) reached 51.5% accuracy / 0.294 macro F1 on the
+  held-out test split.
 - **Technologies**: Apache Cassandra 5 (storage), gRPC + Protocol Buffers (inter-service
   communication), scikit-learn (TfidfVectorizer + LogisticRegression), grpcio + cassandra-driver
   (real worker pods running in a local `kind` Kubernetes cluster), a real Coordinator FastAPI pod

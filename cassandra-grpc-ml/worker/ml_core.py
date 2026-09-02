@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
+from sklearn.multiclass import OneVsRestClassifier
 
 # With 50 real topic classes, a full NxN confusion matrix is impractical to
 # render -- restricting to the top-15 by test-set support matches the
@@ -58,9 +59,14 @@ def train_and_evaluate(
     start = time.time()
     vectorizer = TfidfVectorizer(max_features=50000, ngram_range=(1, 2), min_df=1)
     X_train = vectorizer.fit_transform(train_texts)
-    # scikit-learn removed multi_class param (deprecated 1.5, removed 1.7+);
-    # solver='lbfgs' defaults to multinomial loss for multi-class, same behavior as multi_class="multinomial"
-    classifier = LogisticRegression(max_iter=200, n_jobs=-1, solver='lbfgs')
+    # n_jobs only parallelizes LogisticRegression across CPU cores when the
+    # model is fit as One-vs-Rest: each class's binary sub-problem is then
+    # independent and can run on its own core. A bare LogisticRegression
+    # with solver='lbfgs' fits multinomial (softmax) loss for multi-class
+    # instead -- one single joint optimization with nothing to parallelize,
+    # so n_jobs is silently ignored there. Wrapping in OneVsRestClassifier
+    # makes the parallelism real.
+    classifier = OneVsRestClassifier(LogisticRegression(max_iter=200, solver='lbfgs'), n_jobs=-1)
     classifier.fit(X_train, train_labels)
     training_time = time.time() - start
 

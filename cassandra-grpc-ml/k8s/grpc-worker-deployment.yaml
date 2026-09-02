@@ -37,4 +37,11 @@ spec:
               # since only whichever pod is actively handling a /train RPC
               # needs the headroom; idle/serving replicas use far less.
               memory: "2Gi"
-              cpu: "1000m"
+              # A 1-core limit made ml_core.py's real OneVsRestClassifier(...,
+              # n_jobs=-1) parallelism (fitting each class's binary classifier
+              # on its own core) a moot point inside the cluster -- the pod
+              # was never able to use a second core regardless of what the
+              # training code requested. 4 cores gives real, visible
+              # multi-core speedup for a single training run without
+              # over-committing this host's 12 CPUs across up to 5 replicas.
+              cpu: "4000m"

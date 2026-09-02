@@ -65,6 +65,27 @@ def test_train_and_evaluate_rejects_empty_splits():
         train_and_evaluate([], [], ["x"], [0], {0: "a"})
 
 
+def test_train_and_evaluate_fits_one_vs_rest_so_n_jobs_is_real():
+    """Regression test: a bare LogisticRegression(solver='lbfgs', n_jobs=-1)
+    fits multinomial (softmax) loss for multi-class problems, which is one
+    single joint optimization with no per-class sub-problem to hand out to
+    workers -- n_jobs is silently ignored there (confirmed live: adding a
+    second CPU core changed nothing). OneVsRestClassifier gives n_jobs real
+    work by fitting one independent binary classifier per class in
+    parallel. This checks for the OvR-specific `estimators_` attribute
+    (one fitted sub-classifier per class), which only exists when the real
+    parallelizable code path was actually taken."""
+    train_texts, train_labels, test_texts, test_labels, label_names = _synthetic_dataset()
+    model, _ = train_and_evaluate(train_texts, train_labels, test_texts, test_labels, label_names)
+
+    assert hasattr(model.classifier, "estimators_"), (
+        "classifier must be a OneVsRestClassifier (or equivalent) so n_jobs "
+        "actually parallelizes training across classes -- a bare multinomial "
+        "LogisticRegression has no `estimators_` and silently ignores n_jobs"
+    )
+    assert len(model.classifier.estimators_) == len(label_names)
+
+
 def test_predict_one_returns_a_known_label():
     train_texts, train_labels, test_texts, test_labels, label_names = _synthetic_dataset()
     model, _ = train_and_evaluate(train_texts, train_labels, test_texts, test_labels, label_names)

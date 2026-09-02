@@ -165,23 +165,23 @@ export const cassandraGrpc = {
     baselineCardTitle: 'Baseline: AutoTopic (BERTopic, unsupervised)',
     baselineTime: 'Full corpus re-clustering: 46.0 min',
     baselineQuery: 'Single-query classification: not supported',
-    modelCardTitle: 'Model: this project (TF-IDF + LogisticRegression)',
-    modelTime: 'One-time training: 68.0s',
-    modelQuery: 'Real per-query gRPC round-trip: 7.3ms',
-    sourceNote: 'AutoTopic\'s 46.0 min figure is from its own real full-dataset pipeline run (see the AutoTopic page\'s Results). This project\'s 68.0s / 7.3ms figures are from a real training run (see Results below).',
+    modelCardTitle: 'Model: this project (TF-IDF + LogisticRegression, One-vs-Rest)',
+    modelTime: 'One-time training: 30.1s',
+    modelQuery: 'Real per-query gRPC round-trip: 63.6ms',
+    sourceNote: 'AutoTopic\'s 46.0 min figure is from its own real full-dataset pipeline run (see the AutoTopic page\'s Results). This project\'s 30.1s / 63.6ms figures are from a real training run (see Results below).',
   },
   errorAnalysisSection: {
     eyebrow: 'Error Analysis',
     title: 'Real Findings from the Confusion Matrix',
     majorityBiasTitle: 'Majority-class bias',
     majorityBiasBody:
-      '"Жизненные советы" (life advice), the largest class by far (1,287 test-support), attracts real misclassifications from nearly every other class -- e.g. 181 "Проекты и задачи" rows, 97 "Эмоции студентов" rows, and 69 "Посты о любви" rows were all real misclassified as this class. A classic class-imbalance failure mode: with no class weighting, the model leans toward the statistically safest guess.',
+      '"Жизненные советы" (life advice), the largest class by far (1,287 test-support), attracts real misclassifications from nearly every other class -- e.g. 201 "Проекты и задачи" rows, 104 "Эмоции студентов" rows, and 78 "Посты о любви" rows were all real misclassified as this class. A classic class-imbalance failure mode: with no class weighting, the model leans toward the statistically safest guess.',
     weakClassTitle: 'A specific weak class: "Технический анализ"',
     weakClassBody:
-      'Of the 103 real test examples labeled "Технический анализ" (technical analysis), only 11 were correctly classified -- 45 were predicted as "Жизненные советы" and 40 as "Проекты и задачи". Real recall for this class is roughly 11%, far below the 52.8% overall accuracy.',
+      'Of the 103 real test examples labeled "Технический анализ" (technical analysis), only 9 were correctly classified -- 46 were predicted as "Жизненные советы" and 42 as "Проекты и задачи". Real recall for this class is roughly 9%, far below the 51.5% overall accuracy.',
     macroVsAccuracyTitle: 'Macro F1 vs. accuracy gap',
     macroVsAccuracyBody:
-      'Real macro F1 (0.315) is much lower than real accuracy (52.8%) -- accuracy is dominated by the largest classes, while macro F1 weights every class equally and exposes the real, honest weakness on minority classes shown above.',
+      'Real macro F1 (0.294) is much lower than real accuracy (51.5%) -- accuracy is dominated by the largest classes, while macro F1 weights every class equally and exposes the real, honest weakness on minority classes shown above.',
   },
   regressionTestsSection: {
     eyebrow: 'Regression Tests',

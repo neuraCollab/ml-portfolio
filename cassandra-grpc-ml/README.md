@@ -191,7 +191,7 @@ confirmed to work end-to-end) or this limitation is otherwise addressed.
 |---|---|
 | Storage | Apache Cassandra 5 |
 | Inter-service communication | gRPC + Protocol Buffers |
-| ML model | scikit-learn (TfidfVectorizer + LogisticRegression) |
+| ML model | scikit-learn (TfidfVectorizer + LogisticRegression, One-vs-Rest with `n_jobs=-1`) |
 | Worker runtime | Python 3.11, grpcio, cassandra-driver |
 | Worker orchestration | Kubernetes (`kind`), 1-5 real replicas, scaled by the Coordinator |
 | Coordinator | FastAPI, real k8s pod -- pod discovery, round-robin gRPC dispatch, Deployment scaling |

@@ -182,7 +182,7 @@ if cg_metrics:
     cassandra_grpc_results = {
         "available": True,
         "datasetSize": cg_dataset["ingestedRows"],
-        "modelType": "TF-IDF + Logistic Regression (multinomial)",
+        "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
         "trainingTimeSeconds": cg_metrics["trainingTimeSeconds"],
         "inferenceLatencyMs": example["grpcRoundtripMs"],
         "accuracy": cg_metrics["accuracy"],
