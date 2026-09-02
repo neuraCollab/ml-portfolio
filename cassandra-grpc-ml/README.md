@@ -142,27 +142,31 @@ Verified real, end-to-end, against this cluster:
 - Scaling the pool up starts real new pods (`kubectl get pods -l app=cassandra-grpc-ml-worker`
   reflects the change), and scaling down real-terminates the extra ones.
 
-**Known limitation, found during this verification pass (not fixed here): Cassandra-backed model
-sharing (`MODEL_PERSISTENCE=cassandra`) fails to persist realistically-sized models.** The worker
-serializes the trained `TrainedModel` (a `TfidfVectorizer` with `max_features=50000`,
+**Cassandra-backed model sharing (`MODEL_PERSISTENCE=cassandra`)** was found broken during an
+earlier verification pass, and has since been fixed and re-verified live against this cluster.
+The worker serializes the trained `TrainedModel` (a `TfidfVectorizer` with `max_features=50000`,
 `ngram_range=(1, 2)`, plus a 50-class `LogisticRegression`) with `joblib` into a single CQL blob
-column (`cassandra-grpc-ml/worker/model_store.py::save_model_to_cassandra`). For this project's
-real dataset (50 classes) that blob is tens of megabytes -- a real training run during this
-verification pass produced a 45,335,967-byte blob, which Cassandra's driver rejected with
-`cassandra.InvalidRequest: ... CQL Message of size 45335967 bytes exceeds allowed maximum of
-16777216 bytes`. The exception is caught and only logged (`server.py::Train`), so `POST
-/api/cassandra-grpc/train` still reports success -- the model trains and serves fine from the pod
-that trained it, but nothing is ever written to the `models` table
-(`SELECT * FROM cassandra_grpc_ml.models` returns 0 rows after a real training run). Consequently,
-when the pool is scaled up, newly-started pods log `No persisted model found -- waiting for a
-Train call.` and stay at `modelLoaded: false` indefinitely (confirmed past several
-30-second `_maybe_refresh_model` cycles) instead of converging to the trained pod's `trainedAt`,
-so the round-robin dispatcher's automatic retry (above) ends up masking this by silently falling
-back to the one pod that actually has the model. Round-robin dispatch, pod discovery, and
-Deployment scaling are real and verified as described above; only the Cassandra-write side of
-model sharing needs a fix (e.g. chunking the blob across rows, compressing it, capping
-`max_features` lower, or raising Cassandra's `native_transport_max_message_size_in_mb`) before
-multi-pod convergence can be relied on for this dataset.
+column (`cassandra-grpc-ml/worker/model_store.py::save_model_to_cassandra`). Two compounding bugs
+made the INSERT fail for this project's real dataset:
+
+1. The raw joblib dump for a 50-class model is ~22.7MB (measured: 22,667,923 bytes) -- already
+   close to Cassandra's default 16MB native-protocol message limit, and pushed well over it once
+   the second bug (below) doubled it on the wire.
+2. The INSERT used `session.execute(query_with_%s_placeholders, params)` (a "simple statement"),
+   which makes the Cassandra Python driver inline the blob into the CQL text client-side as a
+   `0x...` hex literal -- doubling its size on the wire. That's why the original failure reported
+   a message size around 45.3MB (measured: 45,335,967 bytes) rather than the blob's real ~22.7MB:
+   the reported number was already hex-doubled by this encoding.
+
+Fixed by combining gzip compression (`gzip.compress`/`gzip.decompress` around the joblib bytes,
+still one blob column, no schema change) with switching the INSERT to a real prepared statement
+(`session.prepare(...)` + `?` placeholders), which sends the blob as raw binary instead of a hex
+literal. Real measurement: the ~22.7MB raw blob compresses to ~11.6MB (measured: 12,180,193 bytes,
+1.86x) -- comfortably under 16MB once sent as raw binary. Re-verified live end-to-end after the
+fix: a real training run's `INSERT` succeeded (`SELECT COUNT(*) FROM cassandra_grpc_ml.models`
+returned 1 row, where it previously returned 0), and `GET /api/cassandra-grpc/status` showed
+`modelLoaded: true` with a `trainedAt` matching the persisted row. Round-robin dispatch, pod
+discovery, and Deployment scaling remain real and verified as described above.
 
 ## Tech Stack
 

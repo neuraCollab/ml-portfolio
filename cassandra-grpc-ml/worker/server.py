@@ -156,6 +156,7 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
             context.set_details(str(exc))
             return ml_worker_pb2.TrainResponse(success=False, message=str(exc))
 
+        persistence_error = None
         if MODEL_PERSISTENCE == "cassandra":
             try:
                 save_cluster, save_session = _cassandra_session()
@@ -163,16 +164,36 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
                     save_model_to_cassandra(model, save_session)
                 finally:
                     save_cluster.shutdown()
-            except Exception:
-                logger.exception("Could not save model to Cassandra")
+            except Exception as exc:
+                # Deliberately non-fatal: this pod already has a working
+                # in-memory model (self._model is set below regardless), so
+                # failing the whole RPC here would turn a real training
+                # success into a reported failure. But this exception is not
+                # just a hypothetical edge case -- gzip compression (added to
+                # fix the original 45MB-blob failure) still isn't always
+                # enough to get real trained models under Cassandra's 16MB
+                # native-protocol message limit, so this path can still be
+                # hit on real training runs. Surfaced in the response
+                # message (in addition to the log) so it isn't silently
+                # invisible to callers -- other pods will NOT see this model
+                # until it's persisted.
+                logger.exception("Could not save model to Cassandra -- other worker pods will NOT see this model")
+                persistence_error = str(exc)
         else:
             save_model(model, MODEL_STORE_DIR)
         self._model = model
         logger.info(f"Trained on {metrics.train_rows} rows, evaluated on {metrics.test_rows} rows, accuracy={metrics.accuracy:.3f}")
 
+        message = f"Trained on {metrics.train_rows} rows, evaluated on {metrics.test_rows} rows."
+        if persistence_error:
+            message += (
+                f" WARNING: trained model could NOT be persisted to Cassandra, so other "
+                f"worker pods will not see it ({persistence_error})."
+            )
+
         return ml_worker_pb2.TrainResponse(
             success=True,
-            message=f"Trained on {metrics.train_rows} rows, evaluated on {metrics.test_rows} rows.",
+            message=message,
             num_classes=metrics.num_classes,
             train_rows=metrics.train_rows,
             test_rows=metrics.test_rows,
