@@ -59,4 +59,9 @@ message StatusResponse {
   bool model_loaded = 1;
   int32 num_classes = 2;
   string trained_at = 3; // ISO8601, or "" if never trained
+  // Real self-reported process stats (psutil, this container's own process --
+  // not a Docker-API container-level reading, see cassandra-grpc-ml/README.md).
+  double cpu_percent = 4;
+  double memory_mb = 5;
+  double uptime_seconds = 6;
 }
