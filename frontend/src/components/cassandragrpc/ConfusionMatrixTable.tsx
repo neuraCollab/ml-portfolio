@@ -1,6 +1,7 @@
 // frontend/src/components/cassandragrpc/ConfusionMatrixTable.tsx
 import React from 'react';
 import { ClassSupport, ConfusionMatrixEntry } from '../../types';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
   topClasses: ClassSupport[];
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export const ConfusionMatrixTable: React.FC<Props> = ({ topClasses, confusionMatrix }) => {
+  const { t } = useTranslation();
   const countFor = (trueId: number, predId: number) =>
     confusionMatrix.find((e) => e.trueTopicId === trueId && e.predictedTopicId === predId)?.count ?? 0;
 
@@ -16,7 +18,7 @@ export const ConfusionMatrixTable: React.FC<Props> = ({ topClasses, confusionMat
       <table className="text-[10px] text-slate-300 min-w-[700px]">
         <thead>
           <tr>
-            <th className="p-2 bg-slate-950 text-left font-mono text-slate-500">true \ predicted</th>
+            <th className="p-2 bg-slate-950 text-left font-mono text-slate-500">{t('cassandraGrpc.confusionMatrix.truePredictedHeader')}</th>
             {topClasses.map((c) => (
               <th key={c.topicId} className="p-1.5 bg-slate-950 font-mono text-slate-400 max-w-[80px] truncate" title={c.topicName}>
                 {c.topicId}

@@ -3,8 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { CassandraGrpcLogEntry } from '../../types';
 import { getCassandraGrpcLog } from '../../api/client';
 import { Radio } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 export const GrpcLogStream: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<CassandraGrpcLogEntry[]>([]);
 
   useEffect(() => {
@@ -15,10 +17,10 @@ export const GrpcLogStream: React.FC<{ refreshKey: number }> = ({ refreshKey }) 
     <div>
       <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-2">
         <Radio className="w-3.5 h-3.5 text-cyan-400" />
-        <span>Recent gRPC calls</span>
+        <span>{t('cassandraGrpc.grpcLog.heading')}</span>
       </div>
       <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-800 divide-y divide-slate-800/60">
-        {entries.length === 0 && <div className="p-3 text-xs text-slate-500">No gRPC calls logged yet.</div>}
+        {entries.length === 0 && <div className="p-3 text-xs text-slate-500">{t('cassandraGrpc.grpcLog.emptyState')}</div>}
         {entries.map((e) => (
           <div key={e.id} className="p-2 text-[11px] font-mono flex items-center gap-2">
             <span className={e.status === 'OK' ? 'text-emerald-400' : 'text-red-400'}>{e.status}</span>

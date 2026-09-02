@@ -4,8 +4,10 @@ import { CassandraGrpcPredictResult } from '../../types';
 import { predictCassandraGrpc, ApiError } from '../../api/client';
 import { GrpcLogStream } from './GrpcLogStream';
 import { Send, Loader2 } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 export const InferencePanel: React.FC = () => {
+  const { t } = useTranslation();
   const [text, setText] = useState('Подбери синонимы к слову веселый');
   const [result, setResult] = useState<CassandraGrpcPredictResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,7 @@ export const InferencePanel: React.FC = () => {
       const res = await predictCassandraGrpc(text);
       setResult(res);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Prediction request failed.');
+      setError(err instanceof ApiError ? err.message : t('cassandraGrpc.inference.predictErrorFallback'));
     } finally {
       setLoading(false);
       setLogRefreshKey((k) => k + 1);
@@ -28,9 +30,9 @@ export const InferencePanel: React.FC = () => {
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-      <h2 className="text-lg font-bold text-white">Inference</h2>
+      <h2 className="text-lg font-bold text-white">{t('cassandraGrpc.inference.title')}</h2>
       <p className="text-xs text-slate-400">
-        input → preprocessing → gRPC request → grpc-worker → model prediction → confidence → result
+        {t('cassandraGrpc.inference.pipelineDescription')}
       </p>
 
       <textarea
@@ -38,7 +40,7 @@ export const InferencePanel: React.FC = () => {
         onChange={(e) => setText(e.target.value)}
         rows={3}
         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono"
-        placeholder="Enter a Russian request to classify..."
+        placeholder={t('cassandraGrpc.inference.textareaPlaceholder')}
       />
       <button
         onClick={handlePredict}
@@ -46,7 +48,7 @@ export const InferencePanel: React.FC = () => {
         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-700 text-white text-sm font-medium disabled:opacity-50"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        <span>Predict</span>
+        <span>{t('cassandraGrpc.inference.predictButtonLabel')}</span>
       </button>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
@@ -54,14 +56,14 @@ export const InferencePanel: React.FC = () => {
       {result && (
         <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] text-slate-500 font-mono uppercase">Predicted topic</div>
+            <div className="text-[10px] text-slate-500 font-mono uppercase">{t('cassandraGrpc.inference.predictedTopicLabel')}</div>
             <div className="text-base font-bold text-cyan-300">{result.topicName}</div>
-            <div className="text-[10px] text-slate-500">topic_id {result.topicId}</div>
+            <div className="text-[10px] text-slate-500">{t('cassandraGrpc.inference.topicIdLabel', { id: result.topicId })}</div>
           </div>
           <div className="text-right">
             <div className="text-xl font-bold font-mono text-cyan-400">{(result.confidence * 100).toFixed(1)}%</div>
             <div className="text-[10px] text-slate-500">
-              preprocessing {result.preprocessingTimeMs.toFixed(2)}ms · gRPC {result.grpcRoundtripMs.toFixed(1)}ms
+              {t('cassandraGrpc.inference.timingLine', { preprocessing: result.preprocessingTimeMs.toFixed(2), grpc: result.grpcRoundtripMs.toFixed(1) })}
             </div>
           </div>
         </div>

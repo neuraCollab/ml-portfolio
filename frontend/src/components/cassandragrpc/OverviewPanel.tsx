@@ -3,19 +3,28 @@ import React, { useEffect, useState } from 'react';
 import { CassandraGrpcStatus } from '../../types';
 import { getCassandraGrpcStatus } from '../../api/client';
 import { ArrowDown, CheckCircle2, XCircle, Server } from 'lucide-react';
-
-const STAGES = ['Client (browser)', 'FastAPI backend (coordinator)', 'gRPC call', 'grpc-worker container', 'Cassandra / scikit-learn model', 'Prediction'];
+import { useTranslation } from '../../i18n/I18nContext';
 
 export const OverviewPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<CassandraGrpcStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+
+  const STAGES = [
+    t('cassandraGrpc.overview.stages.client'),
+    t('cassandraGrpc.overview.stages.backend'),
+    t('cassandraGrpc.overview.stages.grpcCall'),
+    t('cassandraGrpc.overview.stages.worker'),
+    t('cassandraGrpc.overview.stages.model'),
+    t('cassandraGrpc.overview.stages.prediction'),
+  ];
 
   const refresh = async () => {
     try {
       setStatus(await getCassandraGrpcStatus());
-      setError(null);
+      setHasError(false);
     } catch (err) {
-      setError('Could not reach the backend status endpoint.');
+      setHasError(true);
     }
   };
 
@@ -23,11 +32,16 @@ export const OverviewPanel: React.FC = () => {
     refresh();
     const interval = setInterval(refresh, 8000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const modelStatus = status?.modelLoaded
+    ? t('cassandraGrpc.overview.modelClasses', { count: status.numClasses })
+    : t('cassandraGrpc.overview.modelNotTrained');
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-      <h2 className="text-lg font-bold text-white">Architecture</h2>
+      <h2 className="text-lg font-bold text-white">{t('cassandraGrpc.overview.title')}</h2>
 
       <div className="flex flex-col items-center gap-1.5 py-2">
         {STAGES.map((stage, i) => (
@@ -41,21 +55,21 @@ export const OverviewPanel: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
-        <StatusBadge label="Cassandra" ok={status?.cassandra === 'connected'} />
-        <StatusBadge label="gRPC worker" ok={status?.worker === 'connected'} />
+        <StatusBadge label={t('cassandraGrpc.overview.cassandraLabel')} ok={status?.cassandra === 'connected'} />
+        <StatusBadge label={t('cassandraGrpc.overview.workerLabel')} ok={status?.worker === 'connected'} />
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800">
           <Server className="w-4 h-4 text-cyan-400" />
           <span className="text-xs text-slate-300">
-            Model: {status?.modelLoaded ? `${status.numClasses} classes` : 'not trained yet'}
+            {t('cassandraGrpc.overview.modelLabel', { status: modelStatus })}
           </span>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800">
           <span className="text-xs text-slate-400 font-mono truncate">
-            {status?.trainedAt ? new Date(status.trainedAt).toLocaleString() : 'Never trained'}
+            {status?.trainedAt ? new Date(status.trainedAt).toLocaleString() : t('cassandraGrpc.overview.neverTrained')}
           </span>
         </div>
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {hasError && <p className="text-xs text-red-400">{t('cassandraGrpc.overview.statusFetchError')}</p>}
     </div>
   );
 };

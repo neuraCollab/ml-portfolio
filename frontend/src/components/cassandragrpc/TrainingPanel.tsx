@@ -5,11 +5,13 @@ import { startCassandraGrpcTraining, getCassandraGrpcTrainStatus } from '../../a
 import { MetricCard } from '../shared/MetricCard';
 import { ConfusionMatrixTable } from './ConfusionMatrixTable';
 import { Target, Play, Loader2 } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ onTrainingComplete }) => {
+  const { t } = useTranslation();
   const [sampleSize, setSampleSize] = useState(40000);
   const [job, setJob] = useState<CassandraGrpcTrainJobStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [hasStartError, setHasStartError] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -41,25 +43,26 @@ export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ o
   };
 
   const handleTrain = async () => {
-    setError(null);
+    setHasStartError(false);
     try {
       const status = await startCassandraGrpcTraining(sampleSize);
       setJob(status);
       startPolling();
     } catch (err) {
-      setError('Could not start training -- see the Overview panel for backend/worker status.');
+      setHasStartError(true);
     }
   };
 
   const running = job?.status === 'running';
+  const statusText = job ? t(`cassandraGrpc.training.statusValues.${job.status}`) : null;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-      <h2 className="text-lg font-bold text-white">Training</h2>
+      <h2 className="text-lg font-bold text-white">{t('cassandraGrpc.training.title')}</h2>
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-xs text-slate-400 font-mono">
-          Sample size
+          {t('cassandraGrpc.training.sampleSizeLabel')}
           <input
             type="number"
             min={100}
@@ -76,25 +79,25 @@ export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ o
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-700 text-white text-sm font-medium disabled:opacity-50"
         >
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          <span>{running ? 'Training...' : 'Train Model'}</span>
+          <span>{running ? t('cassandraGrpc.training.trainButtonRunning') : t('cassandraGrpc.training.trainButtonIdle')}</span>
         </button>
-        {job && <span className="text-xs text-slate-500 font-mono">status: {job.status}</span>}
+        {job && <span className="text-xs text-slate-500 font-mono">{t('cassandraGrpc.training.statusLine', { status: statusText! })}</span>}
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {hasStartError && <p className="text-xs text-red-400">{t('cassandraGrpc.training.startErrorFallback')}</p>}
       {job?.status === 'failed' && <p className="text-xs text-red-400">{job.error}</p>}
 
       {job?.result && (
         <div className="space-y-4 pt-2 border-t border-slate-800">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MetricCard label="Accuracy" value={`${(job.result.accuracy * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
-            <MetricCard label="Macro F1" value={job.result.macroF1.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label="Micro F1" value={job.result.microF1.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label="Training Time" value={`${job.result.trainingTimeSeconds.toFixed(1)}s`} icon={Target} color="text-cyan-300" />
+            <MetricCard label={t('cassandraGrpc.training.accuracyLabel')} value={`${(job.result.accuracy * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
+            <MetricCard label={t('cassandraGrpc.training.macroF1Label')} value={job.result.macroF1.toFixed(3)} icon={Target} color="text-cyan-300" />
+            <MetricCard label={t('cassandraGrpc.training.microF1Label')} value={job.result.microF1.toFixed(3)} icon={Target} color="text-cyan-300" />
+            <MetricCard label={t('cassandraGrpc.training.trainingTimeLabel')} value={`${job.result.trainingTimeSeconds.toFixed(1)}s`} icon={Target} color="text-cyan-300" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-200 mb-2">
-              Confusion matrix (top {job.result.topClasses.length} classes by test support, of {job.result.numClasses} total)
+              {t('cassandraGrpc.training.confusionMatrixHeading', { shown: job.result.topClasses.length, total: job.result.numClasses })}
             </h3>
             <ConfusionMatrixTable topClasses={job.result.topClasses} confusionMatrix={job.result.confusionMatrix} />
           </div>

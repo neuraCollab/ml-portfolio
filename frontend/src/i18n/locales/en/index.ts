@@ -3,6 +3,7 @@ import { overview } from './overview';
 import { autotopic } from './autotopic';
 import { autopilot } from './autopilot';
 import { ecg } from './ecg';
+import { cassandraGrpc } from './cassandraGrpc';
 
 export const en = {
   common,
@@ -10,4 +11,5 @@ export const en = {
   autotopic,
   autopilot,
   ecg,
+  cassandraGrpc,
 };
