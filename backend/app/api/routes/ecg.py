@@ -3,7 +3,14 @@ import logging
 from fastapi import APIRouter, File, HTTPException, UploadFile, WebSocket
 
 from app.core.config import ECG_MAX_EVAL_UPLOAD_BYTES, ECG_MAX_UPLOAD_BYTES
-from app.schemas.ecg import DemoRequest, EcgAnalysisResponse, EcgEvaluationResponse, HealthResponse
+from app.schemas.ecg import (
+    BenchmarkResponse,
+    DemoRequest,
+    EcgAnalysisResponse,
+    EcgEvaluationResponse,
+    HealthResponse,
+    RuntimeInfo,
+)
 from app.services import ecg_service
 from app.services.ecg_service import EcgError
 
@@ -77,6 +84,22 @@ def evaluate_bundled():
     except Exception:
         logger.exception("Bundled ECG dataset evaluation failed")
         raise HTTPException(status_code=500, detail="Bundled ECG dataset evaluation failed unexpectedly. See server logs.")
+
+
+@router.get("/runtime", response_model=RuntimeInfo)
+def runtime():
+    return ecg_service.get_runtime_info()
+
+
+@router.post("/benchmark", response_model=BenchmarkResponse)
+def benchmark():
+    try:
+        return ecg_service.run_latency_benchmark()
+    except EcgError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception:
+        logger.exception("ECG latency benchmark failed")
+        raise HTTPException(status_code=500, detail="ECG latency benchmark failed unexpectedly. See server logs.")
 
 
 @router.websocket("/live")

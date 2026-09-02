@@ -9,11 +9,18 @@ functions instead of rp/main.py's.
 import logging
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 
 from app.core.config import ECG_DIR, ECG_MAX_EVAL_SAMPLES, ECG_MODEL_PATH, ECG_SAMPLE_PATH
-from app.schemas.ecg import EcgAnalysisResponse, EcgEvaluationResponse
+from app.schemas.ecg import (
+    BenchmarkResponse,
+    EcgAnalysisResponse,
+    EcgEvaluationResponse,
+    LatencyPercentiles,
+    RuntimeInfo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +48,12 @@ def model_load_error() -> str | None:
 
 _R_PEAK_LEAD_INDEX = 1  # Lead II -- the conventional lead for QRS/R-peak detection
 
+# Real last-request timings, for get_runtime_info() -- process-local state,
+# not a monitoring system. None until at least one real /demo, /analyze, or
+# /evaluate* call has completed in this process.
+_last_preprocessing_ms: float | None = None
+_last_inference_ms: float | None = None
+
 
 def _run(
     raw_signal_1000x6: np.ndarray,
@@ -58,11 +71,16 @@ def _run(
     processed = ecg_pipeline.zscore_normalize(filtered)
     metrics = ecg_pipeline.signal_metrics(six_leads)
     r_peaks = ecg_pipeline.detect_r_peaks(filtered[:, _R_PEAK_LEAD_INDEX])
+    signal_quality = ecg_pipeline.assess_signal_quality(six_leads, filtered, r_peaks)
     preprocessing_ms = (time.perf_counter() - start) * 1000
 
     start = time.perf_counter()
     result = ecg_pipeline.run_inference(model, processed)
     inference_ms = (time.perf_counter() - start) * 1000
+
+    global _last_preprocessing_ms, _last_inference_ms
+    _last_preprocessing_ms = round(preprocessing_ms, 3)
+    _last_inference_ms = round(inference_ms, 3)
 
     def _to_leads(arr: np.ndarray) -> dict[str, list[float]]:
         return {name: arr[:, i].round(4).tolist() for i, name in enumerate(ecg_pipeline.LEAD_NAMES)}
@@ -102,6 +120,7 @@ def _run(
                 "not a clinically validated QRS detector."
             ),
         },
+        signalQuality=signal_quality,
         predictions=result["predictions"],
         topClass=result["topClass"],
         topLabel=result["topLabel"],
@@ -244,6 +263,17 @@ def run_upload(raw_bytes: bytes) -> EcgAnalysisResponse:
     return _run(data.astype(np.float32), "upload")
 
 
+_THRESHOLD_CALIBRATION_NOTE = (
+    "Thresholds are calibrated separately per class (not one shared cutoff): each is the "
+    "value that maximizes that class's own F1 score, selected on a 48-record PTB-XL "
+    "calibration set. That calibration set is disjoint from both the training data and from "
+    "the evaluation set these metrics are computed on -- see raspberry-pi-ecg/data/README.md "
+    "for exactly how each set was built. This is ordinary threshold tuning on held-out data; "
+    "it never touches the model's weights or its raw probabilities, only the cutoff applied "
+    "to decide predicted=true/false."
+)
+
+
 def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
     """Shared metric computation for evaluate_dataset() and
     evaluate_bundled_dataset(): runs the actual model on every sample and
@@ -254,8 +284,17 @@ def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
     per-class thresholds as live inference (see ecg_pipeline.PREDICTION_THRESHOLDS
     and raspberry-pi-ecg/data/README.md) rather than the model's un-calibrated
     flat 0.5, so these numbers match what /api/ecg/demo and /analyze report.
+
+    Classes with zero positive support in this evaluation set report
+    precision/recall/F1/PR-AUC as None ("N/A") rather than sklearn's
+    zero_division=0 default of 0.0 -- a 0.0 looks like a measured failure,
+    but a class that was never evaluated wasn't measured at all. Macro
+    metrics are averaged only over classes that DO have real support, for
+    the same reason: including 12 unevaluated all-zero classes in a raw
+    19-class macro average would understate the model's real (if weak)
+    performance on the 7 classes this set can actually measure.
     """
-    from sklearn.metrics import accuracy_score, hamming_loss, precision_recall_fscore_support
+    from sklearn.metrics import accuracy_score, average_precision_score, hamming_loss, precision_recall_fscore_support
 
     n_classes = len(ecg_pipeline.CLASS_NAMES)
 
@@ -280,12 +319,39 @@ def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
         y_true, preds, average=None, zero_division=0, labels=list(range(n_classes))
     )
 
+    evaluated_mask = support > 0
+    num_evaluated = int(evaluated_mask.sum())
+
+    if num_evaluated > 0:
+        macro_p = float(per_class_p[evaluated_mask].mean())
+        macro_r = float(per_class_r[evaluated_mask].mean())
+        macro_f1 = float(per_class_f1[evaluated_mask].mean())
+    else:
+        macro_p = macro_r = macro_f1 = 0.0
+
+    # PR-AUC: undefined for a class with zero positive examples (there is
+    # nothing to rank against), so those columns are excluded rather than
+    # passed to average_precision_score, which would otherwise raise or
+    # return a misleading value for an all-negative column.
+    per_class_pr_auc: list[float | None] = [None] * n_classes
+    for i in range(n_classes):
+        if support[i] > 0:
+            per_class_pr_auc[i] = float(average_precision_score(y_true[:, i], probs[:, i]))
+    evaluated_pr_aucs = [v for v in per_class_pr_auc if v is not None]
+    pr_auc_macro = float(np.mean(evaluated_pr_aucs)) if evaluated_pr_aucs else None
+    pr_auc_micro = (
+        float(average_precision_score(y_true[:, evaluated_mask], probs[:, evaluated_mask], average="micro"))
+        if num_evaluated > 0
+        else None
+    )
+
     per_class = []
     for i, name in enumerate(ecg_pipeline.CLASS_NAMES):
         tp = int(((preds[:, i] == 1) & (y_true[:, i] == 1)).sum())
         fp = int(((preds[:, i] == 1) & (y_true[:, i] == 0)).sum())
         fn = int(((preds[:, i] == 0) & (y_true[:, i] == 1)).sum())
         tn = int(((preds[:, i] == 0) & (y_true[:, i] == 0)).sum())
+        has_support = support[i] > 0
         per_class.append({
             "className": name,
             "label": ecg_pipeline.CLASS_LABELS[name],
@@ -294,20 +360,30 @@ def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
             "falsePositives": fp,
             "falseNegatives": fn,
             "trueNegatives": tn,
-            "precision": round(float(per_class_p[i]), 4),
-            "recall": round(float(per_class_r[i]), 4),
-            "f1": round(float(per_class_f1[i]), 4),
+            "precision": round(float(per_class_p[i]), 4) if has_support else None,
+            "recall": round(float(per_class_r[i]), 4) if has_support else None,
+            "f1": round(float(per_class_f1[i]), 4) if has_support else None,
+            "prAuc": round(per_class_pr_auc[i], 4) if per_class_pr_auc[i] is not None else None,
+            "threshold": round(float(thresholds[i]), 6),
         })
 
     return EcgEvaluationResponse(
         numSamples=int(X.shape[0]),
         numClasses=n_classes,
+        numEvaluatedClasses=num_evaluated,
         subsetAccuracy=round(float(subset_acc), 4),
         hammingAccuracy=round(float(hamming_acc), 4),
         microPrecision=round(float(micro_p), 4),
         microRecall=round(float(micro_r), 4),
         microF1=round(float(micro_f1), 4),
+        macroPrecision=round(macro_p, 4),
+        macroRecall=round(macro_r, 4),
+        macroF1=round(macro_f1, 4),
+        prAucMicro=round(pr_auc_micro, 4) if pr_auc_micro is not None else None,
+        prAucMacro=round(pr_auc_macro, 4) if pr_auc_macro is not None else None,
         perClass=per_class,
+        thresholds=ecg_pipeline.get_threshold_info(),
+        thresholdCalibrationNote=_THRESHOLD_CALIBRATION_NOTE,
         note=note,
     )
 
@@ -351,10 +427,15 @@ def evaluate_dataset(npz_bytes: bytes) -> EcgEvaluationResponse:
         y,
         note=(
             "Computed from real model predictions vs. your uploaded ground-truth labels "
-            "(scikit-learn precision_recall_fscore_support / accuracy_score / hamming_loss), "
-            "using the same calibrated per-class thresholds as live inference. "
-            "Subset accuracy = exact match across all 19 labels per sample (strict). "
-            "Hamming accuracy = fraction of individual label predictions correct (lenient)."
+            "(scikit-learn precision_recall_fscore_support / average_precision_score / "
+            "accuracy_score / hamming_loss), using the same calibrated per-class thresholds "
+            "as live inference. Subset accuracy = exact match across all 19 labels per sample "
+            "(strict). Hamming accuracy = fraction of individual label predictions correct "
+            "(lenient) -- with 19 mostly-easy-to-get-right-by-predicting-nothing classes, this "
+            "is easy to inflate and should not be read as the primary quality indicator; macro "
+            "F1 and micro F1 are more informative for this multi-label, imbalanced problem. "
+            "Classes with zero positive examples in your uploaded labels report precision/"
+            "recall/F1/PR-AUC as null (not evaluated), and are excluded from the macro averages."
         ),
     )
 
@@ -374,11 +455,127 @@ def evaluate_bundled_dataset() -> EcgEvaluationResponse:
             "Computed from real model predictions vs. real PTB-XL ground-truth labels "
             "on the bundled 61-record evaluation set (raspberry-pi-ecg/data/README.md), "
             "using per-class thresholds calibrated on a disjoint 48-record calibration "
-            "set (scikit-learn precision_recall_fscore_support / accuracy_score / "
-            "hamming_loss). Subset accuracy = exact match across all 19 labels per "
-            "sample (strict). Hamming accuracy = fraction of individual label "
-            "predictions correct (lenient). Support is real and uneven across classes "
-            "(7 of 19 classes have any positive examples in this set) -- see the README "
-            "for why some classes score far better than others."
+            "set (scikit-learn precision_recall_fscore_support / average_precision_score / "
+            "accuracy_score / hamming_loss). Subset accuracy = exact match across all 19 "
+            "labels per sample (strict). Hamming accuracy = fraction of individual label "
+            "predictions correct (lenient) -- with 19 mostly-easy-to-get-right-by-predicting-"
+            "nothing classes, this is easy to inflate and should not be read as the primary "
+            "quality indicator; macro F1 and micro F1 are more informative for this "
+            "multi-label, imbalanced problem. Only 7 of 19 classes have any positive "
+            "examples in this 61-record set -- the other 12 report precision/recall/F1/"
+            "PR-AUC as null (not evaluated, not a measured 0) and are excluded from the "
+            "macro averages. See the README for why some of the 7 evaluated classes score "
+            "far better than others."
+        ),
+    )
+
+
+def get_runtime_info() -> RuntimeInfo:
+    """Real, self-reported runtime characteristics of the process running this
+    pipeline right now -- same pattern as this portfolio's other real
+    self-reported System Status panels (psutil CPU%/RAM), plus a Linux-only
+    CPU temperature read that only returns a real value on hardware that
+    actually exposes one (a real Raspberry Pi; most containers do not).
+    Lightweight and local: no monitoring infrastructure, no Prometheus/
+    Grafana, no external telemetry -- just reading this process's own state.
+    """
+    import platform as platform_module
+
+    import psutil
+
+    process = psutil.Process()
+    cpu_percent = process.cpu_percent(interval=0.1)
+    mem = psutil.virtual_memory()
+
+    cpu_temp_c: float | None = None
+    try:
+        temp_path = Path("/sys/class/thermal/thermal_zone0/temp")
+        if temp_path.exists():
+            cpu_temp_c = round(int(temp_path.read_text().strip()) / 1000.0, 1)
+    except Exception:
+        cpu_temp_c = None
+
+    return RuntimeInfo(
+        cpuPercent=round(cpu_percent, 1),
+        memoryUsedMb=round(process.memory_info().rss / (1024 * 1024), 1),
+        memoryTotalMb=round(mem.total / (1024 * 1024), 1),
+        cpuTemperatureCelsius=cpu_temp_c,
+        samplingRateHz=ecg_pipeline.SAMPLING_RATE_HZ,
+        lastInferenceTimeMs=_last_inference_ms,
+        lastPreprocessingTimeMs=_last_preprocessing_ms,
+        platform=platform_module.platform(),
+        note=(
+            "Real, self-reported process/host readings (psutil CPU%/RSS memory). CPU "
+            "temperature is only available on Linux hosts exposing "
+            "/sys/class/thermal/thermal_zone0/temp -- true on a real Raspberry Pi, null "
+            "in most container deployments (including this portfolio's) rather than a "
+            "fabricated value. lastInferenceTimeMs/lastPreprocessingTimeMs are from the "
+            "most recent real /demo, /analyze, or /evaluate* call in this process, null "
+            "until one has run. No monitoring infrastructure, no external telemetry."
+        ),
+    )
+
+
+_BENCHMARK_ITERATIONS = 50
+
+
+def run_latency_benchmark() -> BenchmarkResponse:
+    """Runs real, repeated end-to-end passes (bundled real sample ->
+    preprocess -> real model forward pass) and reports real P50/P95/P99
+    latency percentiles for preprocessing, inference, and the combined
+    total, computed separately -- expanding the single-shot
+    preprocessingTimeMs/inferenceTimeMs every /demo,/analyze call already
+    reports into a real percentile distribution instead of one sample.
+
+    Runs on whatever CPU this backend process is actually executing on --
+    a real Raspberry Pi 5 in the source hardware deployment, this
+    portfolio's container elsewhere (see `platform` in the response, so the
+    numbers are read in the right context). No distributed benchmarking
+    infrastructure: just N sequential real local timings, in-process.
+    """
+    import platform as platform_module
+
+    model = ecg_pipeline.load_model(ECG_MODEL_PATH)
+    if model is None:
+        raise EcgError(f"ECG model could not be loaded: {ecg_pipeline.get_model_load_error()}")
+
+    raw = ecg_pipeline.load_bundled_sample(ECG_SAMPLE_PATH)
+
+    preprocessing_times, inference_times, total_times = [], [], []
+    for _ in range(_BENCHMARK_ITERATIONS):
+        t0 = time.perf_counter()
+        filtered = ecg_pipeline.bandpass_filter(raw)
+        processed = ecg_pipeline.zscore_normalize(filtered)
+        t1 = time.perf_counter()
+        ecg_pipeline.run_inference(model, processed)
+        t2 = time.perf_counter()
+        preprocessing_times.append((t1 - t0) * 1000)
+        inference_times.append((t2 - t1) * 1000)
+        total_times.append((t2 - t0) * 1000)
+
+    def _percentiles(values: list[float]) -> LatencyPercentiles:
+        arr = np.array(values)
+        return LatencyPercentiles(
+            p50=round(float(np.percentile(arr, 50)), 3),
+            p95=round(float(np.percentile(arr, 95)), 3),
+            p99=round(float(np.percentile(arr, 99)), 3),
+            mean=round(float(arr.mean()), 3),
+        )
+
+    return BenchmarkResponse(
+        iterations=_BENCHMARK_ITERATIONS,
+        preprocessing=_percentiles(preprocessing_times),
+        inference=_percentiles(inference_times),
+        total=_percentiles(total_times),
+        platform=platform_module.platform(),
+        note=(
+            f"Real, repeated ({_BENCHMARK_ITERATIONS}x) end-to-end timings of the actual "
+            "preprocessing and model forward pass on the bundled sample, run sequentially "
+            "in-process on whatever CPU this backend is executing on right now (see "
+            "`platform`) -- a real Raspberry Pi 5 in the source hardware deployment; this "
+            "portfolio's container CPU in this deployment. No distributed benchmarking "
+            "infrastructure, no synthetic timing estimates -- N sequential real local "
+            "measurements, same technique this project already uses for its real "
+            "self-reported latency figures."
         ),
     )

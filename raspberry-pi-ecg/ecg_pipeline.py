@@ -60,28 +60,61 @@ CLASS_LABELS = {
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
-# ai/nn_main.py binarizes at a flat 0.5 (`y_pred_binary = (y_pred_proba >
-# 0.5)`), which is the standard convention *if* the model is well-calibrated.
-# It isn't: validated against real PTB-XL data (see data/README.md), this
-# checkpoint's raw sigmoid outputs top out around 1e-4 -- nowhere near 0.5 --
-# almost certainly because ai/nn_main.py only trains for 10 epochs with no
-# early stopping/calibration step. A flat 0.5 threshold means "predicted"
-# is False for every class on every real input, which is honest about the
-# probabilities but useless as a classifier.
+# ai/nn_main.py trains ECGNet for exactly 10 epochs (`for _e in range(10):`),
+# a deliberate scope choice for this project, not an oversight: the point of
+# raspberry-pi-ecg is demonstrating the complete hardware -> acquisition ->
+# signal processing -> lead reconstruction -> ML inference -> edge deployment
+# -> API -> UI pipeline end to end, not achieving state-of-the-art or
+# clinical-level ECG classification. Ten epochs is enough to produce a real,
+# working classifier for that purpose, at the cost of underfitting: this
+# checkpoint's raw sigmoid outputs top out around 1e-4, nowhere near the flat
+# 0.5 threshold ai/nn_main.py binarizes at (`y_pred_binary = (y_pred_proba >
+# 0.5)`), which is only correct if the model is well-calibrated. At a flat
+# 0.5, `predicted` is False for every class on every real input -- honest
+# about the underfit probabilities, but useless as a classifier. See
+# data/README.md and the project README for the full evaluation-limitations
+# writeup (including the 7-of-19-classes evaluation-coverage gap).
 #
-# data/per_class_thresholds.npy holds one threshold per class in CLASS_NAMES
-# order, chosen to maximize each class's own F1 on a 48-record PTB-XL
-# calibration set disjoint from data/ptbxl_labeled_eval.npz (see
-# data/README.md for exactly how it was built and how to regenerate it).
+# data/per_class_thresholds.npy fixes this the standard way: one threshold
+# per class in CLASS_NAMES order, each chosen to maximize that class's own F1
+# on a 48-record PTB-XL calibration set disjoint from both training and from
+# data/ptbxl_labeled_eval.npz, the 61-record evaluation set (see
+# data/README.md for exactly how each was built and how to regenerate them).
 # This is ordinary threshold tuning on held-out data, not a change to the
 # model or its outputs -- every probability returned by run_inference() is
-# still the model's raw, unmodified sigmoid output.
+# still the model's raw, unmodified sigmoid output. Do not extend this into
+# further threshold optimization or retraining; the point of this project is
+# the pipeline, not squeezing out a better classifier.
 try:
     PREDICTION_THRESHOLDS = np.load(DATA_DIR / "per_class_thresholds.npy")
 except FileNotFoundError:
     PREDICTION_THRESHOLDS = None  # falls back to a flat 0.5 below
 
 PREDICTION_THRESHOLD = 0.5  # kept for reference/back-compat; see above
+
+TRAINING_EPOCHS = 10  # matches ai/nn_main.py's `for _e in range(10):` -- see the module docstring above
+CALIBRATION_SET_SIZE = 48
+EVALUATION_SET_SIZE = 61
+THRESHOLD_SELECTION_CRITERION = "max per-class F1 on the calibration set"
+
+
+def get_threshold_info() -> list[dict]:
+    """One row per class: its real calibrated threshold (or the flat 0.5
+    fallback if per_class_thresholds.npy is missing) plus the calibration
+    metadata that applies uniformly to all of them -- for API responses and
+    UI tables that need to show *how* each threshold was chosen, not just
+    its value."""
+    thresholds = _thresholds_for(len(CLASS_NAMES))
+    is_calibrated = PREDICTION_THRESHOLDS is not None
+    return [
+        {
+            "className": name,
+            "label": CLASS_LABELS[name],
+            "threshold": round(float(thresholds[i]), 6),
+            "isCalibrated": is_calibrated,
+        }
+        for i, name in enumerate(CLASS_NAMES)
+    ]
 
 
 def compute_all_leads(lead_I: np.ndarray, lead_II: np.ndarray) -> np.ndarray:
@@ -155,6 +188,136 @@ def detect_r_peaks(lead_signal: np.ndarray, fs: int = SAMPLING_RATE_HZ) -> dict:
         "peakIndices": [int(p) for p in peaks],
         "peakCount": int(len(peaks)),
         "heartRateBpm": heart_rate_bpm,
+    }
+
+
+SIGNAL_QUALITY_GOOD = "GOOD"
+SIGNAL_QUALITY_WARNING = "WARNING"
+SIGNAL_QUALITY_POOR = "POOR"
+
+# Every threshold below is a plain heuristic on the signal's own statistics --
+# no model, no learned parameters, nothing that needs training or calibration
+# data. They're deliberately conservative (favoring GOOD/WARNING over POOR)
+# since this is a signal-quality sanity check, not a diagnostic tool: a false
+# POOR just makes the UI show an extra warning banner, but a false GOOD would
+# let a genuinely bad signal's predictions look like anything else.
+# A fixed absolute std threshold can't tell "flatline" apart from "genuinely
+# small-amplitude signal" across the two real scales this pipeline sees: raw
+# ADC codes (~0-1023, live hardware/synthetic) and physical millivolts
+# (~-2 to 2, PTB-XL) -- a real PTB-XL record's std of ~0.14 mV is a perfectly
+# healthy signal, not a dead one. Fraction-of-unique-values is scale-invariant
+# instead: a genuinely flat/disconnected ADC repeats the same one or two
+# codes for the whole window, while any real continuous signal (ADC or
+# floating-point mV) has many distinct values regardless of its amplitude.
+_FLATLINE_UNIQUE_FRACTION_THRESHOLD = 0.05
+_ADC_SCALE_MIN_MAX = 50.0  # PTB-XL's mV data never gets this large; only real/synthetic ADC-code data does
+_DISCONNECTED_MIDPOINT = 512.0  # the AD8232/10-bit-ADC lead-off rail value this hardware reads when no electrode is attached
+_DISCONNECTED_TOLERANCE = 5.0
+_CLIPPING_FRACTION_THRESHOLD = 0.02
+_NOISE_RATIO_THRESHOLD = 3.0
+_BASELINE_INSTABILITY_RATIO_THRESHOLD = 0.6
+_MIN_PLAUSIBLE_HEART_RATE_BPM = 40.0
+
+
+def assess_signal_quality(
+    raw_signal: np.ndarray,
+    filtered_signal: np.ndarray,
+    r_peaks: dict,
+    fs: int = SAMPLING_RATE_HZ,
+    lead_index: int = 1,
+) -> dict:
+    """Deterministic, rule-based signal-quality checks on the raw+filtered
+    (N, 6) signal and the already-computed R-peak result -- NOT a medical
+    diagnosis, and NOT a second ML model. Every check below is a plain
+    statistic (variance, a clipping-fraction count, a residual-energy ratio,
+    a moving-average drift ratio, a peak count against a physiologically
+    plausible minimum) computed directly from this one signal, with no
+    learned parameters and nothing that needs calibration data. Runs on
+    Lead II by default (the same lead `run_inference`'s caller uses for
+    R-peak detection) plus one global, lead-agnostic flatline check.
+
+    Returns a `GOOD` / `WARNING` / `POOR` status plus the specific issues
+    found and the real numbers behind each check, so a caller (or a human
+    reading the API response) can see exactly why a given status was
+    assigned rather than trusting an opaque label.
+    """
+    lead_raw = raw_signal[:, lead_index]
+    lead_filtered = filtered_signal[:, lead_index]
+    duration_seconds = raw_signal.shape[0] / fs
+
+    global_std = float(raw_signal.std())
+    unique_fraction = float(np.unique(raw_signal).size) / raw_signal.size
+    is_flatline = unique_fraction < _FLATLINE_UNIQUE_FRACTION_THRESHOLD
+
+    mean_val = float(raw_signal.mean())
+    looks_like_adc_scale = float(np.abs(raw_signal).max()) > _ADC_SCALE_MIN_MAX
+    is_disconnected = is_flatline and looks_like_adc_scale and abs(mean_val - _DISCONNECTED_MIDPOINT) < _DISCONNECTED_TOLERANCE
+
+    raw_max, raw_min = float(raw_signal.max()), float(raw_signal.min())
+    clip_tolerance = max(raw_max - raw_min, 1e-6) * 0.001
+    at_extreme = (np.abs(raw_signal - raw_max) <= clip_tolerance) | (np.abs(raw_signal - raw_min) <= clip_tolerance)
+    clipped_fraction = float(at_extreme.sum()) / raw_signal.size
+    is_clipping = (not is_flatline) and clipped_fraction > _CLIPPING_FRACTION_THRESHOLD
+
+    residual = lead_raw - lead_filtered  # bandpass_filter doesn't rescale, so raw and filtered share a scale
+    residual_rms = float(np.sqrt(np.mean(residual**2)))
+    filtered_rms = float(np.sqrt(np.mean(lead_filtered**2))) + 1e-9
+    noise_ratio = residual_rms / filtered_rms
+    is_noisy = (not is_flatline) and noise_ratio > _NOISE_RATIO_THRESHOLD
+
+    window = max(1, int(fs * 1.0))  # 1-second moving average isolates slow baseline drift
+    if len(lead_raw) >= window:
+        smoothed = np.convolve(lead_raw, np.ones(window) / window, mode="valid")
+        drift_range = float(smoothed.max() - smoothed.min())
+    else:
+        drift_range = 0.0
+    raw_range = raw_max - raw_min + 1e-9
+    baseline_instability_ratio = drift_range / raw_range
+    is_baseline_unstable = (not is_flatline) and baseline_instability_ratio > _BASELINE_INSTABILITY_RATIO_THRESHOLD
+
+    expected_min_peaks = max(2, int(duration_seconds / 60 * _MIN_PLAUSIBLE_HEART_RATE_BPM))
+    has_insufficient_r_peaks = (not is_flatline) and r_peaks["peakCount"] < expected_min_peaks
+
+    issues = []
+    if is_disconnected:
+        issues.append("disconnected")
+    elif is_flatline:
+        issues.append("flatline")
+    if is_clipping:
+        issues.append("clipping")
+    if is_noisy:
+        issues.append("noise")
+    if is_baseline_unstable:
+        issues.append("baselineInstability")
+    if has_insufficient_r_peaks:
+        issues.append("insufficientRPeaks")
+
+    if is_flatline or is_disconnected:
+        status = SIGNAL_QUALITY_POOR
+    elif len(issues) >= 2:
+        status = SIGNAL_QUALITY_POOR
+    elif len(issues) == 1:
+        status = SIGNAL_QUALITY_WARNING
+    else:
+        status = SIGNAL_QUALITY_GOOD
+
+    return {
+        "status": status,
+        "issues": issues,
+        "metrics": {
+            "globalStd": round(global_std, 4),
+            "uniqueValueFraction": round(unique_fraction, 4),
+            "clippedFraction": round(clipped_fraction, 4),
+            "noiseRatio": round(noise_ratio, 4),
+            "baselineInstabilityRatio": round(baseline_instability_ratio, 4),
+            "peakCount": r_peaks["peakCount"],
+            "expectedMinPeaks": expected_min_peaks,
+        },
+        "note": (
+            "Deterministic, rule-based heuristics (variance/clipping-fraction/"
+            "noise-ratio/drift-ratio/peak-count) computed directly from this "
+            "signal -- not a medical diagnosis, and not a second ML model."
+        ),
     }
 
 
