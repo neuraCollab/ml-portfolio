@@ -56,7 +56,7 @@ export const overview = {
     cassandraGrpc: {
       title: 'Проект 4: Cassandra + gRPC ML',
       description:
-        'Дистиллирует медленную неконтролируемую кластеризацию BERTopic из AutoTopic в быстрый контролируемый классификатор: размеченная выборка хранится в Apache Cassandra, а предсказания обслуживаются за миллисекунды через реальный gRPC-вызов к отдельному контейнеру-воркеру.',
+        'Дистиллирует медленную неконтролируемую кластеризацию BERTopic из AutoTopic в быстрый контролируемый классификатор: размеченная выборка хранится в Apache Cassandra, а предсказания обслуживаются за миллисекунды через реальный Coordinator-под, который распределяет gRPC-вызовы по реальным worker-подам в кластере Kubernetes.',
       stack: {
         item1: 'Apache Cassandra 5 (хранение: requests, predictions, training_runs)',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
@@ -110,7 +110,7 @@ export const overview = {
       },
       distributedServing: {
         component: 'Распределённое обслуживание модели',
-        inApp: 'Реально: gRPC-вызов к отдельному контейнеру grpc-worker для обучения и инференса',
+        inApp: 'Реально: HTTP-вызов к Coordinator-поду, который распределяет gRPC-запросы по реальным worker-подам в кластере Kubernetes',
       },
       frontendInterface: {
         component: 'Frontend-интерфейс',

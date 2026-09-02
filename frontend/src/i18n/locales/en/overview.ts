@@ -56,7 +56,7 @@ export const overview = {
     cassandraGrpc: {
       title: 'Project 4: Cassandra + gRPC ML',
       description:
-        'Distills AutoTopic\'s slow unsupervised BERTopic clustering into a fast supervised classifier: a labeled sample is stored in Apache Cassandra, and predictions are served in milliseconds over a real gRPC call to a separate worker container.',
+        'Distills AutoTopic\'s slow unsupervised BERTopic clustering into a fast supervised classifier: a labeled sample is stored in Apache Cassandra, and predictions are served in milliseconds via a real Coordinator pod that round-robin dispatches gRPC calls to real worker pods on a Kubernetes cluster.',
       stack: {
         item1: 'Apache Cassandra 5 (storage: requests, predictions, training_runs)',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
@@ -110,7 +110,7 @@ export const overview = {
       },
       distributedServing: {
         component: 'Distributed Model Serving',
-        inApp: 'Real: gRPC call to a separate grpc-worker container for training and inference',
+        inApp: 'Real: HTTP call to a Coordinator pod, which round-robin dispatches gRPC to one of N real worker pods in a Kubernetes cluster',
       },
       frontendInterface: {
         component: 'Frontend Interface',
