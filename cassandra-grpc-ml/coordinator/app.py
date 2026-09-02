@@ -1,0 +1,151 @@
+# cassandra-grpc-ml/coordinator/app.py
+"""Real coordinator: discovers real Ready worker pods via the k8s API,
+dispatches real gRPC Predict/Train calls to them (round-robin), aggregates
+real per-pod GetStatus, and scales the real worker Deployment on request.
+Holds no ML logic and no Cassandra session of its own -- see
+cassandra-grpc-ml/README.md and docs/superpowers/specs/
+2026-09-02-cassandra-grpc-k8s-design.md."""
+import logging
+
+import grpc
+from fastapi import Depends, FastAPI, HTTPException
+from kubernetes import client as k8s_client_lib, config as k8s_config
+from pydantic import BaseModel
+
+import ml_worker_pb2
+import ml_worker_pb2_grpc
+from dispatch import RoundRobinDispatcher
+from k8s_client import list_worker_endpoints, scale_worker_deployment
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+MIN_REPLICAS = 1
+MAX_REPLICAS = 5
+
+app = FastAPI(title="cassandra-grpc-ml coordinator")
+_dispatcher = RoundRobinDispatcher()
+
+
+@app.on_event("startup")
+def _load_kube_config():
+    # In-cluster config when running as a real pod; falls back to the local
+    # kubeconfig for standalone dev/testing outside the cluster.
+    try:
+        k8s_config.load_incluster_config()
+    except k8s_config.ConfigException:
+        k8s_config.load_kube_config()
+
+
+def get_core_v1():
+    return k8s_client_lib.CoreV1Api()
+
+
+def get_apps_v1():
+    return k8s_client_lib.AppsV1Api()
+
+
+def get_worker_stub(address: str):
+    channel = grpc.insecure_channel(address)
+    return ml_worker_pb2_grpc.MLWorkerStub(channel)
+
+
+class PredictBody(BaseModel):
+    text: str
+
+
+class TrainBody(BaseModel):
+    sampleSize: int
+
+
+class ScaleBody(BaseModel):
+    replicas: int
+
+
+def _rpc_detail(exc: grpc.RpcError) -> str:
+    return str(exc.details()) if hasattr(exc, "details") else str(exc)
+
+
+@app.post("/predict")
+def predict(body: PredictBody, core_v1=Depends(get_core_v1)):
+    endpoints = list_worker_endpoints(core_v1)
+    if not endpoints:
+        raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
+    address = _dispatcher.pick(endpoints)
+    tried = {address}
+    while True:
+        try:
+            stub = get_worker_stub(address)
+            resp = stub.Predict(ml_worker_pb2.PredictRequest(text=body.text), timeout=10)
+            return {
+                "topicId": resp.topic_id, "topicName": resp.topic_name,
+                "confidence": resp.confidence, "latencyMs": resp.latency_ms,
+            }
+        except grpc.RpcError as exc:
+            remaining = [e for e in endpoints if e not in tried]
+            if not remaining:
+                raise HTTPException(status_code=502, detail=_rpc_detail(exc))
+            address = remaining[0]
+            tried.add(address)
+
+
+@app.post("/train")
+def train(body: TrainBody, core_v1=Depends(get_core_v1)):
+    endpoints = list_worker_endpoints(core_v1)
+    if not endpoints:
+        raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
+    address = _dispatcher.pick(endpoints)
+    try:
+        stub = get_worker_stub(address)
+        resp = stub.Train(ml_worker_pb2.TrainRequest(sample_size=body.sampleSize), timeout=300)
+    except grpc.RpcError as exc:
+        raise HTTPException(status_code=502, detail=_rpc_detail(exc))
+    if not resp.success:
+        raise HTTPException(status_code=422, detail=resp.message)
+    return {
+        "success": resp.success, "message": resp.message, "numClasses": resp.num_classes,
+        "trainRows": resp.train_rows, "testRows": resp.test_rows, "accuracy": resp.accuracy,
+        "macroPrecision": resp.macro_precision, "macroRecall": resp.macro_recall, "macroF1": resp.macro_f1,
+        "microPrecision": resp.micro_precision, "microRecall": resp.micro_recall, "microF1": resp.micro_f1,
+        "trainingTimeSeconds": resp.training_time_seconds,
+        "topClasses": [
+            {"topicId": c.topic_id, "topicName": c.topic_name, "support": c.support}
+            for c in resp.top_classes
+        ],
+        "confusionMatrix": [
+            {"trueTopicId": e.true_topic_id, "predictedTopicId": e.predicted_topic_id, "count": e.count}
+            for e in resp.confusion_matrix
+        ],
+    }
+
+
+@app.get("/pool")
+def pool_status(core_v1=Depends(get_core_v1)):
+    endpoints = list_worker_endpoints(core_v1)
+    pods = []
+    for address in endpoints:
+        try:
+            stub = get_worker_stub(address)
+            resp = stub.GetStatus(ml_worker_pb2.StatusRequest(), timeout=5)
+            pods.append({
+                "address": address, "modelLoaded": resp.model_loaded, "numClasses": resp.num_classes,
+                "trainedAt": resp.trained_at or None, "cpuPercent": resp.cpu_percent,
+                "memoryMb": resp.memory_mb, "uptimeSeconds": resp.uptime_seconds, "error": None,
+            })
+        except grpc.RpcError as exc:
+            pods.append({
+                "address": address, "modelLoaded": False, "numClasses": 0, "trainedAt": None,
+                "cpuPercent": 0.0, "memoryMb": 0.0, "uptimeSeconds": 0.0, "error": _rpc_detail(exc),
+            })
+    return {"pods": pods, "replicas": len(pods)}
+
+
+@app.post("/pool/scale")
+def scale_pool(body: ScaleBody, core_v1=Depends(get_core_v1), apps_v1=Depends(get_apps_v1)):
+    if not (MIN_REPLICAS <= body.replicas <= MAX_REPLICAS):
+        raise HTTPException(
+            status_code=422, detail=f"replicas must be between {MIN_REPLICAS} and {MAX_REPLICAS}"
+        )
+    scale_worker_deployment(apps_v1, body.replicas)
+    ready = list_worker_endpoints(core_v1)
+    return {"requestedReplicas": body.replicas, "readyReplicas": len(ready)}

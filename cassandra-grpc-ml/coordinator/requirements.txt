@@ -1,0 +1,7 @@
+# cassandra-grpc-ml/coordinator/requirements.txt
+fastapi>=0.110,<0.116
+uvicorn[standard]>=0.29,<0.35
+pydantic>=2.6,<3.0
+grpcio>=1.62,<1.68
+grpcio-tools>=1.62,<1.68
+kubernetes>=29.0,<32.0
