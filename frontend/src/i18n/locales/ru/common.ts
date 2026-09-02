@@ -47,6 +47,8 @@ export const common = {
     errorAnalysis: 'Анализ ошибок',
     regressionTests: 'Регрессионные тесты',
     results: 'Результаты',
+    technicalDetails: 'Технические детали',
+    interactiveDemo: 'Интерактивная демонстрация',
     notEvaluatedReason: 'Пока не оценено для этого проекта.',
     comingSoonReason: 'Этот раздел будет заполнен реальным, проверенным содержимым в следующем обновлении.',
   },

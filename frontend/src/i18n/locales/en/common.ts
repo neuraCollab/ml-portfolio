@@ -47,6 +47,8 @@ export const common = {
     errorAnalysis: 'Error Analysis',
     regressionTests: 'Regression Tests',
     results: 'Results',
+    technicalDetails: 'Technical Details',
+    interactiveDemo: 'Interactive Demo',
     notEvaluatedReason: 'Not yet evaluated for this project.',
     comingSoonReason: 'This section will be filled in with real, verified content in a follow-up update.',
   },

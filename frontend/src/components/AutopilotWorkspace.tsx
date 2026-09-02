@@ -15,6 +15,7 @@ import {
 import { runUndistort, runLidarOverlay, predictAction, ApiError, UndistortResponse, LidarOverlayResponse, PredictActionResponse } from '../api/client';
 import { MetricCard } from './shared/MetricCard';
 import { StaticResultsSection } from './autopilot/StaticResultsSection';
+import { BaselineComparisonPanel } from './autopilot/BaselineComparisonPanel';
 import { ProjectSection } from './shared/ProjectSection';
 import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation, TranslationKey } from '../i18n/I18nContext';
@@ -40,14 +41,12 @@ import {
   BrainCircuit,
   AlertTriangle,
   Layers,
-  Database,
-  Workflow,
   GitCompare,
   Brain,
-  Target,
-  Bug,
   ShieldCheck,
   ClipboardCheck,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   LineChart,
@@ -136,17 +135,13 @@ export const AutopilotWorkspace: React.FC = () => {
   const [policyLoading, setPolicyLoading] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
 
+  const [showDemo, setShowDemo] = useState(false);
+
   const SECTION_ITEMS = useMemo(
     () => [
       { id: 'overview', label: t('common.projectSections.overview'), icon: Car },
-      { id: 'architecture', label: t('common.projectSections.architecture'), icon: Layers },
-      { id: 'dataset', label: t('common.projectSections.dataset'), icon: Database },
-      { id: 'methodology', label: t('common.projectSections.methodology'), icon: Workflow },
-      { id: 'baseline', label: t('common.projectSections.baseline'), icon: GitCompare },
       { id: 'model', label: t('common.projectSections.model'), icon: Brain },
-      { id: 'metrics', label: t('common.projectSections.metrics'), icon: Target },
-      { id: 'errorAnalysis', label: t('common.projectSections.errorAnalysis'), icon: Bug },
-      { id: 'regressionTests', label: t('common.projectSections.regressionTests'), icon: ShieldCheck },
+      { id: 'technical', label: t('common.projectSections.technicalDetails'), icon: Layers },
       { id: 'results', label: t('common.projectSections.results'), icon: ClipboardCheck },
     ],
     [t]
@@ -444,8 +439,14 @@ export const AutopilotWorkspace: React.FC = () => {
                   {t('autopilot.banner.title')}
                 </h2>
                 <p className="text-sm text-slate-300 max-w-2xl mt-1">
-                  {t('autopilot.banner.descriptionPrefix')}<span className="font-mono text-emerald-400">KITTICarEnv</span>{t('autopilot.banner.descriptionSuffix')}
+                  {t('autopilot.banner.subtitle')}
                 </p>
+                <p className="text-[11px] text-slate-500 font-mono mt-2">{t('autopilot.banner.techLine')}</p>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-xs font-mono">
+                  <span className="text-slate-500">{t('autopilot.banner.observationLabel')}: <span className="text-slate-300">{t('autopilot.banner.observationValue')}</span></span>
+                  <span className="text-slate-500">{t('autopilot.banner.actionLabel')}: <span className="text-slate-300">{t('autopilot.banner.actionValue')}</span></span>
+                  <span className="text-slate-500">{t('autopilot.banner.rlLabel')}: <span className="text-emerald-300">{t('autopilot.banner.rlValue')}</span></span>
+                </div>
                 <p className="text-[11px] text-amber-300/80 mt-2 flex items-center gap-1.5">
                   <AlertTriangle className="w-3 h-3" />
                   {t('autopilot.banner.illustrativeNote')}
@@ -483,20 +484,9 @@ export const AutopilotWorkspace: React.FC = () => {
               </div>
             </div>
           </div>
-        </ProjectSection>
 
-        <ProjectSection
-          id="architecture"
-          title={t('common.projectSections.architecture')}
-          icon={Layers}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
-
-        <ProjectSection id="dataset" title={t('common.projectSections.dataset')} icon={Database} accentClassName={ACCENT}>
           {/* Frame Scrubber & Timeline Bar -- browses the real KITTI drive sequence frames */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
             <div className="flex items-center space-x-3">
               <span className="text-xs font-mono text-slate-400">{t('autopilot.timeline.sequenceLabel')}</span>
               <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
@@ -519,24 +509,6 @@ export const AutopilotWorkspace: React.FC = () => {
             </div>
           </div>
         </ProjectSection>
-
-        <ProjectSection
-          id="methodology"
-          title={t('common.projectSections.methodology')}
-          icon={Workflow}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
-
-        <ProjectSection
-          id="baseline"
-          title={t('common.projectSections.baseline')}
-          icon={GitCompare}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
 
         <ProjectSection id="model" title={t('common.projectSections.model')} icon={Brain} accentClassName={ACCENT}>
           {/* Main Grid: Sensor Fusion Dual Displays (8 cols) & Control Panel (4 cols) */}
@@ -673,7 +645,7 @@ export const AutopilotWorkspace: React.FC = () => {
                     <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
                     <span>{t('autopilot.policyPanel.heading')}</span>
                   </div>
-                  <span className="text-xs text-slate-500 font-mono">SAC / DDPG</span>
+                  <span className="text-xs text-slate-500 font-mono">RL Policy · SAC</span>
                 </div>
 
                 {/* Policy Toggle */}
@@ -681,6 +653,7 @@ export const AutopilotWorkspace: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setUsePretrainedPolicy(true)}
+                      title={t('autopilot.policyPanel.sacPretrainedButtonTitle')}
                       className={`py-2 px-3 rounded-xl text-xs font-semibold border transition flex items-center justify-center space-x-1.5 ${
                         usePretrainedPolicy
                           ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
@@ -864,26 +837,20 @@ export const AutopilotWorkspace: React.FC = () => {
             </div>
 
           </div>
-        </ProjectSection>
 
-        <ProjectSection id="metrics" title={t('common.projectSections.metrics')} icon={Target} accentClassName={ACCENT}>
-          {/* Live Backend Demo: real OpenCV + pretrained SAC code, run via FastAPI -- full width so the
-              image comparison / zoom controls have room to work with. */}
-          <div className="bg-slate-900 border border-purple-500/20 rounded-2xl p-5 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div>
-                <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-                  <ServerCog className="w-4 h-4 text-purple-400" />
-                  <span>{t('autopilot.liveDemo.heading')}</span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1 max-w-2xl">
-                  {t('autopilot.liveDemo.descriptionPrefix')}
-                  <span className="font-mono">rl_cv_car-autopilot/</span>{t('autopilot.liveDemo.descriptionSuffix')}
-                </p>
-              </div>
-              <span className="text-xs text-slate-500 font-mono shrink-0">FastAPI</span>
-            </div>
+          {/* Interactive Demo: real OpenCV + pretrained SAC code, run via FastAPI -- collapsed by
+              default to keep the dashboard compact; expands into the full CV/policy demo. */}
+          <div className="bg-slate-900 border border-purple-500/20 rounded-2xl p-5 mt-6">
+            <button
+              onClick={() => setShowDemo(!showDemo)}
+              className="w-full flex items-center justify-between text-sm font-semibold text-slate-200"
+            >
+              <span className="flex items-center gap-2"><ServerCog className="w-4 h-4 text-purple-400" /> {t('common.projectSections.interactiveDemo')}</span>
+              {showDemo ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
 
+            {showDemo && (
+            <div className="space-y-5 mt-5 pt-5 border-t border-slate-800">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* --- Computer Vision column --- */}
               <div className="space-y-4">
@@ -1084,26 +1051,61 @@ export const AutopilotWorkspace: React.FC = () => {
                 )}
               </div>
             </div>
+            </div>
+            )}
           </div>
         </ProjectSection>
 
-        <ProjectSection
-          id="errorAnalysis"
-          title={t('common.projectSections.errorAnalysis')}
-          icon={Bug}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="technical" title={t('common.projectSections.technicalDetails')} icon={Layers} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+            <p className="text-xs text-slate-500">{t('autopilot.technical.intro')}</p>
 
-        <ProjectSection
-          id="regressionTests"
-          title={t('common.projectSections.regressionTests')}
-          icon={ShieldCheck}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-emerald-400" /> {t('autopilot.technical.archTitle')}</h4>
+                <p className="text-[11px] text-slate-400 mt-1.5 font-mono">{t('autopilot.technical.archSummary')}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-teal-400" /> {t('autopilot.technical.rewardTitle')}</h4>
+                <p className="text-[11px] text-slate-400 mt-1.5">{t('autopilot.technical.rewardSummary')}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><GitCompare className="w-3.5 h-3.5 text-indigo-400" /> {t('autopilot.baselineSection.title')}</h4>
+              <p className="text-[11px] text-slate-400 mt-1.5 mb-3">{t('autopilot.baselineSection.intro')}</p>
+              <BaselineComparisonPanel
+                state={{
+                  speed: currentFrame.vf,
+                  yawRate: currentFrame.yaw,
+                  nearestObstacleDist: Math.min(...currentFrame.tracklets.map((t2) => t2.distance)),
+                  laneOffset: currentFrame.tracklets.find((t2) => t2.objectType === 'Car')?.ty ?? 0,
+                }}
+                heuristicAction={predictPolicyAction(currentFrame)}
+              />
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <h4 className="text-xs font-bold text-slate-200">{t('autopilot.technical.limitationsTitle')}</h4>
+              <p className="text-[11px] text-slate-400 mt-1.5">{t('autopilot.technical.limitationsSummary')}</p>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <ShieldCheck className="w-7 h-7 text-emerald-400 shrink-0" />
+              <div>
+                <div className="text-sm font-bold text-emerald-300">15 / 15 {t('autopilot.technical.regressionTitle')}</div>
+                <div className="text-[11px] text-slate-500">{t('autopilot.technical.regressionCaption')}</div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              {t('autopilot.technical.howToRerun')}
+              <code className="text-slate-400 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
+                pytest backend/tests/test_autopilot_kitti_vision.py backend/tests/test_autopilot_policy.py -v
+              </code>
+            </p>
+          </div>
+        </ProjectSection>
 
         <ProjectSection id="results" title={t('common.projectSections.results')} icon={ClipboardCheck} accentClassName={ACCENT}>
           <StaticResultsSection />
