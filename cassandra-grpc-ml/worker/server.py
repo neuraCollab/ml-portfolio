@@ -168,15 +168,26 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
                 # Deliberately non-fatal: this pod already has a working
                 # in-memory model (self._model is set below regardless), so
                 # failing the whole RPC here would turn a real training
-                # success into a reported failure. But this exception is not
-                # just a hypothetical edge case -- gzip compression (added to
-                # fix the original 45MB-blob failure) still isn't always
-                # enough to get real trained models under Cassandra's 16MB
-                # native-protocol message limit, so this path can still be
-                # hit on real training runs. Surfaced in the response
-                # message (in addition to the log) so it isn't silently
-                # invisible to callers -- other pods will NOT see this model
-                # until it's persisted.
+                # success into a reported failure. This is not purely a
+                # hypothetical edge case: gzip compression (see
+                # model_store.py::save_model_to_cassandra) is real and
+                # helps, but does not guarantee staying under Cassandra's
+                # 16MB native-protocol message-size limit at this project's
+                # real default training size. A small sample (sampleSize
+                # 2,000, ~1,825 rows) compresses to ~12.18MB and persists
+                # fine, but the actual UI default (sampleSize 40,000)
+                # compresses to ~18.9MB -- the compression ratio degrades on
+                # a fuller, more realistic model (~1.86x on the small sample
+                # vs. only ~1.18x at the real default) -- and that still
+                # exceeds the limit. This is a real, currently-open
+                # limitation, not something fixed by a config change: this
+                # except block is the intentional, graceful handling of it.
+                # Its message is surfaced in the response (in addition to
+                # the log) so it isn't silently invisible to callers -- the
+                # pod that trained keeps serving correctly from its own
+                # in-memory copy, but other pods will NOT see this model
+                # until a smaller sample size is used or this limitation is
+                # otherwise addressed.
                 logger.exception("Could not save model to Cassandra -- other worker pods will NOT see this model")
                 persistence_error = str(exc)
         else:

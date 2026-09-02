@@ -161,12 +161,29 @@ made the INSERT fail for this project's real dataset:
 Fixed by combining gzip compression (`gzip.compress`/`gzip.decompress` around the joblib bytes,
 still one blob column, no schema change) with switching the INSERT to a real prepared statement
 (`session.prepare(...)` + `?` placeholders), which sends the blob as raw binary instead of a hex
-literal. Real measurement: the ~22.7MB raw blob compresses to ~11.6MB (measured: 12,180,193 bytes,
-1.86x) -- comfortably under 16MB once sent as raw binary. Re-verified live end-to-end after the
-fix: a real training run's `INSERT` succeeded (`SELECT COUNT(*) FROM cassandra_grpc_ml.models`
-returned 1 row, where it previously returned 0), and `GET /api/cassandra-grpc/status` showed
-`modelLoaded: true` with a `trainedAt` matching the persisted row. Round-robin dispatch, pod
-discovery, and Deployment scaling remain real and verified as described above.
+literal. Real measurement (small sample, `sampleSize=2000`, ~1,825 real training rows): the
+~22.7MB raw blob compresses to ~11.6MB (measured: 12,180,193 bytes, 1.86x) -- comfortably under
+16MB once sent as raw binary. Re-verified live end-to-end after the fix at this sample size: a
+real training run's `INSERT` succeeded (`SELECT COUNT(*) FROM cassandra_grpc_ml.models` returned 1
+row, where it previously returned 0), and `GET /api/cassandra-grpc/status` showed `modelLoaded:
+true` with a `trainedAt` matching the persisted row, and all 3 pods converged on the same model.
+Round-robin dispatch, pod discovery, and Deployment scaling remain real and verified as described
+above.
+
+**Known limitation: this fix does not fully hold at this project's actual UI default sample size
+(`sampleSize=40000`).** The 1.86x compression ratio above was measured on a small dev sample and
+does not generalize -- a real training run at the default 40,000 rows measured a raw joblib dump
+of ~22.4MB compressing to only ~18.9MB (a much worse ~1.18x ratio: a fuller, more realistic
+model's vectorizer/classifier weights compress less well than the small sample's). That ~18.9MB
+still exceeds Cassandra's 16MB native-protocol message limit even compressed and even as raw
+binary, so the `INSERT` fails with the same class of error as before
+(`cassandra.InvalidRequest: ... CQL Message of size 18920227 bytes exceeds allowed maximum of
+16777216 bytes`). This is handled gracefully and non-fatally: the training pod that ran the job
+keeps serving the freshly-trained model correctly from its own in-memory copy, and the failure is
+surfaced in the training response's `message` field (`"...other worker pods will NOT see this
+model..."`) rather than silently dropped -- but other (or newly-scaled) worker pods will not
+receive that model via Cassandra until either a smaller sample size is used (2,000 rows is
+confirmed to work end-to-end) or this limitation is otherwise addressed.
 
 ## Tech Stack
 

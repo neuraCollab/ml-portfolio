@@ -120,12 +120,14 @@ def test_load_latest_model_from_cassandra_picks_the_newest_row():
 
 def test_save_model_to_cassandra_gzip_compresses_the_blob():
     """Regression test for the real bug found in Task 8 E2E verification:
-    an uncompressed joblib dump of this project's real 50-class model landed
-    around 45MB, well past Cassandra's default 16MB CQL message limit, so the
-    INSERT silently failed (0 rows persisted) and newly-scaled worker pods
-    never converged on the trained model. Confirms the stored blob is
-    actually gzip-compressed (not a no-op) by checking the gzip magic
-    header, independent of whether that particular model happens to shrink."""
+    an uncompressed joblib dump of this project's real 50-class model was
+    ~22.7MB raw, which the driver's simple-statement hex-literal encoding
+    then doubled to a ~45MB CQL message, well past Cassandra's default 16MB
+    CQL message limit, so the INSERT silently failed (0 rows persisted) and
+    newly-scaled worker pods never converged on the trained model. Confirms
+    the stored blob is actually gzip-compressed (not a no-op) by checking
+    the gzip magic header, independent of whether that particular model
+    happens to shrink."""
     model = _tiny_trained_model()
     session = FakeSession()
     save_model_to_cassandra(model, session)
@@ -138,10 +140,11 @@ def test_save_model_to_cassandra_round_trips_a_realistic_sized_model():
     """Mechanism check at a size shaped like this project's real model
     (TfidfVectorizer with a large vocabulary + a dense LogisticRegression
     coefficient matrix over many classes) -- the exact shape that produced
-    the real ~45MB uncompressed blob that overflowed Cassandra's 16MB CQL
-    message limit in Task 8's live E2E run (`cassandra.InvalidRequest:
-    ... CQL Message of size 45335967 bytes exceeds allowed maximum of
-    16777216 bytes`).
+    the real ~22.7MB raw uncompressed blob which, once hex-doubled by the
+    driver's old simple-statement encoding, overflowed Cassandra's 16MB CQL
+    message limit as a ~45MB CQL message in Task 8's live E2E run
+    (`cassandra.InvalidRequest: ... CQL Message of size 45335967 bytes
+    exceeds allowed maximum of 16777216 bytes`).
 
     This confirms the compress/decompress round trip works correctly at
     real scale (tens of MB) and that gzip does not simply no-op or corrupt

@@ -58,7 +58,26 @@ def save_model_to_cassandra(model: TrainedModel, session) -> None:
     Fixed here by combining gzip compression with a real prepared statement
     (see below), which sends the blob as raw binary instead of a hex
     literal -- confirmed live: with both fixes, the INSERT succeeds and the
-    ~12.18MB compressed blob lands intact in Cassandra."""
+    ~12.18MB compressed blob lands intact in Cassandra.
+
+    Important caveat on the 1.86x compression ratio above: it was measured
+    on a small 1,825-row dev sample, and does not generalize. A real
+    production-scale training run (the default 40,000-row sample) measured
+    a raw joblib dump of ~22.4MB compressing to only ~18.9MB (a much worse
+    ~1.18x ratio -- a fuller, more realistic model's vectorizer/classifier
+    weights compress less well than the small sample's). That ~18.9MB
+    still exceeds Cassandra's 16MB native-protocol message limit even after
+    compression and even as raw binary (no hex-doubling). This is a real,
+    currently-open limitation, not a fixed one: compression plus the
+    prepared-statement fix are necessary but not sufficient at this
+    project's actual UI default sample size. A smaller sample size (e.g.
+    2,000 rows) is confirmed to persist and propagate correctly across
+    worker pods; at the 40,000-row default, the training pod continues to
+    serve its freshly-trained model correctly from memory, but other (or
+    newly-scaled) worker pods will not see it via Cassandra. See
+    cassandra-grpc-ml/worker/server.py's TrainedModel-persistence exception
+    handler for the corresponding non-fatal, intentional error-handling
+    path, and cassandra-grpc-ml/README.md's "Known limitation" note."""
     buffer = io.BytesIO()
     joblib.dump(model, buffer)
     raw_bytes = buffer.getvalue()
