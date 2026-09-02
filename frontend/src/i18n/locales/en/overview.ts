@@ -60,7 +60,7 @@ export const overview = {
       stack: {
         item1: 'Apache Cassandra 5 (storage: requests, predictions, training_runs)',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
-        item3: 'TF-IDF + multinomial LogisticRegression (scikit-learn)',
+        item3: 'TF-IDF + One-vs-Rest LogisticRegression, n_jobs=-1 (scikit-learn)',
         item4: 'FastAPI backend as coordinator + gateway to the worker',
         item5: 'Real self-reported System Status (psutil) -- worker-pool scaling patches a live Kubernetes Deployment\'s replica count',
       },
