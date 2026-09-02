@@ -87,7 +87,7 @@ export const cassandraGrpc = {
   },
   staticResults: {
     eyebrow: 'Результаты',
-    title: 'Результаты на реальной модели',
+    title: 'Реальные результаты модели',
     notAvailablePrefix: 'Недоступно — этот снимок создаётся запуском',
     notAvailableSuffix: 'после завершения реального обучения.',
     datasetSizeLabel: 'Размер набора данных',

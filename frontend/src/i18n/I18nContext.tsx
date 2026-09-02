@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Language, Paths } from './types';
 import { en } from './locales/en';
 import { ru } from './locales/ru';
@@ -54,6 +54,10 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsLanguageSelection, setNeedsLanguageSelection] = useState<boolean>(
     () => !isValidLanguage(readStoredLanguage())
   );
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);

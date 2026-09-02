@@ -49,7 +49,7 @@ export const cassandraGrpc = {
       completed: 'completed',
       failed: 'failed',
     },
-    startErrorFallback: 'Could not start training -- see the Overview panel for backend/worker status.',
+    startErrorFallback: 'Could not start training -- see the Architecture panel for backend/worker status.',
     accuracyLabel: 'Accuracy',
     macroF1Label: 'Macro F1',
     microF1Label: 'Micro F1',
