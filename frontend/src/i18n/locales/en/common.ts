@@ -36,4 +36,18 @@ export const common = {
     retry: 'Retry',
     close: 'Close',
   },
+  projectSections: {
+    overview: 'Overview',
+    architecture: 'Architecture',
+    dataset: 'Dataset',
+    methodology: 'Methodology',
+    baseline: 'Baseline',
+    model: 'Model',
+    metrics: 'Metrics',
+    errorAnalysis: 'Error Analysis',
+    regressionTests: 'Regression Tests',
+    results: 'Results',
+    notEvaluatedReason: 'Not yet evaluated for this project.',
+    comingSoonReason: 'This section will be filled in with real, verified content in a follow-up update.',
+  },
 };

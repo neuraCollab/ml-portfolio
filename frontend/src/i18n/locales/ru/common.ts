@@ -36,4 +36,18 @@ export const common = {
     retry: 'Повторить',
     close: 'Закрыть',
   },
+  projectSections: {
+    overview: 'Обзор',
+    architecture: 'Архитектура',
+    dataset: 'Набор данных',
+    methodology: 'Методология',
+    baseline: 'Базовый уровень',
+    model: 'Модель',
+    metrics: 'Метрики',
+    errorAnalysis: 'Анализ ошибок',
+    regressionTests: 'Регрессионные тесты',
+    results: 'Результаты',
+    notEvaluatedReason: 'Пока не оценено для этого проекта.',
+    comingSoonReason: 'Этот раздел будет заполнен реальным, проверенным содержимым в следующем обновлении.',
+  },
 };
