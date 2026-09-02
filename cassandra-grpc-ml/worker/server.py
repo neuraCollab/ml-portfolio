@@ -7,12 +7,15 @@ from concurrent import futures
 from pathlib import Path
 
 import grpc
+import psutil
 from cassandra.cluster import Cluster
 
 import ml_worker_pb2
 import ml_worker_pb2_grpc
 from ml_core import predict_one, train_and_evaluate
-from model_store import load_model, save_model
+from model_store import (
+    load_model, load_latest_model_from_cassandra, save_model, save_model_to_cassandra,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -21,6 +24,8 @@ CASSANDRA_HOST = os.environ.get("CASSANDRA_HOST", "cassandra")
 GRPC_PORT = int(os.environ.get("GRPC_PORT", "50061"))
 MODEL_STORE_DIR = Path(os.environ.get("MODEL_STORE_DIR", "/app/model_store"))
 KEYSPACE = "cassandra_grpc_ml"
+MODEL_PERSISTENCE = os.environ.get("MODEL_PERSISTENCE", "local")  # "local" | "cassandra"
+_MODEL_REFRESH_INTERVAL_SECONDS = 30
 
 
 def _cassandra_session():
@@ -35,20 +40,66 @@ def _cassandra_session():
 
 class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
     def __init__(self):
-        self._model = load_model(MODEL_STORE_DIR)
+        self._last_refresh_check = 0.0
+        if MODEL_PERSISTENCE == "cassandra":
+            self._model = self._load_from_cassandra()
+        else:
+            self._model = load_model(MODEL_STORE_DIR)
         if self._model:
             logger.info(f"Loaded persisted model trained at {self._model.trained_at} ({len(self._model.class_labels)} classes)")
         else:
             logger.info("No persisted model found -- waiting for a Train call.")
+        self._process = psutil.Process()
+        # First cpu_percent() call always returns 0.0 (no prior sample to
+        # diff against) -- prime it once at startup so GetStatus's own call
+        # returns a real, non-degenerate reading.
+        self._process.cpu_percent(interval=None)
+
+    def _load_from_cassandra(self):
+        try:
+            cluster, session = _cassandra_session()
+            try:
+                return load_latest_model_from_cassandra(session)
+            finally:
+                cluster.shutdown()
+        except Exception:
+            logger.exception("Could not load model from Cassandra")
+            return None
+
+    def _maybe_refresh_model(self):
+        """Real, lazy re-check against Cassandra -- at most once per
+        _MODEL_REFRESH_INTERVAL_SECONDS -- so a Train on a different pod
+        eventually reaches this one too, without a background thread."""
+        if MODEL_PERSISTENCE != "cassandra":
+            return
+        now = time.time()
+        if now - self._last_refresh_check < _MODEL_REFRESH_INTERVAL_SECONDS:
+            return
+        self._last_refresh_check = now
+        latest = self._load_from_cassandra()
+        if latest is not None and (self._model is None or latest.trained_at > self._model.trained_at):
+            logger.info(f"Refreshed model from Cassandra (trained_at={latest.trained_at})")
+            self._model = latest
 
     def GetStatus(self, request, context):
+        self._maybe_refresh_model()
+        # interval=0.1 blocks briefly to measure real CPU usage over that
+        # window -- acceptable here since GetStatus is a low-frequency
+        # polling call (every 8s from the frontend), not on the hot path.
+        cpu_percent = self._process.cpu_percent(interval=0.1)
+        memory_mb = self._process.memory_info().rss / (1024 * 1024)
+        uptime_seconds = time.time() - self._process.create_time()
         return ml_worker_pb2.StatusResponse(
             model_loaded=self._model is not None,
             num_classes=len(self._model.class_labels) if self._model else 0,
             trained_at=self._model.trained_at if self._model else "",
+            cpu_percent=round(cpu_percent, 1),
+            memory_mb=round(memory_mb, 1),
+            uptime_seconds=round(uptime_seconds, 1),
         )
 
     def Predict(self, request, context):
+        self._maybe_refresh_model()
         if self._model is None:
             context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             context.set_details("No trained model available -- call Train first.")
@@ -105,7 +156,17 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
             context.set_details(str(exc))
             return ml_worker_pb2.TrainResponse(success=False, message=str(exc))
 
-        save_model(model, MODEL_STORE_DIR)
+        if MODEL_PERSISTENCE == "cassandra":
+            try:
+                save_cluster, save_session = _cassandra_session()
+                try:
+                    save_model_to_cassandra(model, save_session)
+                finally:
+                    save_cluster.shutdown()
+            except Exception:
+                logger.exception("Could not save model to Cassandra")
+        else:
+            save_model(model, MODEL_STORE_DIR)
         self._model = model
         logger.info(f"Trained on {metrics.train_rows} rows, evaluated on {metrics.test_rows} rows, accuracy={metrics.accuracy:.3f}")
 
