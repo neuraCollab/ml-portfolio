@@ -66,21 +66,17 @@ def _rpc_detail(exc: grpc.RpcError) -> str:
     return str(exc.details()) if hasattr(exc, "details") else str(exc)
 
 
-@app.post("/predict")
-def predict(body: PredictBody, core_v1=Depends(get_core_v1)):
-    endpoints = list_worker_endpoints(core_v1)
-    if not endpoints:
-        raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
+def _dispatch_with_retry(endpoints, invoke):
+    """Pick a worker via the dispatcher and call `invoke(address)` against it.
+    On grpc.RpcError, retries once against each remaining Ready endpoint
+    before surfacing a 502 for the last error seen. Shared by /predict and
+    /train so both endpoints retry a real gRPC failure against a different
+    real pod identically."""
     address = _dispatcher.pick(endpoints)
     tried = {address}
     while True:
         try:
-            stub = get_worker_stub(address)
-            resp = stub.Predict(ml_worker_pb2.PredictRequest(text=body.text), timeout=10)
-            return {
-                "topicId": resp.topic_id, "topicName": resp.topic_name,
-                "confidence": resp.confidence, "latencyMs": resp.latency_ms,
-            }
+            return invoke(address)
         except grpc.RpcError as exc:
             remaining = [e for e in endpoints if e not in tried]
             if not remaining:
@@ -89,17 +85,34 @@ def predict(body: PredictBody, core_v1=Depends(get_core_v1)):
             tried.add(address)
 
 
+@app.post("/predict")
+def predict(body: PredictBody, core_v1=Depends(get_core_v1)):
+    endpoints = list_worker_endpoints(core_v1)
+    if not endpoints:
+        raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
+    resp = _dispatch_with_retry(
+        endpoints,
+        lambda address: get_worker_stub(address).Predict(
+            ml_worker_pb2.PredictRequest(text=body.text), timeout=10
+        ),
+    )
+    return {
+        "topicId": resp.topic_id, "topicName": resp.topic_name,
+        "confidence": resp.confidence, "latencyMs": resp.latency_ms,
+    }
+
+
 @app.post("/train")
 def train(body: TrainBody, core_v1=Depends(get_core_v1)):
     endpoints = list_worker_endpoints(core_v1)
     if not endpoints:
         raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
-    address = _dispatcher.pick(endpoints)
-    try:
-        stub = get_worker_stub(address)
-        resp = stub.Train(ml_worker_pb2.TrainRequest(sample_size=body.sampleSize), timeout=300)
-    except grpc.RpcError as exc:
-        raise HTTPException(status_code=502, detail=_rpc_detail(exc))
+    resp = _dispatch_with_retry(
+        endpoints,
+        lambda address: get_worker_stub(address).Train(
+            ml_worker_pb2.TrainRequest(sample_size=body.sampleSize), timeout=300
+        ),
+    )
     if not resp.success:
         raise HTTPException(status_code=422, detail=resp.message)
     return {
