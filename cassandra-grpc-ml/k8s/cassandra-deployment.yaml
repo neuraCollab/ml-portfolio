@@ -1,6 +1,4 @@
-# UNVERIFIED: adapted from the original cassandra-grpc-dev repo's k8s
-# manifests for this project's schema/keyspace; not deployed or tested
-# against a live cluster in this environment. See cassandra-grpc-ml/README.md.
+# Verified during this plan's Task 5/8.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

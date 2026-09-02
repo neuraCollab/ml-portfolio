@@ -29,5 +29,12 @@ spec:
               memory: "200Mi"
               cpu: "250m"
             limits:
-              memory: "1Gi"
+              # 1Gi was not enough: a real training run at this project's
+              # actual UI default (sampleSize=40000) OOM-killed the pod
+              # (exit 137) while fitting a TfidfVectorizer(max_features=50000,
+              # ngram_range=(1,2)) + 50-class LogisticRegression -- confirmed
+              # live during the k8s plan's final review. Requests stay low
+              # since only whichever pod is actively handling a /train RPC
+              # needs the headroom; idle/serving replicas use far less.
+              memory: "2Gi"
               cpu: "1000m"

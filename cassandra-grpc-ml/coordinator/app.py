@@ -109,8 +109,15 @@ def train(body: TrainBody, core_v1=Depends(get_core_v1)):
         raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
     resp = _dispatch_with_retry(
         endpoints,
+        # 300s was not enough: a real training run at this project's actual
+        # UI default (sampleSize=40000) exceeded it on a CPU-constrained
+        # worker pod -- confirmed live during the k8s plan's final review
+        # ("Deadline Exceeded" after exactly 300s while the worker was still
+        # genuinely fitting the model, not hung). 900s gives real headroom;
+        # keep in sync with backend/app/services/cassandra_grpc_service.py's
+        # matching httpx timeout for this same call.
         lambda address: get_worker_stub(address).Train(
-            ml_worker_pb2.TrainRequest(sample_size=body.sampleSize), timeout=300
+            ml_worker_pb2.TrainRequest(sample_size=body.sampleSize), timeout=900
         ),
     )
     if not resp.success:
