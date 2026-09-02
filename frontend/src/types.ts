@@ -239,12 +239,27 @@ export interface EcgEvaluationResult {
 }
 
 // Cassandra + gRPC ML Types
+export interface ServiceSelfStats {
+  cpuPercent: number;
+  memoryMb: number;
+  uptimeSeconds: number;
+}
+
+export interface CassandraSystemInfo {
+  releaseVersion: string;
+  clusterName: string;
+  hostId: string;
+}
+
 export interface CassandraGrpcStatus {
   cassandra: 'connected' | 'unreachable';
   worker: 'connected' | 'unreachable';
   modelLoaded: boolean;
   numClasses: number;
   trainedAt?: string | null;
+  backendStats?: ServiceSelfStats | null;
+  workerStats?: ServiceSelfStats | null;
+  cassandraInfo?: CassandraSystemInfo | null;
 }
 
 export interface ClassDistributionEntry {

@@ -100,4 +100,103 @@ export const cassandraGrpc = {
     confusionMatrixHeading: 'Confusion Matrix (top classes by support)',
     examplePredictionLabel: 'Example prediction',
   },
+  architecture: {
+    eyebrow: 'System Architecture',
+    title: 'Client to Coordinator to Worker to Cassandra',
+    intro:
+      "Matches cassandra-grpc-ml/README.md exactly. The live pipeline-stage status above (Overview) already shows this flow with real connectivity; this section explains each stage's role.",
+    steps: {
+      s1: { title: 'Client (browser)', detail: 'Sends HTTP requests (train, predict, status) to the FastAPI backend.' },
+      s2: { title: 'FastAPI backend -- coordinator + gateway', detail: 'Owns the Cassandra session used for ingestion and logging, and the gRPC client used to call the worker. Writes every prediction and training run to Cassandra directly, independent of the worker\'s own Cassandra access.' },
+      s3: { title: 'gRPC call', detail: 'A real network call (grpcio) to a separate grpc-worker container, defined by cassandra-grpc-ml/proto/ml_worker.proto (Predict, Train, GetStatus).' },
+      s4: { title: 'grpc-worker container', detail: 'Holds the trained TF-IDF + LogisticRegression model in memory. Reads training rows from Cassandra directly (Predict does not touch Cassandra).' },
+      s5: { title: 'Cassandra', detail: 'Stores the ingested labeled sample (requests), a log of every real inference (predictions), and training-run history (training_runs) in the cassandra_grpc_ml keyspace.' },
+    },
+    whyHeading: 'Why Cassandra + gRPC',
+    whyBody:
+      'This pattern (Cassandra for storage, gRPC for a real network call to a separate worker process) is the same distributed-processing shape as the C++ crawler this project is adapted from (neuraCollab/cassandra-grpc-dev), reimplemented in Python around a real ML task instead of web crawling -- see Methodology below for why that specific task was chosen.',
+    systemStatusHeading: 'System Status (real, self-reported)',
+    workerPoolHeading: 'Worker Pool',
+  },
+  systemStatus: {
+    backendLabel: 'Backend',
+    workerLabel: 'gRPC Worker',
+    cassandraLabel: 'Cassandra',
+    cpuLabel: 'CPU',
+    memoryLabel: 'Memory',
+    uptimeLabel: 'Uptime',
+    releaseVersionLabel: 'Release version',
+    clusterNameLabel: 'Cluster name',
+    hostIdLabel: 'Host ID',
+    cassandraUptimeNote: "Cassandra has no built-in queryable process-uptime metric, so this shows real identity/version info from system.local instead of fabricating an uptime figure.",
+    selfReportNote:
+      'Backend and worker stats are real, self-reported process readings (psutil: CPU%, RSS memory, process uptime) -- not a Docker-API container-level reading, since that would need Docker socket access this deployment intentionally avoids.',
+    fetchError: 'Could not reach the backend status endpoint.',
+  },
+  workerSim: {
+    badgeTitle: 'Simulation',
+    badgeBody:
+      "There is only one real grpc-worker container in this deployment (see docker-compose.yml) -- no live pool to add or remove workers from. This visualization illustrates horizontal scaling using the real (but never-deployed) numbers from cassandra-grpc-ml/k8s/grpc-worker-hpa.yaml. It does not control real infrastructure.",
+    replicaCount: '{{count}} of {{min}}-{{max}} replicas (simulated)',
+    cpuTarget: 'CPU target: {{target}}% (from grpc-worker-hpa.yaml)',
+    addButton: 'add',
+    removeButtonTitle: 'Remove this simulated worker',
+    simCpuLabel: 'Simulated CPU',
+    simRequestsLabel: 'Simulated requests handled',
+    inspectSimNote: 'These numbers are randomly generated for illustration, not read from any real process.',
+  },
+  methodologySection: {
+    eyebrow: 'Methodology',
+    title: 'From Ingestion to a Served Classifier',
+    ingestionHeading: 'Ingestion',
+    ingestionBody:
+      'On first use, a stratified sample (capped at CASSANDRA_GRPC_SAMPLE_SIZE, default 40,000 rows) of AutoTopic\'s real labeled_requests.parquet (373,657 rows) is drawn per class and inserted into Cassandra\'s requests table with a 90/10 train/test split per class, so every class is represented in both splits.',
+    trainingHeading: 'Training',
+    trainingBody:
+      'The worker reads all rows from Cassandra, fits a TfidfVectorizer (max 50,000 features, 1-2 grams) and a multinomial LogisticRegression classifier on the train split, then evaluates on the held-out test split -- real accuracy, macro/micro precision/recall/F1, and a confusion matrix (top 15 classes by test support) computed with scikit-learn, not estimated.',
+    servingHeading: 'Serving',
+    servingBody:
+      'The trained vectorizer + classifier are persisted (joblib) and kept in the worker\'s memory. Each Predict call runs a real forward pass through the persisted model and returns topic_id/topic_name/confidence over the same gRPC connection, logged to Cassandra\'s predictions table.',
+  },
+  baselineSection: {
+    eyebrow: 'Baseline',
+    title: "What This Project Replaces: AutoTopic's Unsupervised Clustering",
+    intro:
+      "This project's own stated purpose (see README) is distilling AutoTopic's slow unsupervised BERTopic clustering into a fast supervised classifier for real-time inference. The comparison below is on that dimension -- speed and real-time capability -- using real, measured numbers from each project's own results, not a re-run of the same classifier without gRPC/Cassandra.",
+    caveat:
+      "BERTopic (unsupervised topic discovery) and this classifier (supervised classification) are different task types, so accuracy isn't a meaningful comparison between them -- only one of them (this classifier) produces a per-query confidence score at all.",
+    baselineCardTitle: 'Baseline: AutoTopic (BERTopic, unsupervised)',
+    baselineTime: 'Full corpus re-clustering: 46.0 min',
+    baselineQuery: 'Single-query classification: not supported',
+    modelCardTitle: 'Model: this project (TF-IDF + LogisticRegression)',
+    modelTime: 'One-time training: 68.0s',
+    modelQuery: 'Real per-query gRPC round-trip: 7.3ms',
+    sourceNote: 'AutoTopic\'s 46.0 min figure is from its own real full-dataset pipeline run (see the AutoTopic page\'s Results). This project\'s 68.0s / 7.3ms figures are from a real training run (see Results below).',
+  },
+  errorAnalysisSection: {
+    eyebrow: 'Error Analysis',
+    title: 'Real Findings from the Confusion Matrix',
+    majorityBiasTitle: 'Majority-class bias',
+    majorityBiasBody:
+      '"Жизненные советы" (life advice), the largest class by far (1,287 test-support), attracts real misclassifications from nearly every other class -- e.g. 181 "Проекты и задачи" rows, 97 "Эмоции студентов" rows, and 69 "Посты о любви" rows were all real misclassified as this class. A classic class-imbalance failure mode: with no class weighting, the model leans toward the statistically safest guess.',
+    weakClassTitle: 'A specific weak class: "Технический анализ"',
+    weakClassBody:
+      'Of the 103 real test examples labeled "Технический анализ" (technical analysis), only 11 were correctly classified -- 45 were predicted as "Жизненные советы" and 40 as "Проекты и задачи". Real recall for this class is roughly 11%, far below the 52.8% overall accuracy.',
+    macroVsAccuracyTitle: 'Macro F1 vs. accuracy gap',
+    macroVsAccuracyBody:
+      'Real macro F1 (0.315) is much lower than real accuracy (52.8%) -- accuracy is dominated by the largest classes, while macro F1 weights every class equally and exposes the real, honest weakness on minority classes shown above.',
+  },
+  regressionTestsSection: {
+    eyebrow: 'Regression Tests',
+    title: 'Worker ML Core & Schema Regression Tests',
+    intro:
+      'cassandra-grpc-ml/worker/tests/ (test_ml_core.py, test_model_store.py) are the project\'s existing real tests for the pure ML logic and model persistence -- run here, not just described. backend/tests/test_cassandra_grpc_*.py cover the API schemas and the real stratified-sampling logic.',
+    testListHeading: 'What is verified',
+    test1: 'train_and_evaluate() returns correct shapes and near-perfect accuracy on trivially-separable synthetic data.',
+    test2: 'The confusion matrix is correctly capped to the top-N classes by test support.',
+    test3: 'Empty train/test splits are rejected with a clear error, not a silent failure.',
+    test4: 'A saved model round-trips through model_store and produces identical predictions after reloading.',
+    test5: 'API schemas round-trip correctly and reject out-of-range values; stratified sampling stays proportional and deterministic given a fixed seed.',
+    howToRerun: 'Re-run locally with: ',
+  },
 };
