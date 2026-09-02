@@ -1,15 +1,16 @@
 export const overview = {
   banner: {
     eyebrow: 'Repository Overview & Architecture',
-    title: 'Machine Learning Portfolio: AutoTopic, RL Autopilot & ECG Edge AI',
+    title: 'Machine Learning Portfolio: AutoTopic, RL Autopilot, ECG Edge AI & Cassandra gRPC ML',
     description:
-      "Three projects demonstrating machine learning, deep learning, signal processing, reinforcement learning, and backend/edge-AI engineering, consolidated into one dashboard backed by a FastAPI service that runs each project's real Python code.",
+      "Four projects demonstrating machine learning, deep learning, signal processing, reinforcement learning, distributed systems, and backend/edge-AI engineering, consolidated into one dashboard backed by a FastAPI service that runs each project's real Python code.",
     tags: {
       nlpTopicModeling: 'NLP / Topic Modeling',
       reinforcementLearning: 'Reinforcement Learning',
       computerVision: 'Computer Vision',
       signalProcessing: 'Signal Processing',
       edgeAi: 'Edge AI',
+      distributedSystems: 'Distributed Systems',
       backendEngineering: 'Backend Engineering',
     },
   },
@@ -52,6 +53,18 @@ export const overview = {
         item5: 'Research prototype -- not a certified medical device',
       },
     },
+    cassandraGrpc: {
+      title: 'Project 4: Cassandra + gRPC ML',
+      description:
+        'Distills AutoTopic\'s slow unsupervised BERTopic clustering into a fast supervised classifier: a labeled sample is stored in Apache Cassandra, and predictions are served in milliseconds over a real gRPC call to a separate worker container.',
+      stack: {
+        item1: 'Apache Cassandra 5 (storage: requests, predictions, training_runs)',
+        item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
+        item3: 'TF-IDF + multinomial LogisticRegression (scikit-learn)',
+        item4: 'FastAPI backend as coordinator + gateway to the worker',
+        item5: 'Real self-reported System Status (psutil) -- worker-pool scaling patches a live Kubernetes Deployment\'s replica count',
+      },
+    },
   },
   techMatrix: {
     heading: 'Complete Technology Stack Matrix',
@@ -90,6 +103,14 @@ export const overview = {
       ecgClassification: {
         component: 'ECG Classification',
         inApp: 'Real: same trained weights, corrected preprocessing (see project README)',
+      },
+      distributedStorage: {
+        component: 'Distributed Storage',
+        inApp: 'Real: Cassandra keyspace ingested and queried live (requests, predictions, training_runs)',
+      },
+      distributedServing: {
+        component: 'Distributed Model Serving',
+        inApp: 'Real: gRPC call to a separate grpc-worker container for training and inference',
       },
       frontendInterface: {
         component: 'Frontend Interface',

@@ -1,15 +1,16 @@
 export const overview = {
   banner: {
     eyebrow: 'Обзор репозитория и архитектура',
-    title: 'Портфолио машинного обучения: AutoTopic, RL-автопилот и ЭКГ Edge AI',
+    title: 'Портфолио машинного обучения: AutoTopic, RL-автопилот, ЭКГ Edge AI и Cassandra gRPC ML',
     description:
-      'Три проекта, демонстрирующие машинное обучение, глубокое обучение, обработку сигналов, обучение с подкреплением и backend/edge-AI-разработку, объединённые в единой панели на основе сервиса FastAPI, который выполняет реальный Python-код каждого проекта.',
+      'Четыре проекта, демонстрирующие машинное обучение, глубокое обучение, обработку сигналов, обучение с подкреплением, распределённые системы и backend/edge-AI-разработку, объединённые в единой панели на основе сервиса FastAPI, который выполняет реальный Python-код каждого проекта.',
     tags: {
       nlpTopicModeling: 'NLP / тематическое моделирование',
       reinforcementLearning: 'Обучение с подкреплением',
       computerVision: 'Компьютерное зрение',
       signalProcessing: 'Обработка сигналов',
       edgeAi: 'Edge AI',
+      distributedSystems: 'Распределённые системы',
       backendEngineering: 'Разработка бэкенда',
     },
   },
@@ -52,6 +53,18 @@ export const overview = {
         item5: 'Исследовательский прототип — не сертифицированное медицинское устройство',
       },
     },
+    cassandraGrpc: {
+      title: 'Проект 4: Cassandra + gRPC ML',
+      description:
+        'Дистиллирует медленную неконтролируемую кластеризацию BERTopic из AutoTopic в быстрый контролируемый классификатор: размеченная выборка хранится в Apache Cassandra, а предсказания обслуживаются за миллисекунды через реальный gRPC-вызов к отдельному контейнеру-воркеру.',
+      stack: {
+        item1: 'Apache Cassandra 5 (хранение: requests, predictions, training_runs)',
+        item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
+        item3: 'TF-IDF + мультиномиальная LogisticRegression (scikit-learn)',
+        item4: 'Бэкенд FastAPI в роли координатора и шлюза к воркеру',
+        item5: 'Реальный самоотчётный статус системы (psutil) — масштабирование пула воркеров меняет число реплик реального Deployment в Kubernetes',
+      },
+    },
   },
   techMatrix: {
     heading: 'Полная матрица технологического стека',
@@ -90,6 +103,14 @@ export const overview = {
       ecgClassification: {
         component: 'Классификация ЭКГ',
         inApp: 'Реально: те же обученные веса, исправленная предобработка (см. README проекта)',
+      },
+      distributedStorage: {
+        component: 'Распределённое хранение',
+        inApp: 'Реально: keyspace Cassandra загружается и опрашивается вживую (requests, predictions, training_runs)',
+      },
+      distributedServing: {
+        component: 'Распределённое обслуживание модели',
+        inApp: 'Реально: gRPC-вызов к отдельному контейнеру grpc-worker для обучения и инференса',
       },
       frontendInterface: {
         component: 'Frontend-интерфейс',
