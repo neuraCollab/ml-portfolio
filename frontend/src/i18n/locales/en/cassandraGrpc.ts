@@ -6,15 +6,16 @@ export const cassandraGrpc = {
       'A distilled topic classifier: AutoTopic discovers 50 topics in a large Russian request ' +
       'corpus via slow unsupervised BERTopic clustering; this project stores a labeled sample of ' +
       'that corpus in Apache Cassandra and trains a fast TF-IDF + Logistic Regression classifier, ' +
-      'served over a real gRPC call to a separate worker container for low-latency inference.',
+      'served over a real gRPC call -- dispatched by a Coordinator pod -- to one of several real ' +
+      'worker pods running in a Kubernetes cluster, for low-latency inference.',
   },
   overview: {
     title: 'Architecture',
     stages: {
       client: 'Client (browser)',
-      backend: 'FastAPI backend (coordinator)',
-      grpcCall: 'gRPC call',
-      worker: 'grpc-worker container',
+      backend: 'FastAPI backend (gateway)',
+      grpcCall: 'gRPC call (via Coordinator)',
+      worker: 'worker pod (1 of N)',
       model: 'Cassandra / scikit-learn model',
       prediction: 'Prediction',
     },
@@ -61,7 +62,7 @@ export const cassandraGrpc = {
   },
   inference: {
     title: 'Inference',
-    pipelineDescription: 'input → preprocessing → gRPC request → grpc-worker → model prediction → confidence → result',
+    pipelineDescription: 'input → preprocessing → HTTP to Coordinator → gRPC to worker pod → model prediction → confidence → result',
     textareaPlaceholder: 'Enter a Russian request to classify...',
     predictButtonLabel: 'Predict',
     predictErrorFallback: 'Prediction request failed.',
@@ -104,13 +105,13 @@ export const cassandraGrpc = {
     eyebrow: 'System Architecture',
     title: 'Client to Coordinator to Worker to Cassandra',
     intro:
-      "Matches cassandra-grpc-ml/README.md exactly. The live pipeline-stage status above (Overview) already shows this flow with real connectivity; this section explains each stage's role.",
+      "Reflects the same real architecture described in cassandra-grpc-ml/README.md. The live pipeline-stage status above (Overview) already shows this flow with real connectivity; this section explains each stage's role.",
     steps: {
       s1: { title: 'Client (browser)', detail: 'Sends HTTP requests (train, predict, status) to the FastAPI backend.' },
-      s2: { title: 'FastAPI backend -- coordinator + gateway', detail: 'Owns the Cassandra session used for ingestion and logging, and the gRPC client used to call the worker. Writes every prediction and training run to Cassandra directly, independent of the worker\'s own Cassandra access.' },
-      s3: { title: 'gRPC call', detail: 'A real network call (grpcio) to a separate grpc-worker container, defined by cassandra-grpc-ml/proto/ml_worker.proto (Predict, Train, GetStatus).' },
-      s4: { title: 'grpc-worker container', detail: 'Holds the trained TF-IDF + LogisticRegression model in memory. Reads training rows from Cassandra directly (Predict does not touch Cassandra).' },
-      s5: { title: 'Cassandra', detail: 'Stores the ingested labeled sample (requests), a log of every real inference (predictions), and training-run history (training_runs) in the cassandra_grpc_ml keyspace.' },
+      s2: { title: 'FastAPI backend -- gateway', detail: 'Owns the Cassandra session used for ingestion and logging, and proxies train/predict/status/pool-scale requests over HTTP to the Coordinator. Writes every prediction and training run to Cassandra directly, independent of the worker pods\' own Cassandra access.' },
+      s3: { title: 'Coordinator (real k8s pod)', detail: 'Discovers Ready worker pods via the Kubernetes API and round-robin dispatches gRPC Predict/Train/GetStatus calls to them (cassandra-grpc-ml/proto/ml_worker.proto), retrying once against a different pod on grpc.RpcError.' },
+      s4: { title: 'Worker pod (one of N)', detail: 'A real Kubernetes Deployment replica (1-5) holding the trained TF-IDF + LogisticRegression model in memory, loaded from and persisted to Cassandra when the compressed model fits under Cassandra\'s message-size limit -- see Methodology for a known limitation at this project\'s default training sample size.' },
+      s5: { title: 'Cassandra (k8s pod)', detail: 'Stores the ingested labeled sample (requests), a log of every real inference (predictions), training-run history (training_runs), and, size permitting, the gzip-compressed trained model blob (models) so worker pods can share it, in the cassandra_grpc_ml keyspace.' },
     },
     whyHeading: 'Why Cassandra + gRPC',
     whyBody:
@@ -152,7 +153,7 @@ export const cassandraGrpc = {
       'The worker reads all rows from Cassandra, fits a TfidfVectorizer (max 50,000 features, 1-2 grams) and a multinomial LogisticRegression classifier on the train split, then evaluates on the held-out test split -- real accuracy, macro/micro precision/recall/F1, and a confusion matrix (top 15 classes by test support) computed with scikit-learn, not estimated.',
     servingHeading: 'Serving',
     servingBody:
-      'The trained vectorizer + classifier are persisted (joblib) and kept in the worker\'s memory. Each Predict call runs a real forward pass through the persisted model and returns topic_id/topic_name/confidence over the same gRPC connection, logged to Cassandra\'s predictions table.',
+      'The trained vectorizer + classifier are joblib-serialized, gzip-compressed, and persisted as a single blob in Cassandra\'s models table when it fits under Cassandra\'s 16MB message-size limit -- not just kept in one worker\'s local memory. When it fits, every worker pod loads that same blob on a periodic refresh, so predictions stay consistent across the pool, including newly scaled-up pods that never ran the training job themselves. Known limitation: at this project\'s actual default training sample size (40,000 rows) the compressed blob is large enough (~18.9MB) that this persistence step can fail; when it does, the training pod still serves its freshly-trained model correctly from memory and says so in the training response, but other pods will not receive it until a smaller sample size is used (see cassandra-grpc-ml/README.md). Each Predict call runs a real forward pass through the loaded model and returns topic_id/topic_name/confidence over gRPC, logged to Cassandra\'s predictions table.',
   },
   baselineSection: {
     eyebrow: 'Baseline',
@@ -186,13 +187,14 @@ export const cassandraGrpc = {
     eyebrow: 'Regression Tests',
     title: 'Worker ML Core & Schema Regression Tests',
     intro:
-      'cassandra-grpc-ml/worker/tests/ (test_ml_core.py, test_model_store.py) are the project\'s existing real tests for the pure ML logic and model persistence -- run here, not just described. backend/tests/test_cassandra_grpc_*.py cover the API schemas and the real stratified-sampling logic.',
+      'cassandra-grpc-ml/worker/tests/ (test_ml_core.py, test_model_store.py) and cassandra-grpc-ml/coordinator/tests/ (test_dispatch.py, test_k8s_client.py, test_app.py) are the project\'s existing real tests for the pure ML logic, model persistence, and the Coordinator\'s pod-discovery/dispatch/routing logic -- run here, not just described. backend/tests/test_cassandra_grpc_*.py cover the API schemas, ingestion, and the backend-to-Coordinator HTTP proxying logic.',
     testListHeading: 'What is verified',
     test1: 'train_and_evaluate() returns correct shapes and near-perfect accuracy on trivially-separable synthetic data.',
     test2: 'The confusion matrix is correctly capped to the top-N classes by test support.',
     test3: 'Empty train/test splits are rejected with a clear error, not a silent failure.',
     test4: 'A saved model round-trips through model_store and produces identical predictions after reloading.',
     test5: 'API schemas round-trip correctly and reject out-of-range values; stratified sampling stays proportional and deterministic given a fixed seed.',
+    test6: 'The Coordinator\'s round-robin dispatcher retries against a different pod on grpc.RpcError, pod discovery filters to Ready pods only, and its FastAPI routes (predict/train/status/pool-scale) behave correctly against a mocked k8s API and gRPC layer.',
     howToRerun: 'Re-run locally with: ',
   },
 };

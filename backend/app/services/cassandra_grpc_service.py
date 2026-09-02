@@ -1,10 +1,14 @@
 # backend/app/services/cassandra_grpc_service.py
-"""Coordinator-side glue for the Cassandra+gRPC ML project: owns the
-Cassandra session used for ingestion/dataset-info/logging, and the gRPC
-client used to call the grpc-worker container. The worker (see
-cassandra-grpc-ml/worker/server.py) independently owns its own Cassandra
-session for reading training rows -- this module never reads `requests`
-rows for training itself, only for ingestion and dataset-info display.
+"""Gateway-side glue for the Cassandra+gRPC ML project: owns the Cassandra
+session used for ingestion/dataset-info/logging, and an `httpx` client used
+to proxy predict/train/status/pool-scale requests over HTTP to the real
+Coordinator (a FastAPI pod running in the `kind` k8s cluster, see
+cassandra-grpc-ml/coordinator/app.py). The Coordinator discovers real worker
+pods via the Kubernetes API and round-robin dispatches gRPC calls to them;
+those worker pods (see cassandra-grpc-ml/worker/server.py) independently own
+their own Cassandra session for reading training rows and for loading/saving
+the persisted model -- this module never reads `requests` rows for training
+itself, only for ingestion and dataset-info display.
 """
 import logging
 import threading
@@ -313,7 +317,11 @@ def _run_training(sample_size: int) -> None:
         try:
             resp = httpx.post(
                 f"{CASSANDRA_GRPC_COORDINATOR_URL}/train",
-                json={"sampleSize": sample_size}, timeout=300,
+                # Keep in sync with the Coordinator's own worker-call timeout
+                # (cassandra-grpc-ml/coordinator/app.py's /train route) -- a
+                # real 40k-row training run (this project's UI default) can
+                # take longer than 300s on a CPU-constrained worker pod.
+                json={"sampleSize": sample_size}, timeout=900,
             )
         except httpx.HTTPError as exc:
             _log_grpc_call("Train", "UNAVAILABLE", (time.time() - start) * 1000, str(exc))

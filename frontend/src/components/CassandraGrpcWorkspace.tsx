@@ -220,7 +220,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
             <div>
               <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('cassandraGrpc.regressionTestsSection.testListHeading')}</h3>
               <ul className="space-y-1.5">
-                {(['test1', 'test2', 'test3', 'test4', 'test5'] as const).map((key) => (
+                {(['test1', 'test2', 'test3', 'test4', 'test5', 'test6'] as const).map((key) => (
                   <li key={key} className="flex items-start gap-2 text-xs text-slate-400">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                     <span>{t(`cassandraGrpc.regressionTestsSection.${key}` as any)}</span>
@@ -232,9 +232,9 @@ export const CassandraGrpcWorkspace: React.FC = () => {
             <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
               <div>
-                <div className="text-sm font-bold text-emerald-300">18 / 18 passed</div>
+                <div className="text-sm font-bold text-emerald-300">55 / 55 passed</div>
                 <div className="text-[11px] text-slate-500">
-                  cassandra-grpc-ml/worker/tests/ (6) + backend/tests/test_cassandra_grpc_*.py (12) -- last run 2026-09-02, pytest 9.1.1
+                  cassandra-grpc-ml/worker/tests/ (11) + cassandra-grpc-ml/coordinator/tests/ (19) + backend/tests/test_cassandra_grpc_*.py (25) -- last run 2026-09-02, pytest 9.1.1
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
             <p className="text-[11px] text-slate-500">
               {t('cassandraGrpc.regressionTestsSection.howToRerun')}
               <code className="text-slate-400 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
-                pytest cassandra-grpc-ml/worker/tests/ backend/tests/test_cassandra_grpc_*.py -v
+                pytest cassandra-grpc-ml/worker/tests/ cassandra-grpc-ml/coordinator/tests/ backend/tests/test_cassandra_grpc_*.py -v
               </code>
             </p>
           </div>
