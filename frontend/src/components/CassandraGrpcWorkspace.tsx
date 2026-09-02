@@ -79,8 +79,13 @@ export const CassandraGrpcWorkspace: React.FC = () => {
                   <span>{t('cassandraGrpc.architecture.eyebrow')}</span>
                 </div>
                 <h2 className="text-xl font-bold text-white tracking-tight">{t('cassandraGrpc.architecture.title')}</h2>
-                <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('cassandraGrpc.architecture.intro')}</p>
               </div>
+              <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3.5 overflow-x-auto">
+                <span className="text-sm sm:text-base font-mono font-bold text-cyan-300 whitespace-nowrap">
+                  {t('cassandraGrpc.architecture.flowBanner')}
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 max-w-3xl">{t('cassandraGrpc.architecture.intro')}</p>
               <div className="flex flex-col divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden">
                 {ARCHITECTURE_STEP_KEYS.map((key, idx) => (
                   <div key={key} className="flex items-start gap-3 p-3.5 bg-slate-950/50">
@@ -140,8 +145,20 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('cassandraGrpc.methodologySection.trainingBody')}</p>
             </div>
             <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-sm font-semibold text-slate-200">{t('cassandraGrpc.methodologySection.persistenceHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('cassandraGrpc.methodologySection.persistenceBody')}</p>
+            </div>
+            <div className="border-t border-slate-800 pt-3">
               <h3 className="text-sm font-semibold text-slate-200">{t('cassandraGrpc.methodologySection.servingHeading')}</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('cassandraGrpc.methodologySection.servingBody')}</p>
+            </div>
+            <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-sm font-semibold text-slate-200">{t('cassandraGrpc.methodologySection.predictionHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('cassandraGrpc.methodologySection.predictionBody')}</p>
+            </div>
+            <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-sm font-semibold text-slate-200">{t('cassandraGrpc.methodologySection.loggingHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('cassandraGrpc.methodologySection.loggingBody')}</p>
             </div>
           </div>
         </ProjectSection>
@@ -194,6 +211,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
                 <span>{t('cassandraGrpc.errorAnalysisSection.eyebrow')}</span>
               </div>
               <h2 className="text-xl font-bold text-white tracking-tight">{t('cassandraGrpc.errorAnalysisSection.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('cassandraGrpc.errorAnalysisSection.intro')}</p>
             </div>
             <div className="space-y-3">
               {(['majorityBias', 'weakClass', 'macroVsAccuracy'] as const).map((key) => (
@@ -217,6 +235,16 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('cassandraGrpc.regressionTestsSection.intro')}</p>
             </div>
 
+            <div className="flex items-center gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+              <CheckCircle2 className="w-12 h-12 text-emerald-400 shrink-0" />
+              <div>
+                <div className="text-2xl font-bold text-emerald-300">55 / 55 passed</div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  cassandra-grpc-ml/worker/tests/ (11) + cassandra-grpc-ml/coordinator/tests/ (19) + backend/tests/test_cassandra_grpc_*.py (25) -- last run 2026-09-02, pytest 9.1.1
+                </div>
+              </div>
+            </div>
+
             <div>
               <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('cassandraGrpc.regressionTestsSection.testListHeading')}</h3>
               <ul className="space-y-1.5">
@@ -227,16 +255,6 @@ export const CassandraGrpcWorkspace: React.FC = () => {
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
-              <div>
-                <div className="text-sm font-bold text-emerald-300">55 / 55 passed</div>
-                <div className="text-[11px] text-slate-500">
-                  cassandra-grpc-ml/worker/tests/ (11) + cassandra-grpc-ml/coordinator/tests/ (19) + backend/tests/test_cassandra_grpc_*.py (25) -- last run 2026-09-02, pytest 9.1.1
-                </div>
-              </div>
             </div>
 
             <p className="text-[11px] text-slate-500">

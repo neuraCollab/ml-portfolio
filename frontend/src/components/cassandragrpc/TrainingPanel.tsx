@@ -93,7 +93,12 @@ export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ o
             <MetricCard label={t('cassandraGrpc.training.accuracyLabel')} value={`${(job.result.accuracy * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
             <MetricCard label={t('cassandraGrpc.training.macroF1Label')} value={job.result.macroF1.toFixed(3)} icon={Target} color="text-cyan-300" />
             <MetricCard label={t('cassandraGrpc.training.microF1Label')} value={job.result.microF1.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.training.trainingTimeLabel')} value={`${job.result.trainingTimeSeconds.toFixed(1)}s`} icon={Target} color="text-cyan-300" />
+            <MetricCard
+              label={t('cassandraGrpc.training.trainingTimeLabel')}
+              value={`${job.result.trainingTimeSeconds.toFixed(1)}s @ ${job.result.trainRows.toLocaleString()} rows`}
+              icon={Target}
+              color="text-cyan-300"
+            />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-200 mb-2">

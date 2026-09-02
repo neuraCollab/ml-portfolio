@@ -56,13 +56,13 @@ export const overview = {
     cassandraGrpc: {
       title: 'Project 4: Cassandra + gRPC ML',
       description:
-        'Distills AutoTopic\'s slow unsupervised BERTopic clustering into a fast supervised classifier: a labeled sample is stored in Apache Cassandra, and predictions are served in milliseconds via a real Coordinator pod that round-robin dispatches gRPC calls to real worker pods on a Kubernetes cluster.',
+        'A distributed MLOps / ML serving system: a FastAPI gateway routes requests through a Coordinator pod that discovers and round-robin dispatches gRPC calls across real Kubernetes worker replicas, backed by Apache Cassandra for storage and cross-pod model persistence. The ML workload demonstrating the pipeline is a topic classifier distilled from AutoTopic\'s slower unsupervised BERTopic clustering -- the NLP methodology and model-quality work live on AutoTopic\'s own page.',
       stack: {
-        item1: 'Apache Cassandra 5 (storage: requests, predictions, training_runs)',
+        item1: 'FastAPI gateway + Coordinator pod: real k8s pod discovery, round-robin routing, retry-on-failure',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
-        item3: 'TF-IDF + One-vs-Rest LogisticRegression, n_jobs=-1 (scikit-learn)',
-        item4: 'FastAPI backend as coordinator + gateway to the worker',
-        item5: 'Real self-reported System Status (psutil) -- worker-pool scaling patches a live Kubernetes Deployment\'s replica count',
+        item3: 'Apache Cassandra 5 (storage: requests, predictions, training_runs, cross-pod model persistence)',
+        item4: 'Real Kubernetes Deployment scaling (1-5 worker replicas) via the Coordinator',
+        item5: 'ML workload: TF-IDF + One-vs-Rest LogisticRegression, n_jobs=-1 (scikit-learn)',
       },
     },
   },

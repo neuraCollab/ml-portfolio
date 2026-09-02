@@ -56,13 +56,13 @@ export const overview = {
     cassandraGrpc: {
       title: 'Проект 4: Cassandra + gRPC ML',
       description:
-        'Дистиллирует медленную неконтролируемую кластеризацию BERTopic из AutoTopic в быстрый контролируемый классификатор: размеченная выборка хранится в Apache Cassandra, а предсказания обслуживаются за миллисекунды через реальный Coordinator-под, который распределяет gRPC-вызовы по реальным worker-подам в кластере Kubernetes.',
+        'Распределённая система MLOps / обслуживания ML: шлюз FastAPI направляет запросы через под-координатор, который обнаруживает и распределяет по round-robin gRPC-вызовы между реальными репликами воркеров в Kubernetes, опираясь на Apache Cassandra для хранения данных и совместного использования моделью между подами. ML-нагрузка, демонстрирующая этот конвейер, — классификатор тем, дистиллированный из более медленной неконтролируемой кластеризации BERTopic проекта AutoTopic — методология NLP и работа над качеством модели находятся на собственной странице AutoTopic.',
       stack: {
-        item1: 'Apache Cassandra 5 (хранение: requests, predictions, training_runs)',
+        item1: 'Шлюз FastAPI + под-координатор: реальное обнаружение подов k8s, маршрутизация round-robin, повтор при сбое',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
-        item3: 'TF-IDF + LogisticRegression по схеме One-vs-Rest, n_jobs=-1 (scikit-learn)',
-        item4: 'Бэкенд FastAPI в роли координатора и шлюза к воркеру',
-        item5: 'Реальный самоотчётный статус системы (psutil) — масштабирование пула воркеров меняет число реплик реального Deployment в Kubernetes',
+        item3: 'Apache Cassandra 5 (хранение: requests, predictions, training_runs, совместное использование моделью между подами)',
+        item4: 'Реальное масштабирование Kubernetes Deployment (1-5 реплик воркеров) через координатор',
+        item5: 'ML-нагрузка: TF-IDF + LogisticRegression по схеме One-vs-Rest, n_jobs=-1 (scikit-learn)',
       },
     },
   },

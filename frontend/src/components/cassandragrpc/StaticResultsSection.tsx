@@ -11,7 +11,7 @@ interface StaticResults {
   datasetSize?: number;
   modelType?: string;
   trainingTimeSeconds?: number;
-  inferenceLatencyMs?: number;
+  grpcRoundtripMs?: number;
   accuracy?: number;
   macroPrecision?: number;
   macroRecall?: number;
@@ -33,6 +33,7 @@ export const StaticResultsSection: React.FC = () => {
         <span>{t('cassandraGrpc.staticResults.eyebrow')}</span>
       </div>
       <h2 className="text-xl font-bold text-white tracking-tight">{t('cassandraGrpc.staticResults.title')}</h2>
+      <p className="text-xs text-slate-400 max-w-3xl">{t('cassandraGrpc.staticResults.distributedNote')}</p>
 
       {!data.available ? (
         <p className="text-sm text-slate-500">
@@ -42,16 +43,31 @@ export const StaticResultsSection: React.FC = () => {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <MetricCard label={t('cassandraGrpc.staticResults.datasetSizeLabel')} value={data.datasetSize!.toLocaleString()} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.modelLabel')} value={data.modelType!} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.trainingTimeLabel')} value={`${data.trainingTimeSeconds!.toFixed(1)}s`} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.inferenceLatencyLabel')} value={`${data.inferenceLatencyMs!.toFixed(1)}ms`} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.accuracyLabel')} value={`${(data.accuracy! * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.macroPrecisionLabel')} value={data.macroPrecision!.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.macroRecallLabel')} value={data.macroRecall!.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.staticResults.macroF1Label')} value={data.macroF1!.toFixed(3)} icon={Target} color="text-cyan-300" />
+          <div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2">{t('cassandraGrpc.staticResults.workloadIdentityHeading')}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <MetricCard label={t('cassandraGrpc.staticResults.datasetSizeLabel')} value={data.datasetSize!.toLocaleString()} icon={Target} color="text-cyan-300" />
+              <MetricCard label={t('cassandraGrpc.staticResults.modelLabel')} value={data.modelType!} icon={Target} color="text-cyan-300" />
+              <MetricCard
+                label={t('cassandraGrpc.staticResults.trainingTimeLabel')}
+                value={`${data.trainingTimeSeconds!.toFixed(1)}s @ ${data.datasetSize!.toLocaleString()} rows`}
+                icon={Target}
+                color="text-cyan-300"
+              />
+              <MetricCard label={t('cassandraGrpc.staticResults.grpcRoundtripLabel')} value={`${data.grpcRoundtripMs!.toFixed(1)}ms`} icon={Target} color="text-cyan-300" />
+            </div>
           </div>
+
+          <div className="border-t border-slate-800 pt-4">
+            <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">{t('cassandraGrpc.staticResults.workloadQualityHeading')}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 opacity-80">
+              <MetricCard label={t('cassandraGrpc.staticResults.accuracyLabel')} value={`${(data.accuracy! * 100).toFixed(1)}%`} icon={Target} color="text-slate-300" />
+              <MetricCard label={t('cassandraGrpc.staticResults.macroPrecisionLabel')} value={data.macroPrecision!.toFixed(3)} icon={Target} color="text-slate-300" />
+              <MetricCard label={t('cassandraGrpc.staticResults.macroRecallLabel')} value={data.macroRecall!.toFixed(3)} icon={Target} color="text-slate-300" />
+              <MetricCard label={t('cassandraGrpc.staticResults.macroF1Label')} value={data.macroF1!.toFixed(3)} icon={Target} color="text-slate-300" />
+            </div>
+          </div>
+
           <div>
             <h3 className="text-sm font-bold text-slate-100 mb-2">{t('cassandraGrpc.staticResults.confusionMatrixHeading')}</h3>
             <ConfusionMatrixTable topClasses={data.topClasses!} confusionMatrix={data.confusionMatrix!} />

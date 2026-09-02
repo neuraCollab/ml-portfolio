@@ -184,7 +184,7 @@ if cg_metrics:
         "datasetSize": cg_dataset["ingestedRows"],
         "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
         "trainingTimeSeconds": cg_metrics["trainingTimeSeconds"],
-        "inferenceLatencyMs": example["grpcRoundtripMs"],
+        "grpcRoundtripMs": example["grpcRoundtripMs"],
         "accuracy": cg_metrics["accuracy"],
         "macroPrecision": cg_metrics["macroPrecision"],
         "macroRecall": cg_metrics["macroRecall"],

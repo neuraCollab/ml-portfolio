@@ -3,7 +3,7 @@
   "datasetSize": 40000,
   "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
   "trainingTimeSeconds": 30.137547969818115,
-  "inferenceLatencyMs": 63.63,
+  "grpcRoundtripMs": 63.63,
   "accuracy": 0.5153420523138833,
   "macroPrecision": 0.6497703143879252,
   "macroRecall": 0.22097512882446582,
