@@ -84,6 +84,13 @@ def test_save_then_load_from_cassandra_round_trips_predictions():
     trained_at_param, blob_param = session.inserted[0]
     assert isinstance(trained_at_param, datetime)
     assert isinstance(blob_param, (bytes, bytearray))
+    assert len(session.prepared_queries) == 1, (
+        "save_model_to_cassandra must INSERT via a prepared statement, not a "
+        "%s-style simple statement -- a simple statement hex-encodes the blob "
+        "client-side, doubling its size on the wire and re-introducing the "
+        "real Task 8 bug this fix exists to prevent (see the module docstring)"
+    )
+    assert "?" in session.prepared_queries[0]
 
     loaded = load_latest_model_from_cassandra(session)
     assert loaded is not None
