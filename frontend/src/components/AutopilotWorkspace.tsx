@@ -3,6 +3,7 @@ import {
   KittiFrame,
   RLAction,
   RLLogStep,
+  RLPenaltyPart,
   CameraCalibration,
 } from '../types';
 import {
@@ -53,6 +54,30 @@ const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
   brake: 'autopilot.actionLabels.brake',
 };
 
+// Renders a penalty event's structured parts into display text at call time,
+// so it always reflects the current language (see RLPenaltyPart in types.ts).
+const formatPenalty = (t: ReturnType<typeof useTranslation>['t'], parts: RLPenaltyPart[]): string =>
+  parts
+    .map((part) => {
+      switch (part.kind) {
+        case 'harshSteeringFull':
+          return t('autopilot.safetyLog.penalty.harshSteering', { magnitude: part.magnitude.toFixed(3) });
+        case 'overspeedFull':
+          return t('autopilot.safetyLog.penalty.overspeed');
+        case 'overspeedSuffix':
+          return t('autopilot.safetyLog.penalty.overspeedSuffix');
+        case 'collision':
+          return t('autopilot.safetyLog.penalty.collision', { distance: part.distance });
+        case 'highYawFull':
+          return t('autopilot.safetyLog.penalty.highYaw');
+        case 'highYawSuffix':
+          return t('autopilot.safetyLog.penalty.highYawSuffix');
+        default:
+          return '';
+      }
+    })
+    .join(' ');
+
 export const AutopilotWorkspace: React.FC = () => {
   const { t } = useTranslation();
   const [frameIdx, setFrameIdx] = useState(0);
@@ -72,7 +97,10 @@ export const AutopilotWorkspace: React.FC = () => {
   const [currentReward, setCurrentReward] = useState(0.1);
   const [cumulativeReward, setCumulativeReward] = useState(0.1);
   const [rlLogs, setRlLogs] = useState<RLLogStep[]>([]);
-  const [penaltyFeed, setPenaltyFeed] = useState<string[]>([]);
+  // Stores structured penalty parts + frameId (not pre-formatted text) so
+  // entries already in the feed retranslate immediately on language switch
+  // instead of getting stuck in whichever language was active when they fired.
+  const [penaltyFeed, setPenaltyFeed] = useState<{ frameId: number; parts: RLPenaltyPart[] }[]>([]);
 
   const cameraCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const bevCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -167,7 +195,7 @@ export const AutopilotWorkspace: React.FC = () => {
 
     if (stepLog.penalty) {
       setPenaltyFeed((prev) => [
-        t('autopilot.safetyLog.feedEntry', { frameId: currentFrame.frameId, message: stepLog.penalty as string }),
+        { frameId: currentFrame.frameId, parts: stepLog.penalty as RLPenaltyPart[] },
         ...prev.slice(0, 15),
       ]);
     }
@@ -760,9 +788,9 @@ export const AutopilotWorkspace: React.FC = () => {
               {penaltyFeed.length === 0 ? (
                 <div className="text-slate-500 text-center py-8">{t('autopilot.safetyLog.emptyState')}</div>
               ) : (
-                penaltyFeed.map((msg, i) => (
+                penaltyFeed.map((entry, i) => (
                   <div key={i} className="p-2 rounded-lg bg-red-950/40 border border-red-500/20 text-red-300">
-                    {msg}
+                    {t('autopilot.safetyLog.feedEntry', { frameId: entry.frameId, message: formatPenalty(t, entry.parts) })}
                   </div>
                 ))
               )}

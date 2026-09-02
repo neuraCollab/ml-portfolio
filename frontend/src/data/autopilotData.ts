@@ -1,4 +1,4 @@
-import { KittiFrame, TrackletObject, RLAction, RLLogStep, CameraCalibration } from '../types';
+import { KittiFrame, TrackletObject, RLAction, RLLogStep, RLPenaltyPart, CameraCalibration } from '../types';
 
 export const DEFAULT_KITTI_CALIBRATION: CameraCalibration = {
   fx: 959.7,
@@ -81,13 +81,16 @@ export function stepKittiEnv(
   prevCumulativeReward: number
 ): RLLogStep {
   let reward = 0.1; // base survival reward
-  let penalty: string | null = null;
+  // Built as structured parts (not formatted text) so the UI can translate
+  // them at render time rather than baking English text into state -- see
+  // RLPenaltyPart in types.ts.
+  let penaltyParts: RLPenaltyPart[] = [];
 
   // Steering penalty if steering is too harsh (> 0.7)
   if (Math.abs(action.steering) > 0.7) {
     const p = 0.05 * Math.abs(action.steering);
     reward -= p;
-    penalty = `Harsh steering penalty (-${p.toFixed(3)})`;
+    penaltyParts = [{ kind: 'harshSteeringFull', magnitude: p }];
   }
 
   // Speed reward (10 to 40 m/s is optimal)
@@ -95,21 +98,28 @@ export function stepKittiEnv(
     reward += 0.05;
   } else if (frame.vf > 40) {
     reward -= 0.01;
-    penalty = penalty ? `${penalty} + Overspeed` : `Overspeed penalty (-0.010)`;
+    penaltyParts = penaltyParts.length
+      ? [...penaltyParts, { kind: 'overspeedSuffix' }]
+      : [{ kind: 'overspeedFull' }];
   }
 
-  // Nearest obstacle check
+  // Nearest obstacle check -- a collision hazard overrides/replaces any
+  // steering/overspeed penalty above (matches the original combined logic).
   const nearestObstacleDist = Math.min(...frame.tracklets.map((t) => t.distance));
   if (nearestObstacleDist < 5.0) {
     reward -= 10.0;
-    penalty = `CRITICAL COLLISION HAZARD! Obstacle at ${nearestObstacleDist}m (-10.000)`;
+    penaltyParts = [{ kind: 'collision', distance: nearestObstacleDist }];
   }
 
   // Yaw rate penalty
   if (Math.abs(frame.yaw) > 0.5) {
     reward -= 0.02 * Math.abs(frame.yaw);
-    penalty = penalty ? `${penalty} + High Yaw` : `High yaw rate penalty`;
+    penaltyParts = penaltyParts.length
+      ? [...penaltyParts, { kind: 'highYawSuffix' }]
+      : [{ kind: 'highYawFull' }];
   }
+
+  const penalty = penaltyParts.length ? penaltyParts : null;
 
   const cumulativeReward = Number((prevCumulativeReward + reward).toFixed(3));
 

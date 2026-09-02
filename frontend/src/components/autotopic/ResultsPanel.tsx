@@ -239,8 +239,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
             <span>{documentsHeading ?? t('autotopic.resultsPanel.documentsTable.headingDefault', { count: filteredDocs.length })}</span>
           </h3>
 
-          <div className="flex items-center space-x-2">
-            <div className="relative">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <div className="relative min-w-0">
               <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
               <input
                 type="text"
@@ -251,12 +251,16 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
               />
             </div>
 
+            {/* max-w + truncate cap the select's own width -- topic names are
+                real clustered keywords and can be long in either UI language,
+                so without a cap the native <select> auto-sizes to its widest
+                option and can overflow narrow viewports. */}
             <select
               value={docTopicFilter}
               onChange={(e) =>
                 setDocTopicFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
               }
-              className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none max-w-[160px] truncate"
             >
               <option value="all">{t('autotopic.resultsPanel.documentsTable.allTopicsOption')}</option>
               {results.topics.map((topic) => (

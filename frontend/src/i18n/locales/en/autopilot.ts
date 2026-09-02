@@ -69,6 +69,14 @@ export const autopilot = {
       'Real Euclidean distance from the synthetic LiDAR point cloud\'s own sensor-frame coordinates to the nearest point that projects into the visible camera frame (warning threshold: {{threshold}} m, from "Live Backend Demo" below).',
     emptyState: 'No safety penalties triggered. Smooth drive!',
     feedEntry: '[Frame #{{frameId}}] {{message}}',
+    penalty: {
+      harshSteering: 'Harsh steering penalty (-{{magnitude}})',
+      overspeed: 'Overspeed penalty (-0.010)',
+      overspeedSuffix: '+ Overspeed',
+      collision: 'CRITICAL COLLISION HAZARD! Obstacle at {{distance}}m (-10.000)',
+      highYaw: 'High yaw rate penalty',
+      highYawSuffix: '+ High Yaw',
+    },
   },
   warnings: {
     objectDetected: 'WARNING: Object detected at {{distance}} m',

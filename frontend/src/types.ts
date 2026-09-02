@@ -125,6 +125,17 @@ export interface RLAction {
   brake: number; // 0 to 1
 }
 
+// Structured description of a penalty event, kept semantic (not pre-formatted
+// text) so the UI can translate it at render time -- see stepKittiEnv() in
+// data/autopilotData.ts and the penaltyFeed rendering in AutopilotWorkspace.tsx.
+export type RLPenaltyPart =
+  | { kind: 'harshSteeringFull'; magnitude: number }
+  | { kind: 'overspeedFull' }
+  | { kind: 'overspeedSuffix' }
+  | { kind: 'collision'; distance: number }
+  | { kind: 'highYawFull' }
+  | { kind: 'highYawSuffix' };
+
 export interface RLLogStep {
   step: number;
   frameId: number;
@@ -134,7 +145,7 @@ export interface RLLogStep {
   nearestObstacleDist: number;
   reward: number;
   cumulativeReward: number;
-  penalty: string | null;
+  penalty: RLPenaltyPart[] | null;
 }
 
 export interface CameraCalibration {

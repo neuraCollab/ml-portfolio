@@ -70,7 +70,13 @@ export const AutoTopicWorkspace: React.FC = () => {
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [datasetInfo, setDatasetInfo] = useState<AutoTopicDatasetInfo | null>(null);
-  const [datasetInfoError, setDatasetInfoError] = useState<string | null>(null);
+  // Raw backend message (ApiError -- already in whatever language the backend
+  // sent, out of scope for client-side translation) vs. a flag for the
+  // generic "unreachable" case, whose text is derived via t() at render time
+  // below rather than stored pre-translated -- otherwise it would get stuck
+  // in the wrong language after a mount-time failure + later language switch.
+  const [datasetInfoErrorMessage, setDatasetInfoErrorMessage] = useState<string | null>(null);
+  const [datasetInfoHasGenericError, setDatasetInfoHasGenericError] = useState(false);
   const [datasetSampleSize, setDatasetSampleSize] = useState(300);
 
   const [fullPipelineStatus, setFullPipelineStatus] = useState<AutoTopicFullPipelineStatus | null>(null);
@@ -82,7 +88,8 @@ export const AutoTopicWorkspace: React.FC = () => {
   // of real topics/documents) so it's visible even if the live background
   // job above has never been run in this session or the backend restarted.
   const [staticFullPipelineResults, setStaticFullPipelineResults] = useState<AutoTopicResults | null>(null);
-  const [staticFullPipelineError, setStaticFullPipelineError] = useState<string | null>(null);
+  // Boolean flag, not pre-translated text -- see datasetInfoHasGenericError above.
+  const [staticFullPipelineHasError, setStaticFullPipelineHasError] = useState(false);
 
   useEffect(() => () => {
     if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
@@ -92,7 +99,13 @@ export const AutoTopicWorkspace: React.FC = () => {
   useEffect(() => {
     getAutoTopicDatasetInfo()
       .then(setDatasetInfo)
-      .catch((err) => setDatasetInfoError(err instanceof ApiError ? err.message : t('autotopic.errors.backendUnreachable')));
+      .catch((err) => {
+        if (err instanceof ApiError) {
+          setDatasetInfoErrorMessage(err.message);
+        } else {
+          setDatasetInfoHasGenericError(true);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -103,8 +116,12 @@ export const AutoTopicWorkspace: React.FC = () => {
         return res.json();
       })
       .then(setStaticFullPipelineResults)
-      .catch(() => setStaticFullPipelineError(t('autotopic.errors.staticResultsLoadFailed')));
+      .catch(() => setStaticFullPipelineHasError(true));
   }, []);
+
+  // Derived at render time (see comment on datasetInfoHasGenericError above).
+  const datasetInfoErrorText = datasetInfoErrorMessage ?? (datasetInfoHasGenericError ? t('autotopic.errors.backendUnreachable') : null);
+  const staticFullPipelineErrorText = staticFullPipelineHasError ? t('autotopic.errors.staticResultsLoadFailed') : null;
 
   const pollFullPipeline = () => {
     if (fullPipelinePollRef.current) return;
@@ -462,8 +479,8 @@ export const AutoTopicWorkspace: React.FC = () => {
               <span>{t('autotopic.dataset.heading')}</span>
             </div>
 
-            {datasetInfoError ? (
-              <p className="text-xs text-red-400">{datasetInfoError}</p>
+            {datasetInfoErrorText ? (
+              <p className="text-xs text-red-400">{datasetInfoErrorText}</p>
             ) : !datasetInfo ? (
               <p className="text-xs text-slate-500">{t('autotopic.dataset.checkingLocation')}</p>
             ) : (
@@ -697,8 +714,8 @@ export const AutoTopicWorkspace: React.FC = () => {
                 )}
               </p>
             </div>
-            {staticFullPipelineError && !effectiveResults ? (
-              <p className="text-xs text-red-400">{staticFullPipelineError}</p>
+            {staticFullPipelineErrorText && !effectiveResults ? (
+              <p className="text-xs text-red-400">{staticFullPipelineErrorText}</p>
             ) : !effectiveResults ? (
               <p className="text-xs text-slate-500">{t('autotopic.staticResults.loadingSnapshot')}</p>
             ) : (
