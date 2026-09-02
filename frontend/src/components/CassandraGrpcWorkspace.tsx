@@ -25,7 +25,12 @@ export const CassandraGrpcWorkspace: React.FC = () => {
   const [metricsRefreshKey, setMetricsRefreshKey] = useState(0);
   const [poolStatus, setPoolStatus] = useState<CassandraGrpcStatus | null>(null);
   useEffect(() => {
-    getCassandraGrpcStatus().then(setPoolStatus).catch(() => {});
+    const refresh = () => {
+      getCassandraGrpcStatus().then(setPoolStatus).catch(() => {});
+    };
+    refresh();
+    const interval = setInterval(refresh, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const SECTION_ITEMS = useMemo(
