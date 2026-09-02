@@ -1,0 +1,58 @@
+# cassandra-grpc-ml/k8s/coordinator-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cassandra-grpc-ml-coordinator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra-grpc-ml-coordinator
+  template:
+    metadata:
+      labels:
+        app: cassandra-grpc-ml-coordinator
+    spec:
+      serviceAccountName: cassandra-grpc-ml-coordinator
+      containers:
+        - name: coordinator
+          image: cassandra-grpc-ml-coordinator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cassandra-grpc-ml-coordinator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cassandra-grpc-ml-coordinator
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cassandra-grpc-ml-coordinator
+subjects:
+  - kind: ServiceAccount
+    name: cassandra-grpc-ml-coordinator
+roleRef:
+  kind: Role
+  name: cassandra-grpc-ml-coordinator
+  apiGroup: rbac.authorization.k8s.io

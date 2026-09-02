@@ -1,0 +1,13 @@
+# cassandra-grpc-ml/k8s/coordinator-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator-svc
+spec:
+  selector:
+    app: cassandra-grpc-ml-coordinator
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort

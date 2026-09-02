@@ -1,45 +1,16 @@
 services:
-  cassandra:
-    image: cassandra:5
-    environment:
-      - CASSANDRA_CLUSTER_NAME=PortfolioCassandra
-    healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
-    volumes:
-      - cassandra_data:/var/lib/cassandra
-
-  grpc-worker:
-    build:
-      context: .
-      dockerfile: cassandra-grpc-ml/worker/Dockerfile
-    depends_on:
-      cassandra:
-        condition: service_healthy
-    environment:
-      - CASSANDRA_HOST=cassandra
-    volumes:
-      - cassandra_grpc_model_data:/app/model_store
-
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      cassandra:
-        condition: service_started
-      grpc-worker:
-        condition: service_started
     environment:
       - CORS_ORIGINS=http://localhost:3000
       - AUTOTOPIC_DATA_URL=${AUTOTOPIC_DATA_URL:-data/raw/labeled_requests.parquet}
-      - CASSANDRA_HOST=cassandra
-      - GRPC_WORKER_ADDRESS=grpc-worker:50061
+      - CASSANDRA_HOST=host.docker.internal
+      - CASSANDRA_PORT=30942
+      - CASSANDRA_GRPC_COORDINATOR_URL=http://host.docker.internal:30080
       - CASSANDRA_GRPC_DATASET_PATH=${CASSANDRA_GRPC_DATASET_PATH:-AutoTopic/data/raw/labeled_requests.parquet}
       - CASSANDRA_GRPC_SAMPLE_SIZE=${CASSANDRA_GRPC_SAMPLE_SIZE:-40000}
     healthcheck:
@@ -55,11 +26,8 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_BASE_URL=http://localhost:8000
+        - VITE_AUTOTOPIC_PRESENTATION_URL=${VITE_AUTOTOPIC_PRESENTATION_URL:-<REPLACE_WITH_GOOGLE_DRIVE_URL>}
     ports:
       - "3000:3000"
     depends_on:
       - backend
-
-volumes:
-  cassandra_data:
-  cassandra_grpc_model_data:

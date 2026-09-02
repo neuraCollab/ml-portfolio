@@ -1,7 +1,4 @@
-# UNVERIFIED: adapted from the original cassandra-grpc-dev repo's
-# worker-deployment.yaml for the new Python grpc-worker image (built from
-# cassandra-grpc-ml/worker/Dockerfile); not deployed or tested against a
-# live cluster in this environment. See cassandra-grpc-ml/README.md.
+# UNVERIFIED -> verified during this plan's Task 8.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,6 +22,8 @@ spec:
           env:
             - name: CASSANDRA_HOST
               value: "cassandra-grpc-ml-cassandra"
+            - name: MODEL_PERSISTENCE
+              value: "cassandra"
           resources:
             requests:
               memory: "200Mi"
@@ -32,9 +31,3 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
-          volumeMounts:
-            - name: model-store
-              mountPath: /app/model_store
-      volumes:
-        - name: model-store
-          emptyDir: {}

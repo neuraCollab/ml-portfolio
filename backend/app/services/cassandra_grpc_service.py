@@ -16,6 +16,7 @@ from typing import Any
 
 import grpc
 import pandas as pd
+import psutil
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent_with_args
 
@@ -28,12 +29,14 @@ from app.core.config import (
 )
 from app.schemas.cassandra_grpc import (
     CassandraGrpcStatus,
+    CassandraSystemInfo,
     ClassDistributionEntry,
     ClassSupport,
     ConfusionMatrixEntry,
     DatasetInfo,
     GrpcLogEntry,
     PredictResult,
+    ServiceSelfStats,
     TrainJobStatus,
     TrainMetrics,
 )
@@ -45,6 +48,22 @@ import ml_worker_pb2_grpc
 logger = logging.getLogger(__name__)
 
 KEYSPACE = "cassandra_grpc_ml"
+
+# Real self-reported process stats for the backend's own container -- same
+# pattern as the worker's psutil usage in cassandra-grpc-ml/worker/server.py.
+# Primed once at import time so the first cpu_percent() call in get_status()
+# returns a real reading instead of the meaningless 0.0 a cold first call
+# always produces.
+_backend_process = psutil.Process()
+_backend_process.cpu_percent(interval=None)
+
+
+def _backend_self_stats() -> ServiceSelfStats:
+    return ServiceSelfStats(
+        cpuPercent=round(_backend_process.cpu_percent(interval=0.1), 1),
+        memoryMb=round(_backend_process.memory_info().rss / (1024 * 1024), 1),
+        uptimeSeconds=round(time.time() - _backend_process.create_time(), 1),
+    )
 
 _SCHEMA_STATEMENTS = [
     f"CREATE KEYSPACE IF NOT EXISTS {KEYSPACE} "
@@ -60,6 +79,8 @@ _SCHEMA_STATEMENTS = [
     "macro_precision double, macro_recall double, macro_f1 double, "
     "micro_precision double, micro_recall double, micro_f1 double, "
     "training_time_seconds double, trained_at timestamp)",
+    f"CREATE TABLE IF NOT EXISTS {KEYSPACE}.models ("
+    "id timeuuid PRIMARY KEY, trained_at timestamp, model_blob blob)",
 ]
 
 
@@ -114,17 +135,35 @@ def get_recent_grpc_log() -> list[GrpcLogEntry]:
         return list(reversed(_grpc_log))
 
 
+def _cassandra_system_info(session) -> CassandraSystemInfo | None:
+    try:
+        row = session.execute("SELECT release_version, cluster_name, host_id FROM system.local").one()
+        if not row:
+            return None
+        return CassandraSystemInfo(
+            releaseVersion=row.release_version, clusterName=row.cluster_name, hostId=str(row.host_id),
+        )
+    except Exception:
+        logger.exception("Could not read Cassandra system.local")
+        return None
+
+
 def get_status() -> CassandraGrpcStatus:
     cassandra_ok = True
+    cassandra_info = None
     try:
         cluster, session = _connect_cassandra()
-        cluster.shutdown()
+        try:
+            cassandra_info = _cassandra_system_info(session)
+        finally:
+            cluster.shutdown()
     except Exception:
         logger.exception("Cassandra unreachable")
         cassandra_ok = False
 
     worker_ok = True
     model_loaded, num_classes, trained_at = False, 0, None
+    worker_stats = None
     start = time.time()
     try:
         with _grpc_channel() as channel:
@@ -133,6 +172,9 @@ def get_status() -> CassandraGrpcStatus:
             model_loaded = resp.model_loaded
             num_classes = resp.num_classes
             trained_at = resp.trained_at or None
+            worker_stats = ServiceSelfStats(
+                cpuPercent=resp.cpu_percent, memoryMb=resp.memory_mb, uptimeSeconds=resp.uptime_seconds,
+            )
         _log_grpc_call("GetStatus", "OK", (time.time() - start) * 1000, "ok")
     except grpc.RpcError as exc:
         worker_ok = False
@@ -145,6 +187,9 @@ def get_status() -> CassandraGrpcStatus:
         modelLoaded=model_loaded,
         numClasses=num_classes,
         trainedAt=trained_at,
+        backendStats=_backend_self_stats(),
+        workerStats=worker_stats,
+        cassandraInfo=cassandra_info,
     )
 
 

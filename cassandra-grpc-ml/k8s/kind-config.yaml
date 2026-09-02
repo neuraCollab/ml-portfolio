@@ -1,0 +1,10 @@
+# cassandra-grpc-ml/k8s/kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080   # coordinator-svc NodePort
+        hostPort: 30080
+      - containerPort: 30942   # cassandra-svc NodePort (CQL native, 9042 in-cluster)
+        hostPort: 30942
