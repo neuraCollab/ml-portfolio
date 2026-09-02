@@ -20,14 +20,26 @@ export const WorkerPool: React.FC<WorkerPoolProps> = ({ status, onStatusChange }
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks the last replica count we explicitly requested via /pool/scale, so
+  // the +/- buttons don't regress a scale-up that's still rolling out. The
+  // Coordinator's /pool endpoint only lists Ready pods, so status?.pods.length
+  // reads low (e.g. 1) while new pods are still starting up after a request
+  // for a higher count (e.g. 3) -- using that alone would let a second click
+  // compute currentReplicas + 1 = 2 and PATCH the Deployment back down mid-rollout.
+  const [lastRequestedReplicas, setLastRequestedReplicas] = useState(0);
 
-  const currentReplicas = status?.pods.length ?? 0;
+  const readyReplicas = status?.pods.length ?? 0;
+  // Basis for the +/- target computation: the higher of what's actually Ready
+  // and what we last asked for, so a click during an in-flight scale-up moves
+  // relative to the requested count, not the not-yet-caught-up Ready count.
+  const currentReplicas = Math.max(lastRequestedReplicas, readyReplicas);
 
   const handleScale = async (replicas: number) => {
     setLoading(true);
     setError(null);
     try {
-      await scaleCassandraGrpcPool(replicas);
+      const result = await scaleCassandraGrpcPool(replicas);
+      setLastRequestedReplicas(result.requestedReplicas);
       onStatusChange(await getCassandraGrpcStatus());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('cassandraGrpc.workerPool.scaleErrorFallback'));
