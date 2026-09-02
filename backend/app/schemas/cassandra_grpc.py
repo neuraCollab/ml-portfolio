@@ -3,12 +3,52 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
-class CassandraGrpcStatus(BaseModel):
-    cassandra: Literal["connected", "unreachable"]
-    worker: Literal["connected", "unreachable"]
+class ServiceSelfStats(BaseModel):
+    """Real self-reported process stats (psutil), not a Docker-API
+    container-level reading -- see cassandra-grpc-ml/README.md."""
+
+    cpuPercent: float
+    memoryMb: float
+    uptimeSeconds: float
+
+
+class CassandraSystemInfo(BaseModel):
+    """Real fields read from a live `SELECT * FROM system.local` query --
+    Cassandra has no built-in queryable process-uptime metric, so this
+    reports identity/version info instead of fabricating one."""
+
+    releaseVersion: str
+    clusterName: str
+    hostId: str
+
+
+class PodStatus(BaseModel):
+    address: str
     modelLoaded: bool
     numClasses: int
     trainedAt: Optional[str] = None
+    stats: Optional[ServiceSelfStats] = None
+    error: Optional[str] = None
+
+
+class CassandraGrpcStatus(BaseModel):
+    cassandra: Literal["connected", "unreachable"]
+    coordinator: Literal["connected", "unreachable"]
+    modelLoaded: bool
+    numClasses: int
+    trainedAt: Optional[str] = None
+    backendStats: Optional[ServiceSelfStats] = None
+    pods: list[PodStatus] = []
+    cassandraInfo: Optional[CassandraSystemInfo] = None
+
+
+class PoolScaleRequest(BaseModel):
+    replicas: int = Field(..., ge=1, le=5)
+
+
+class PoolScaleResult(BaseModel):
+    requestedReplicas: int
+    readyReplicas: int
 
 
 class ClassDistributionEntry(BaseModel):

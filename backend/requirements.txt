@@ -24,6 +24,7 @@ lxml>=4.9.0
 emoji>=2.8.0
 loguru>=0.7.0
 pyyaml>=6.0
+psutil>=5.9,<7.0
 
 # Autopilot CV + pretrained policy (reused from ../rl_cv_car-autopilot)
 # stable-baselines3/gymnasium pinned to match rl_cv_car-autopilot/system_info.txt
@@ -44,3 +45,4 @@ pyserial>=3.5
 grpcio>=1.62,<1.68
 grpcio-tools>=1.62,<1.68
 cassandra-driver>=3.29,<4.0
+httpx>=0.27,<0.29

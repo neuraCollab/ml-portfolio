@@ -14,17 +14,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import grpc
+import httpx
 import pandas as pd
 import psutil
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent_with_args
 
 from app.core.config import (
+    CASSANDRA_GRPC_COORDINATOR_URL,
     CASSANDRA_GRPC_DATASET_PATH,
     CASSANDRA_GRPC_SAMPLE_SIZE,
     CASSANDRA_HOST,
-    GRPC_WORKER_ADDRESS,
+    CASSANDRA_PORT,
     REPO_ROOT,
 )
 from app.schemas.cassandra_grpc import (
@@ -35,15 +36,14 @@ from app.schemas.cassandra_grpc import (
     ConfusionMatrixEntry,
     DatasetInfo,
     GrpcLogEntry,
+    PodStatus,
+    PoolScaleResult,
     PredictResult,
     ServiceSelfStats,
     TrainJobStatus,
     TrainMetrics,
 )
 from app.services.cassandra_grpc_ingestion import stratified_sample
-
-import ml_worker_pb2
-import ml_worker_pb2_grpc
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class CassandraGrpcError(Exception):
 
 
 def _connect_cassandra():
-    cluster = Cluster([CASSANDRA_HOST])
+    cluster = Cluster([CASSANDRA_HOST], port=CASSANDRA_PORT)
     try:
         session = cluster.connect()
         for stmt in _SCHEMA_STATEMENTS:
@@ -99,10 +99,6 @@ def _connect_cassandra():
         cluster.shutdown()
         raise CassandraGrpcError(f"Cassandra unreachable at {CASSANDRA_HOST}: {exc}")
     return cluster, session
-
-
-def _grpc_channel():
-    return grpc.insecure_channel(GRPC_WORKER_ADDRESS)
 
 
 _grpc_log_lock = threading.Lock()
@@ -161,34 +157,42 @@ def get_status() -> CassandraGrpcStatus:
         logger.exception("Cassandra unreachable")
         cassandra_ok = False
 
-    worker_ok = True
+    coordinator_ok = True
+    pods: list[PodStatus] = []
     model_loaded, num_classes, trained_at = False, 0, None
-    worker_stats = None
     start = time.time()
     try:
-        with _grpc_channel() as channel:
-            stub = ml_worker_pb2_grpc.MLWorkerStub(channel)
-            resp = stub.GetStatus(ml_worker_pb2.StatusRequest(), timeout=5)
-            model_loaded = resp.model_loaded
-            num_classes = resp.num_classes
-            trained_at = resp.trained_at or None
-            worker_stats = ServiceSelfStats(
-                cpuPercent=resp.cpu_percent, memoryMb=resp.memory_mb, uptimeSeconds=resp.uptime_seconds,
-            )
-        _log_grpc_call("GetStatus", "OK", (time.time() - start) * 1000, "ok")
-    except grpc.RpcError as exc:
-        worker_ok = False
-        detail = exc.details() if hasattr(exc, "details") else str(exc)
-        _log_grpc_call("GetStatus", "UNAVAILABLE", (time.time() - start) * 1000, str(detail))
+        resp = httpx.get(f"{CASSANDRA_GRPC_COORDINATOR_URL}/pool", timeout=5)
+        resp.raise_for_status()
+        body = resp.json()
+        for pod in body["pods"]:
+            pods.append(PodStatus(
+                address=pod["address"], modelLoaded=pod["modelLoaded"], numClasses=pod["numClasses"],
+                trainedAt=pod.get("trainedAt"),
+                stats=ServiceSelfStats(
+                    cpuPercent=pod["cpuPercent"], memoryMb=pod["memoryMb"], uptimeSeconds=pod["uptimeSeconds"],
+                ) if pod.get("error") is None else None,
+                error=pod.get("error"),
+            ))
+        healthy_pods = [p for p in pods if p.error is None]
+        if healthy_pods:
+            model_loaded = any(p.modelLoaded for p in healthy_pods)
+            latest_pod = max(healthy_pods, key=lambda p: p.trainedAt or "")
+            num_classes = latest_pod.numClasses
+            trained_at = latest_pod.trainedAt
+        _log_grpc_call("GetStatus", "OK", (time.time() - start) * 1000, f"{len(pods)} pods")
+    except (httpx.HTTPError, KeyError) as exc:
+        coordinator_ok = False
+        _log_grpc_call("GetStatus", "UNAVAILABLE", (time.time() - start) * 1000, str(exc))
 
     return CassandraGrpcStatus(
         cassandra="connected" if cassandra_ok else "unreachable",
-        worker="connected" if worker_ok else "unreachable",
+        coordinator="connected" if coordinator_ok else "unreachable",
         modelLoaded=model_loaded,
         numClasses=num_classes,
         trainedAt=trained_at,
         backendStats=_backend_self_stats(),
-        workerStats=worker_stats,
+        pods=pods,
         cassandraInfo=cassandra_info,
     )
 
@@ -306,47 +310,36 @@ def _run_training(sample_size: int) -> None:
     start = time.time()
     try:
         ingest_if_needed()
-        with _grpc_channel() as channel:
-            stub = ml_worker_pb2_grpc.MLWorkerStub(channel)
-            resp = stub.Train(ml_worker_pb2.TrainRequest(sample_size=sample_size), timeout=300)
+        try:
+            resp = httpx.post(
+                f"{CASSANDRA_GRPC_COORDINATOR_URL}/train",
+                json={"sampleSize": sample_size}, timeout=300,
+            )
+        except httpx.HTTPError as exc:
+            _log_grpc_call("Train", "UNAVAILABLE", (time.time() - start) * 1000, str(exc))
+            raise CassandraGrpcError(f"Coordinator unreachable: {exc}")
         latency_ms = (time.time() - start) * 1000
 
-        if not resp.success:
-            _log_grpc_call("Train", "FAILED_PRECONDITION", latency_ms, resp.message)
-            raise CassandraGrpcError(resp.message or "Training failed on the worker")
-        _log_grpc_call("Train", "OK", latency_ms, resp.message)
+        if resp.status_code != 200:
+            detail = resp.json().get("detail", resp.text)
+            _log_grpc_call("Train", "FAILED_PRECONDITION", latency_ms, detail)
+            raise CassandraGrpcError(detail)
+        _log_grpc_call("Train", "OK", latency_ms, "trained")
+        body = resp.json()
 
         metrics = TrainMetrics(
-            numClasses=resp.num_classes,
-            trainRows=resp.train_rows,
-            testRows=resp.test_rows,
-            accuracy=resp.accuracy,
-            macroPrecision=resp.macro_precision,
-            macroRecall=resp.macro_recall,
-            macroF1=resp.macro_f1,
-            microPrecision=resp.micro_precision,
-            microRecall=resp.micro_recall,
-            microF1=resp.micro_f1,
-            trainingTimeSeconds=resp.training_time_seconds,
-            topClasses=[
-                ClassSupport(topicId=c.topic_id, topicName=c.topic_name, support=c.support)
-                for c in resp.top_classes
-            ],
-            confusionMatrix=[
-                ConfusionMatrixEntry(trueTopicId=e.true_topic_id, predictedTopicId=e.predicted_topic_id, count=e.count)
-                for e in resp.confusion_matrix
-            ],
+            numClasses=body["numClasses"], trainRows=body["trainRows"], testRows=body["testRows"],
+            accuracy=body["accuracy"], macroPrecision=body["macroPrecision"], macroRecall=body["macroRecall"],
+            macroF1=body["macroF1"], microPrecision=body["microPrecision"], microRecall=body["microRecall"],
+            microF1=body["microF1"], trainingTimeSeconds=body["trainingTimeSeconds"],
+            topClasses=[ClassSupport(**c) for c in body["topClasses"]],
+            confusionMatrix=[ConfusionMatrixEntry(**e) for e in body["confusionMatrix"]],
             trainedAt=datetime.now(timezone.utc).isoformat(),
         )
         _record_training_run(sample_size, metrics)
 
         with _train_lock:
             _train_state.update(status="completed", finishedAt=time.time(), error=None, result=metrics)
-    except grpc.RpcError as exc:
-        logger.exception("Training gRPC call failed")
-        detail = exc.details() if hasattr(exc, "details") else str(exc)
-        with _train_lock:
-            _train_state.update(status="failed", finishedAt=time.time(), error=str(detail))
     except Exception as exc:
         logger.exception("Training failed")
         with _train_lock:
@@ -383,38 +376,58 @@ def predict(text: str) -> PredictResult:
 
     start_grpc = time.time()
     try:
-        with _grpc_channel() as channel:
-            stub = ml_worker_pb2_grpc.MLWorkerStub(channel)
-            resp = stub.Predict(ml_worker_pb2.PredictRequest(text=cleaned), timeout=10)
-    except grpc.RpcError as exc:
+        resp = httpx.post(
+            f"{CASSANDRA_GRPC_COORDINATOR_URL}/predict",
+            json={"text": cleaned}, timeout=10,
+        )
+    except httpx.HTTPError as exc:
         latency_ms = (time.time() - start_grpc) * 1000
-        detail = exc.details() if hasattr(exc, "details") else str(exc)
-        status_name = "FAILED_PRECONDITION" if "FAILED_PRECONDITION" in str(exc) else "UNAVAILABLE"
-        _log_grpc_call("Predict", status_name, latency_ms, str(detail))
-        raise CassandraGrpcError(str(detail))
+        _log_grpc_call("Predict", "UNAVAILABLE", latency_ms, str(exc))
+        raise CassandraGrpcError(f"Coordinator unreachable: {exc}")
 
     grpc_roundtrip_ms = (time.time() - start_grpc) * 1000
-    _log_grpc_call("Predict", "OK", grpc_roundtrip_ms, f"topic_id={resp.topic_id}")
-    _log_prediction(cleaned, resp, grpc_roundtrip_ms)
+    if resp.status_code != 200:
+        detail = resp.json().get("detail", resp.text)
+        status_name = "FAILED_PRECONDITION" if resp.status_code == 422 else "UNAVAILABLE"
+        _log_grpc_call("Predict", status_name, grpc_roundtrip_ms, detail)
+        raise CassandraGrpcError(detail)
+
+    body = resp.json()
+    _log_grpc_call("Predict", "OK", grpc_roundtrip_ms, f"topic_id={body['topicId']}")
+    _log_prediction(cleaned, body, grpc_roundtrip_ms)
 
     return PredictResult(
-        topicId=resp.topic_id,
-        topicName=resp.topic_name,
-        confidence=resp.confidence,
+        topicId=body["topicId"],
+        topicName=body["topicName"],
+        confidence=body["confidence"],
         preprocessingTimeMs=round(preprocessing_ms, 3),
         grpcRoundtripMs=round(grpc_roundtrip_ms, 2),
-        note="Served by the grpc-worker container's TF-IDF + LogisticRegression model over a real gRPC call.",
+        note="Served by a real worker pod (via the Coordinator's real k8s-backed routing) over a real gRPC call.",
     )
 
 
-def _log_prediction(text: str, resp, latency_ms: float) -> None:
+def _log_prediction(text: str, body: dict, latency_ms: float) -> None:
     cluster, session = _connect_cassandra()
     try:
         session.execute(
             f"INSERT INTO {KEYSPACE}.predictions "
             "(id, input_text, predicted_topic_id, predicted_topic_name, confidence, latency_ms, created_at) "
             "VALUES (now(), %s, %s, %s, %s, %s, toTimestamp(now()))",
-            (text, resp.topic_id, resp.topic_name, resp.confidence, latency_ms),
+            (text, body["topicId"], body["topicName"], body["confidence"], latency_ms),
         )
     finally:
         cluster.shutdown()
+
+
+def scale_pool(replicas: int) -> PoolScaleResult:
+    try:
+        resp = httpx.post(
+            f"{CASSANDRA_GRPC_COORDINATOR_URL}/pool/scale",
+            json={"replicas": replicas}, timeout=30,
+        )
+    except httpx.HTTPError as exc:
+        raise CassandraGrpcError(f"Coordinator unreachable: {exc}")
+    if resp.status_code != 200:
+        raise CassandraGrpcError(resp.json().get("detail", resp.text))
+    body = resp.json()
+    return PoolScaleResult(requestedReplicas=body["requestedReplicas"], readyReplicas=body["readyReplicas"])

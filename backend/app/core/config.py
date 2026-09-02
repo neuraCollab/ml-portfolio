@@ -52,4 +52,5 @@ CASSANDRA_GRPC_DATASET_PATH = os.environ.get(
 )
 CASSANDRA_GRPC_SAMPLE_SIZE = int(os.environ.get("CASSANDRA_GRPC_SAMPLE_SIZE", "40000"))
 CASSANDRA_HOST = os.environ.get("CASSANDRA_HOST", "cassandra")
-GRPC_WORKER_ADDRESS = os.environ.get("GRPC_WORKER_ADDRESS", "grpc-worker:50061")
+CASSANDRA_GRPC_COORDINATOR_URL = os.environ.get("CASSANDRA_GRPC_COORDINATOR_URL", "http://host.docker.internal:30080")
+CASSANDRA_PORT = int(os.environ.get("CASSANDRA_PORT", "9042"))
