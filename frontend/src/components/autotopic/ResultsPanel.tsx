@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AutoTopicResults } from '../../types';
 import { MetricCard } from '../shared/MetricCard';
+import { TopicScatterPlot } from './TopicScatterPlot';
 import { useTranslation } from '../../i18n/I18nContext';
 import {
   BarChart2, Tag, Zap, Sparkles, CheckCircle2, CircleDashed, Files, Star,
-  FileText, Search,
+  FileText, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, CartesianGrid,
 } from 'recharts';
+
+const DOCS_PER_PAGE = 8;
 
 interface ResultsPanelProps {
   results: AutoTopicResults;
@@ -23,6 +26,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [searchDocFilter, setSearchDocFilter] = useState('');
   const [docTopicFilter, setDocTopicFilter] = useState<number | 'all'>('all');
+  const [docPage, setDocPage] = useState(0);
 
   const filteredDocs = useMemo(() => {
     return results.documents.filter((doc) => {
@@ -33,6 +37,10 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
       return matchesSearch && matchesTopic;
     });
   }, [results.documents, searchDocFilter, docTopicFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredDocs.length / DOCS_PER_PAGE));
+  useEffect(() => setDocPage(0), [searchDocFilter, docTopicFilter, results.documents]);
+  const pagedDocs = filteredDocs.slice(docPage * DOCS_PER_PAGE, (docPage + 1) * DOCS_PER_PAGE);
 
   const activeTopicObj = useMemo(() => {
     if (selectedTopicId === null) return results.topics[0] || null;
@@ -89,6 +97,9 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         />
       </div>
 
+      {/* Topic Map: real 2D UMAP projection of each document's embedding */}
+      <TopicScatterPlot documents={results.documents} topics={results.topics} />
+
       {/* Topic Size Distribution Bar Chart */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -125,7 +136,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
             <Tag className="w-4 h-4 text-purple-400" />
-            <span>{t('autotopic.resultsPanel.keywords.heading')}</span>
+            <span>{t('autotopic.resultsPanel.keywords.explorerHeading')}</span>
           </h3>
         </div>
 
@@ -273,7 +284,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-800 max-h-80 overflow-y-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-800">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800 sticky top-0 z-10">
               <tr>
@@ -285,7 +296,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {filteredDocs.map((doc) => {
+              {pagedDocs.map((doc) => {
                 const topicObj = results.topics.find((topic) => topic.id === doc.topicId);
                 return (
                   <tr key={doc.id} className="hover:bg-slate-800/40 transition">
@@ -315,6 +326,28 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
             </tbody>
           </table>
         </div>
+
+        {pageCount > 1 && (
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>{t('autotopic.resultsPanel.documentsTable.pageLabel', { current: docPage + 1, total: pageCount })}</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setDocPage((p) => Math.max(0, p - 1))}
+                disabled={docPage === 0}
+                className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 disabled:opacity-30 hover:border-slate-700"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setDocPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={docPage >= pageCount - 1}
+                className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 disabled:opacity-30 hover:border-slate-700"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
