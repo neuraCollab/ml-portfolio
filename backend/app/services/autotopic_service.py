@@ -331,6 +331,25 @@ def _evaluate_topics_capped(topic_model, texts: list[str]) -> dict:
     return results
 
 
+def _project_2d(embeddings) -> np.ndarray | None:
+    """Cheap 2D UMAP projection of already-computed sentence embeddings, for
+    the topic-map scatter plot only. This is NOT the UMAP instance BERTopic
+    uses for clustering (that one reduces to 5 dimensions and its output
+    never leaves stages/topic_modeling.py) -- it's a second, throwaway fit on
+    the same input vectors purely so the frontend has (x, y) to plot. Topic
+    assignments, keywords, and metrics are all unaffected by this.
+    Returns None when there are too few points for UMAP to fit at all.
+    """
+    n = len(embeddings)
+    if n < 4:
+        return None
+    from umap import UMAP
+
+    n_neighbors = min(15, n - 1)
+    reducer = UMAP(n_neighbors=n_neighbors, n_components=2, min_dist=0.1, metric="cosine", random_state=42)
+    return reducer.fit_transform(np.asarray(embeddings))
+
+
 def _build_topics_out(topics: list[int], topic_model, top_n_words: int) -> list[dict]:
     """Shared by analyze() and the full-pipeline job: turns BERTopic's own
     per-topic c-TF-IDF keywords and representative_docs into the shape the
@@ -420,6 +439,7 @@ def analyze(texts: list[str], config: AutoTopicConfig) -> AutoTopicResults:
 
     unique_topic_ids = sorted(set(topics))
     topics_out = _build_topics_out(topics, topic_model, config.topNWords)
+    coords_2d = _project_2d(embeddings)
 
     documents_out = []
     for row_idx, (orig_idx, raw_text, cleaned_text) in enumerate(surviving):
@@ -431,6 +451,8 @@ def analyze(texts: list[str], config: AutoTopicConfig) -> AutoTopicResults:
                 "language": "ru" if _RU_CHAR_RE.search(raw_text) else "en",
                 "topicId": topics[row_idx],
                 "confidence": round(_confidence_for(probs, row_idx), 2),
+                "x": float(coords_2d[row_idx, 0]) if coords_2d is not None else None,
+                "y": float(coords_2d[row_idx, 1]) if coords_2d is not None else None,
             }
         )
 
@@ -633,8 +655,12 @@ def _run_full_pipeline(config: AutoTopicConfig) -> None:
         # preview, not the complete classified set.
         rng = random.Random(42)
         preview_positions = sorted(rng.sample(range(n_surviving), min(_FULL_PIPELINE_DOC_PREVIEW_SIZE, n_surviving)))
+        # 2D-projecting only the preview's own embeddings (not all 100k+
+        # survivors) keeps this fast regardless of full-corpus size -- see
+        # _project_2d's docstring for why this doesn't touch clustering.
+        preview_coords_2d = _project_2d(embeddings[preview_positions])
         documents_out = []
-        for row_idx in preview_positions:
+        for preview_idx, row_idx in enumerate(preview_positions):
             orig_idx, raw_text, cleaned_text = surviving[row_idx]
             documents_out.append(
                 {
@@ -644,6 +670,8 @@ def _run_full_pipeline(config: AutoTopicConfig) -> None:
                     "language": "ru" if _RU_CHAR_RE.search(raw_text) else "en",
                     "topicId": topics[row_idx],
                     "confidence": round(_confidence_for(probs, row_idx), 2),
+                    "x": float(preview_coords_2d[preview_idx, 0]) if preview_coords_2d is not None else None,
+                    "y": float(preview_coords_2d[preview_idx, 1]) if preview_coords_2d is not None else None,
                 }
             )
 

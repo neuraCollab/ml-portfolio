@@ -65,6 +65,13 @@ class LogDocument(BaseModel):
     language: Literal["ru", "en"]
     topicId: int
     confidence: float
+    # 2D UMAP projection of this document's real sentence embedding, for the
+    # topic-map scatter plot only -- a separate, cheap UMAP(n_components=2)
+    # fit on the same embeddings BERTopic already computed, not a re-run of
+    # BERTopic/HDBSCAN itself and not used for topic assignment. None when
+    # too few documents survived to fit a projection.
+    x: Optional[float] = None
+    y: Optional[float] = None
 
 
 class OptunaTrial(BaseModel):

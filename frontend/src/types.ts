@@ -8,6 +8,10 @@ export interface LogDocument {
   language: 'ru' | 'en';
   topicId: number;
   confidence: number;
+  /** 2D UMAP projection of this document's real embedding, for the topic-map
+   * scatter plot only -- null when too few documents survived to fit one. */
+  x?: number | null;
+  y?: number | null;
 }
 
 export interface TopicKeyword {
