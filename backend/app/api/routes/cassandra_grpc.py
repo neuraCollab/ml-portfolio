@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.cassandra_grpc import (
-    CassandraGrpcStatus, DatasetInfo, GrpcLogEntry, PoolScaleRequest, PoolScaleResult, PredictRequestBody,
-    PredictResult, TrainJobStatus, TrainMetrics, TrainRequestBody,
+    BenchmarkRequestBody, BenchmarkResult, CassandraGrpcStatus, DatasetInfo, GrpcLogEntry, PoolScaleRequest,
+    PoolScaleResult, PredictRequestBody, PredictResult, TrainJobStatus, TrainMetrics, TrainRequestBody,
 )
 from app.services import cassandra_grpc_service as svc
 from app.services.cassandra_grpc_service import CassandraGrpcError
@@ -18,6 +18,14 @@ router = APIRouter(prefix="/api/cassandra-grpc", tags=["cassandra-grpc"])
 @router.get("/status", response_model=CassandraGrpcStatus)
 def status():
     return svc.get_status()
+
+
+@router.post("/benchmark", response_model=BenchmarkResult)
+def benchmark(request: BenchmarkRequestBody):
+    try:
+        return svc.run_benchmark(request.requests, request.concurrency)
+    except CassandraGrpcError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.post("/pool/scale", response_model=PoolScaleResult)

@@ -107,6 +107,19 @@ simulation.
 
 To tear the cluster down: `kind delete cluster --name cassandra-grpc-ml`.
 
+**Troubleshooting: Cassandra/Coordinator/pods unreachable after a Docker Desktop restart.**
+Observed live: a Docker Desktop restart can bring the `cassandra-grpc-ml-control-plane` container
+back up healthy, but without republishing any of its NodePort mappings to the host (`docker port
+cassandra-grpc-ml-control-plane` returns nothing) -- Cassandra, the Coordinator, and every worker
+pod are fine *inside* the cluster and completely unreachable from outside it, and the backend's
+status endpoint reports everything as unreachable. There is no in-place fix for a container that
+lost its port publishing; recreate the cluster:
+
+```bash
+kind delete cluster --name cassandra-grpc-ml
+bash cassandra-grpc-ml/k8s/setup-kind.sh
+```
+
 ## How to train
 
 Click "Train Model" in the Training section, or:

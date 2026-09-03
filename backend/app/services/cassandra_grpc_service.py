@@ -33,6 +33,7 @@ from app.core.config import (
     REPO_ROOT,
 )
 from app.schemas.cassandra_grpc import (
+    BenchmarkResult,
     CassandraGrpcStatus,
     CassandraSystemInfo,
     ClassDistributionEntry,
@@ -425,6 +426,23 @@ def _log_prediction(text: str, body: dict, latency_ms: float) -> None:
         )
     finally:
         cluster.shutdown()
+
+
+def run_benchmark(requests: int, concurrency: int) -> BenchmarkResult:
+    try:
+        resp = httpx.post(
+            f"{CASSANDRA_GRPC_COORDINATOR_URL}/benchmark",
+            json={"requests": requests, "concurrency": concurrency},
+            # The stress test itself can legitimately take a while at high
+            # request counts/concurrency -- give it real headroom rather than
+            # timing out a benchmark that is still honestly running.
+            timeout=120,
+        )
+    except httpx.HTTPError as exc:
+        raise CassandraGrpcError(f"Coordinator unreachable: {exc}")
+    if resp.status_code != 200:
+        raise CassandraGrpcError(resp.json().get("detail", resp.text))
+    return BenchmarkResult(**resp.json())
 
 
 def scale_pool(replicas: int) -> PoolScaleResult:

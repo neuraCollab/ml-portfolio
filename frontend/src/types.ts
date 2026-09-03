@@ -396,6 +396,23 @@ export interface CassandraGrpcTrainJobStatus {
   result?: CassandraGrpcTrainMetrics | null;
 }
 
+export interface CassandraGrpcBenchmarkResult {
+  rpc: 'GetStatus';
+  requests: number;
+  concurrency: number;
+  readyPods: number;
+  totalTimeSeconds: number;
+  throughputRps: number;
+  latencyMsMin: number;
+  latencyMsMean: number;
+  latencyMsP50: number;
+  latencyMsP95: number;
+  latencyMsP99: number;
+  latencyMsMax: number;
+  errorCount: number;
+  perPodRequestCounts: Record<string, number>;
+}
+
 export interface CassandraGrpcPredictResult {
   topicId: number;
   topicName: string;

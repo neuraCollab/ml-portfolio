@@ -2,8 +2,8 @@
   "available": true,
   "datasetSize": 40000,
   "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
-  "trainingTimeSeconds": 30.137547969818115,
-  "grpcRoundtripMs": 63.63,
+  "trainingTimeSeconds": 9.585273265838623,
+  "grpcRoundtripMs": 38.3,
   "accuracy": 0.5153420523138833,
   "macroPrecision": 0.6497703143879252,
   "macroRecall": 0.22097512882446582,
@@ -535,7 +535,42 @@
   "examplePrediction": {
     "inputText": "Подбери синонимы к слову веселый",
     "topicName": "Анализ персонажей",
-    "confidence": 0.5127505539456865
+    "confidence": 0.5127505545922598
   },
-  "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md."
+  "benchmark": {
+    "rpc": "GetStatus",
+    "requests": 600,
+    "concurrency": 60,
+    "readyPods": 3,
+    "totalTimeSeconds": 5.129,
+    "throughputRps": 117.0,
+    "latencyMsMin": 101.62,
+    "latencyMsMean": 489.11,
+    "latencyMsP50": 509.47,
+    "latencyMsP95": 517.78,
+    "latencyMsP99": 531.38,
+    "latencyMsMax": 544.68,
+    "errorCount": 0,
+    "perPodRequestCounts": {
+      "10.244.0.6:50061": 200,
+      "10.244.0.12:50061": 200,
+      "10.244.0.13:50061": 200
+    }
+  },
+  "scalingComparison": [
+    {
+      "replicas": 1,
+      "throughputRps": 38.8,
+      "latencyMsP50": 1531.57,
+      "errorCount": 0
+    },
+    {
+      "replicas": 3,
+      "throughputRps": 115.2,
+      "latencyMsP50": 509.08,
+      "errorCount": 0
+    }
+  ],
+  "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md.",
+  "benchmarkNote": "Real concurrent GetStatus calls dispatched by the Coordinator over real gRPC to the live worker pool -- not HTTP, and not simulated. scalingComparison is one real 600-request/60-concurrency run at 1 worker replica and one at 3, captured by scaling the pool (POST /api/cassandra-grpc/pool/scale) between two runs of this same benchmark."
 }

@@ -6,11 +6,14 @@ Holds no ML logic and no Cassandra session of its own -- see
 cassandra-grpc-ml/README.md and docs/superpowers/specs/
 2026-09-02-cassandra-grpc-k8s-design.md."""
 import logging
+import statistics
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import grpc
 from fastapi import Depends, FastAPI, HTTPException
 from kubernetes import client as k8s_client_lib, config as k8s_config
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import ml_worker_pb2
 import ml_worker_pb2_grpc
@@ -60,6 +63,11 @@ class TrainBody(BaseModel):
 
 class ScaleBody(BaseModel):
     replicas: int
+
+
+class BenchmarkBody(BaseModel):
+    requests: int = Field(200, ge=1, le=2000)
+    concurrency: int = Field(20, ge=1, le=100)
 
 
 def _rpc_detail(exc: grpc.RpcError) -> str:
@@ -158,6 +166,59 @@ def pool_status(core_v1=Depends(get_core_v1)):
                 "cpuPercent": 0.0, "memoryMb": 0.0, "uptimeSeconds": 0.0, "error": _rpc_detail(exc),
             })
     return {"pods": pods, "replicas": len(pods)}
+
+
+@app.post("/benchmark")
+def benchmark(body: BenchmarkBody, core_v1=Depends(get_core_v1)):
+    """Real concurrent gRPC stress test against the live worker pool --
+    GetStatus rather than Predict, deliberately: it exercises the exact same
+    pod-discovery + round-robin dispatch + real network hop this project is
+    about, without depending on whether a model has been trained. Every
+    request is a real RPC to a real pod; nothing here is simulated."""
+    endpoints = list_worker_endpoints(core_v1)
+    if not endpoints:
+        raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
+
+    def one_call(_):
+        address = _dispatcher.pick(endpoints)
+        start = time.perf_counter()
+        try:
+            get_worker_stub(address).GetStatus(ml_worker_pb2.StatusRequest(), timeout=5)
+            return time.perf_counter() - start, address, None
+        except grpc.RpcError as exc:
+            return time.perf_counter() - start, address, _rpc_detail(exc)
+
+    started = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=body.concurrency) as pool:
+        results = list(pool.map(one_call, range(body.requests)))
+    total_seconds = time.perf_counter() - started
+
+    latencies_ms = sorted(elapsed * 1000 for elapsed, _address, _error in results)
+    errors = [r for r in results if r[2] is not None]
+    per_pod_counts: dict[str, int] = {}
+    for _elapsed, address, _error in results:
+        per_pod_counts[address] = per_pod_counts.get(address, 0) + 1
+
+    def percentile(p: float) -> float:
+        idx = min(len(latencies_ms) - 1, int(len(latencies_ms) * p))
+        return round(latencies_ms[idx], 2)
+
+    return {
+        "rpc": "GetStatus",
+        "requests": body.requests,
+        "concurrency": body.concurrency,
+        "readyPods": len(endpoints),
+        "totalTimeSeconds": round(total_seconds, 3),
+        "throughputRps": round(body.requests / total_seconds, 1) if total_seconds > 0 else 0.0,
+        "latencyMsMin": round(latencies_ms[0], 2) if latencies_ms else 0.0,
+        "latencyMsMean": round(statistics.mean(latencies_ms), 2) if latencies_ms else 0.0,
+        "latencyMsP50": percentile(0.50),
+        "latencyMsP95": percentile(0.95),
+        "latencyMsP99": percentile(0.99),
+        "latencyMsMax": round(latencies_ms[-1], 2) if latencies_ms else 0.0,
+        "errorCount": len(errors),
+        "perPodRequestCounts": per_pod_counts,
+    }
 
 
 @app.post("/pool/scale")

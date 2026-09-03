@@ -1,4 +1,4 @@
-import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgBenchmarkResult, EcgEvaluationResult, EcgHealth, EcgRuntimeInfo, PoolScaleResult } from '../types';
+import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcBenchmarkResult, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, EcgAnalysisResult, EcgBenchmarkResult, EcgEvaluationResult, EcgHealth, EcgRuntimeInfo, PoolScaleResult } from '../types';
 
 const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL: string = API_BASE_URL.replace(/^http/, 'ws');
@@ -218,10 +218,6 @@ export function getCassandraGrpcTrainStatus(): Promise<CassandraGrpcTrainJobStat
   return request<CassandraGrpcTrainJobStatus>('/api/cassandra-grpc/train/status');
 }
 
-export function getCassandraGrpcMetrics(): Promise<CassandraGrpcTrainMetrics | null> {
-  return request<CassandraGrpcTrainMetrics | null>('/api/cassandra-grpc/metrics');
-}
-
 export function predictCassandraGrpc(text: string): Promise<CassandraGrpcPredictResult> {
   return request<CassandraGrpcPredictResult>('/api/cassandra-grpc/predict', {
     method: 'POST',
@@ -232,4 +228,12 @@ export function predictCassandraGrpc(text: string): Promise<CassandraGrpcPredict
 
 export function getCassandraGrpcLog(): Promise<CassandraGrpcLogEntry[]> {
   return request<CassandraGrpcLogEntry[]>('/api/cassandra-grpc/grpc-log');
+}
+
+export function runCassandraGrpcBenchmark(requestsCount: number, concurrency: number): Promise<CassandraGrpcBenchmarkResult> {
+  return request<CassandraGrpcBenchmarkResult>('/api/cassandra-grpc/benchmark', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: requestsCount, concurrency }),
+  });
 }

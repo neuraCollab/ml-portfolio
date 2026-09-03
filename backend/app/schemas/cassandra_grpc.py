@@ -121,6 +121,28 @@ class PredictResult(BaseModel):
     note: str
 
 
+class BenchmarkRequestBody(BaseModel):
+    requests: int = Field(200, ge=1, le=2000)
+    concurrency: int = Field(20, ge=1, le=100)
+
+
+class BenchmarkResult(BaseModel):
+    rpc: Literal["GetStatus"]
+    requests: int
+    concurrency: int
+    readyPods: int
+    totalTimeSeconds: float
+    throughputRps: float
+    latencyMsMin: float
+    latencyMsMean: float
+    latencyMsP50: float
+    latencyMsP95: float
+    latencyMsP99: float
+    latencyMsMax: float
+    errorCount: int
+    perPodRequestCounts: dict[str, int]
+
+
 class GrpcLogEntry(BaseModel):
     id: str
     timestamp: str
