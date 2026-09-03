@@ -49,6 +49,7 @@ export const common = {
     results: 'Результаты',
     technicalDetails: 'Технические детали',
     interactiveDemo: 'Интерактивная демонстрация',
+    roleContribution: 'Роль и вклад',
     notEvaluatedReason: 'Пока не оценено для этого проекта.',
     comingSoonReason: 'Этот раздел будет заполнен реальным, проверенным содержимым в следующем обновлении.',
   },

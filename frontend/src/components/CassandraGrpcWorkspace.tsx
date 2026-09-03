@@ -67,6 +67,10 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               </p>
             </div>
             <OverviewPanel />
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
+              <h3 className="text-base font-bold text-slate-100">{t('common.projectSections.roleContribution')}</h3>
+              <p className="text-sm text-slate-400 max-w-3xl">{t('cassandraGrpc.roleContribution.body')}</p>
+            </div>
           </div>
         </ProjectSection>
 

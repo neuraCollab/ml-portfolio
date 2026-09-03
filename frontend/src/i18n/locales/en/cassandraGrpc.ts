@@ -13,6 +13,19 @@ export const cassandraGrpc = {
       'it: real Coordinator-driven routing, real pod discovery, real horizontal scaling, and real ' +
       'fault-tolerant retries.',
   },
+  roleContribution: {
+    body:
+      'Reimplemented the Cassandra-for-storage + gRPC-coordinator/worker distributed-processing ' +
+      'pattern from an existing C++ web-crawler project in Python, applied to a real machine-' +
+      'learning serving workload. Designed and implemented the Kubernetes Deployment for the ' +
+      'worker pool (1-5 replicas), the Coordinator service\'s pod discovery and round-robin gRPC ' +
+      'request routing with retry-on-failure, the TF-IDF + One-vs-Rest Logistic Regression ' +
+      'training/inference pipeline (scikit-learn), the Protocol Buffers/gRPC service definitions, ' +
+      'and the Cassandra schema for request/prediction/training-run persistence. Diagnosed and ' +
+      'fixed a real training-time parallelization bug (n_jobs was silently a no-op under ' +
+      'multinomial Logistic Regression) by switching to One-vs-Rest, and a Cassandra message-size ' +
+      'limit affecting model persistence.',
+  },
   overview: {
     title: 'Real Request Path',
     stages: {

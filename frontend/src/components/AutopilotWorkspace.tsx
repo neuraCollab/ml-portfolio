@@ -508,6 +508,11 @@ export const AutopilotWorkspace: React.FC = () => {
               />
             </div>
           </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2 mt-6">
+            <h3 className="text-base font-bold text-slate-100">{t('common.projectSections.roleContribution')}</h3>
+            <p className="text-sm text-slate-400 max-w-3xl">{t('autopilot.roleContribution.body')}</p>
+          </div>
         </ProjectSection>
 
         <ProjectSection id="model" title={t('common.projectSections.model')} icon={Brain} accentClassName={ACCENT}>

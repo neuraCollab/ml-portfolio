@@ -136,7 +136,7 @@ export function stepKittiEnv(
   };
 }
 
-// Predict action using pretrained SAC / DDPG model policy
+// Predict action using pretrained SAC model policy
 export function predictPolicyAction(frame: KittiFrame): RLAction {
   const nearestDist = Math.min(...frame.tracklets.map((t) => t.distance));
   const leadCar = frame.tracklets.find((t) => t.objectType === 'Car');

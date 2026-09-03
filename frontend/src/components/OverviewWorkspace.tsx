@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Sparkles, Car, CheckCircle2, Code2, Cpu, FileCode, BookOpen, HeartPulse } from 'lucide-react';
+import { Layers, Sparkles, Car, CheckCircle2, Code2, Cpu, FileCode, BookOpen, HeartPulse, Network } from 'lucide-react';
 import { useTranslation, TranslationKey } from '../i18n/I18nContext';
 
 const BANNER_TAG_KEYS: { id: string; key: TranslationKey }[] = [
@@ -8,6 +8,7 @@ const BANNER_TAG_KEYS: { id: string; key: TranslationKey }[] = [
   { id: 'cv', key: 'overview.banner.tags.computerVision' },
   { id: 'sp', key: 'overview.banner.tags.signalProcessing' },
   { id: 'edge', key: 'overview.banner.tags.edgeAi' },
+  { id: 'distributed', key: 'overview.banner.tags.distributedSystems' },
   { id: 'backend', key: 'overview.banner.tags.backendEngineering' },
 ];
 
@@ -35,8 +36,8 @@ export const OverviewWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid: 3 Portfolio Projects */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Grid: 4 Portfolio Projects */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
         {/* AutoTopic Module */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
@@ -173,6 +174,51 @@ export const OverviewWorkspace: React.FC = () => {
           </div>
         </div>
 
+        {/* Cassandra + gRPC ML Module */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <Network className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">{t('overview.projects.cassandraGrpc.title')}</h3>
+                <span className="text-xs text-slate-400 font-mono">/cassandra-grpc-ml/</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {t('overview.projects.cassandraGrpc.description')}
+            </p>
+
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-mono font-semibold text-cyan-400 uppercase">{t('overview.techStackHeading')}</h4>
+              <ul className="space-y-1.5 text-xs text-slate-300 font-mono">
+                <li className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{t('overview.projects.cassandraGrpc.stack.item1')}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{t('overview.projects.cassandraGrpc.stack.item2')}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{t('overview.projects.cassandraGrpc.stack.item3')}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{t('overview.projects.cassandraGrpc.stack.item4')}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{t('overview.projects.cassandraGrpc.stack.item5')}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Complete Technology Matrix Table */}
@@ -209,7 +255,7 @@ export const OverviewWorkspace: React.FC = () => {
               </tr>
               <tr>
                 <td className="py-2.5 px-4 text-white font-semibold">{t('overview.techMatrix.rows.reinforcementLearning.component')}</td>
-                <td className="py-2.5 px-4 text-emerald-400">stable-baselines3 (SAC / DDPG)</td>
+                <td className="py-2.5 px-4 text-emerald-400">stable-baselines3 (SAC)</td>
                 <td className="py-2.5 px-4 text-slate-400">{t('overview.techMatrix.rows.reinforcementLearning.inApp')}</td>
               </tr>
               <tr>
@@ -226,6 +272,16 @@ export const OverviewWorkspace: React.FC = () => {
                 <td className="py-2.5 px-4 text-white font-semibold">{t('overview.techMatrix.rows.ecgClassification.component')}</td>
                 <td className="py-2.5 px-4 text-rose-400">PyTorch ECGNet (TorchScript), PTB-XL</td>
                 <td className="py-2.5 px-4 text-emerald-400">{t('overview.techMatrix.rows.ecgClassification.inApp')}</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-4 text-white font-semibold">{t('overview.techMatrix.rows.distributedStorage.component')}</td>
+                <td className="py-2.5 px-4 text-cyan-400">Apache Cassandra 5</td>
+                <td className="py-2.5 px-4 text-emerald-400">{t('overview.techMatrix.rows.distributedStorage.inApp')}</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-4 text-white font-semibold">{t('overview.techMatrix.rows.distributedServing.component')}</td>
+                <td className="py-2.5 px-4 text-cyan-400">grpcio + Protocol Buffers, scikit-learn TF-IDF/LogisticRegression</td>
+                <td className="py-2.5 px-4 text-emerald-400">{t('overview.techMatrix.rows.distributedServing.inApp')}</td>
               </tr>
               <tr>
                 <td className="py-2.5 px-4 text-white font-semibold">{t('overview.techMatrix.rows.frontendInterface.component')}</td>

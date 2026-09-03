@@ -16,6 +16,9 @@ export const autopilot = {
     lensUndistorted: 'Lens: Undistorted',
     lensRaw: 'Lens: Raw Distortion',
   },
+  roleContribution: {
+    body: 'Designed and implemented the KITTI multi-modal data pipeline (camera frames, Velodyne LiDAR point clouds, OXTS IMU/GPS, tracklet object annotations), the camera calibration and LiDAR-to-camera projection math (OpenCV), a custom Gymnasium reinforcement-learning environment (KITTICarEnv) with a combined image + numeric-sensor observation space and reward shaping, and the training setup using Stable-Baselines3\'s Soft Actor-Critic (SAC) algorithm with a custom CNN+MLP feature extractor. Integrated the trained policy into a FastAPI backend and built the React/TypeScript frontend, including an interactive demo that runs the real OpenCV undistortion, LiDAR projection, and policy-inference code end-to-end.',
+  },
   timeline: {
     sequenceLabel: 'Sequence:',
     frameCounter: 'Frame #{{frameId}} / {{total}}',

@@ -26,7 +26,7 @@ export const autotopic = {
     githubButton: 'GitHub',
     whatIBuiltHeading: 'What I built',
     whatIBuiltBody:
-      "An end-to-end unsupervised NLP pipeline that turns 373k+ real, unlabeled chatbot log messages into interpretable topics -- without ever hand-labeling a single one. It combines multilingual sentence embeddings, UMAP dimensionality reduction, and HDBSCAN density clustering, tuned against a classical LDA baseline built earlier in the project. The interactive demo below runs the exact same code path as the full-dataset run, just on a smaller sample so it fits in a request/response cycle.",
+      "Designed and implemented an end-to-end unsupervised NLP pipeline (text cleaning, lemmatization/filtering, sentence-embedding computation, UMAP dimensionality reduction, HDBSCAN density clustering, c-TF-IDF topic labeling, and Optuna hyperparameter tuning) that turns 373k+ real, unlabeled chatbot log messages into interpretable topics -- without hand-labeling a single one. Built an earlier classical LDA baseline to validate the approach before adopting BERTopic, added a real 2D UMAP projection of the existing sentence embeddings for the topic-map visualization, and implemented the FastAPI backend and React/TypeScript frontend, including the interactive demo, which runs the exact same code path as the full-dataset run on a smaller sample so it fits in a request/response cycle.",
   },
   demoSection: {
     navLabel: 'Demo',

@@ -49,6 +49,7 @@ export const common = {
     results: 'Results',
     technicalDetails: 'Technical Details',
     interactiveDemo: 'Interactive Demo',
+    roleContribution: 'Role & Contribution',
     notEvaluatedReason: 'Not yet evaluated for this project.',
     comingSoonReason: 'This section will be filled in with real, verified content in a follow-up update.',
   },

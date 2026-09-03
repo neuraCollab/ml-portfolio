@@ -264,6 +264,9 @@ export const ecg = {
     demonstratesBodyMiddle2: ' and ',
     demonstratesBodySuffix: '.',
   },
+  roleContribution: {
+    body: 'Adapted an existing open-source Raspberry Pi 5 ECG project (hardware design, AD8232/Arduino firmware, the ECGNet training script, and PTB-XL-trained model weights) -- found and fixed three real correctness bugs in its inference pipeline (a missing import that broke startup, a mismatch between training-time and inference-time preprocessing, and an incorrect probability threshold that made every prediction negative). Designed and implemented a new preprocessing/inference module (ecg_pipeline.py), per-class decision-threshold calibration on a held-out PTB-XL split, a deterministic rule-based signal-quality-check layer, expanded multi-label evaluation metrics (macro/micro precision/recall/F1, PR-AUC), a real-repeated-measurement latency benchmark, and the FastAPI backend plus React/TypeScript frontend integration, including a live-hardware WebSocket streaming mode.',
+  },
   architecture: {
     eyebrow: 'System Architecture',
     title: 'From Sensor to Prediction',

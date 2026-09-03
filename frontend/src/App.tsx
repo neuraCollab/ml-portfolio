@@ -32,7 +32,7 @@ export function App() {
             <span>{t('common.footer.portfolioLine')} &bull; neuraCollab/ml-portfolio</span>
           </div>
           <div className="flex items-center space-x-4">
-            <span>BERTopic &bull; Optuna &bull; SAC/DDPG &bull; KITTI &bull; ECGNet</span>
+            <span>BERTopic &bull; Optuna &bull; SAC &bull; KITTI &bull; ECGNet</span>
             <span>{t('common.footer.containerLine')}</span>
           </div>
         </div>
