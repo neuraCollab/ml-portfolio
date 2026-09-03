@@ -572,5 +572,5 @@
     }
   ],
   "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md.",
-  "benchmarkNote": "Real concurrent GetStatus calls dispatched by the Coordinator over real gRPC to the live worker pool -- not HTTP, and not simulated. scalingComparison is one real 600-request/60-concurrency run at 1 worker replica and one at 3, captured by scaling the pool (POST /api/cassandra-grpc/pool/scale) between two runs of this same benchmark."
+  "benchmarkNote": "This snapshot and scalingComparison use real concurrent GetStatus calls, deliberately independent of model-training state -- a pure measurement of the Coordinator-to-pod gRPC path and how it scales with replica count. scalingComparison is one real 600-request/60-concurrency run at 1 worker replica and one at 3, captured by scaling the pool (POST /api/cassandra-grpc/pool/scale) between two runs of this same benchmark. The interactive stress test in the Model section above sends real Predict calls instead -- the actual ML workload under load, including any real failures on pods without a loaded model."
 }

@@ -434,9 +434,11 @@ def run_benchmark(requests: int, concurrency: int) -> BenchmarkResult:
             f"{CASSANDRA_GRPC_COORDINATOR_URL}/benchmark",
             json={"requests": requests, "concurrency": concurrency},
             # The stress test itself can legitimately take a while at high
-            # request counts/concurrency -- give it real headroom rather than
-            # timing out a benchmark that is still honestly running.
-            timeout=120,
+            # request counts (up to 15,000) -- especially with only 1 worker
+            # pod Ready, where real throughput drops to ~40 req/s -- so give
+            # it real headroom rather than timing out a benchmark that is
+            # still honestly running.
+            timeout=600,
         )
     except httpx.HTTPError as exc:
         raise CassandraGrpcError(f"Coordinator unreachable: {exc}")

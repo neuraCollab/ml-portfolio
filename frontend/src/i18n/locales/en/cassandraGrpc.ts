@@ -71,7 +71,11 @@ export const cassandraGrpc = {
     macroF1Label: 'Macro F1',
     microF1Label: 'Micro F1',
     trainingTimeLabel: 'Training Time (model .fit() only)',
-    confusionMatrixHeading: 'Confusion matrix (top {{shown}} classes by test support, of {{total}} total)',
+    perPodNote:
+      "The full sample size trains on a single worker pod -- whichever one the Coordinator's " +
+      "round-robin dispatch picks for this Train call. Training isn't sharded across the pool; " +
+      "other pods only receive the resulting model afterward, and only if it fits under Cassandra's " +
+      'message-size limit (see Error Analysis).',
   },
   confusionMatrix: {
     truePredictedHeader: 'true \\ predicted',
@@ -133,8 +137,15 @@ export const cassandraGrpc = {
   benchmark: {
     title: 'Run a Real gRPC Stress Test',
     description:
-      '{{requests}} real GetStatus calls at concurrency {{concurrency}}, dispatched by the ' +
-      'Coordinator over gRPC to whichever worker pods are Ready right now -- not HTTP, not simulated.',
+      'Fires real calls at concurrency {{concurrency}}, dispatched by the Coordinator over gRPC to ' +
+      'whichever worker pods are Ready right now -- not HTTP, not simulated.',
+    whatIsACallNote:
+      'Each call is a real Predict request -- the same gRPC call the Inference panel above makes, ' +
+      'with the same fixed sample text -- dispatched round-robin to a single Ready worker pod. This ' +
+      'is the actual ML workload (vectorizer + classifier forward pass) under concurrent load, not a ' +
+      "cheap health check. A pod with no trained model genuinely fails here, and that's counted as a " +
+      'real error rather than hidden.',
+    requestsLabel: 'Number of calls (max 15,000)',
     runButtonLabel: 'Run Stress Test',
     runningLabel: 'Running...',
     errorFallback: 'Benchmark request failed.',
@@ -142,6 +153,9 @@ export const cassandraGrpc = {
     p50Label: 'p50 Latency',
     p99Label: 'p99 Latency',
     errorsLabel: 'Errors',
+    errorsExplainerNote:
+      "These are real FAILED_PRECONDITION errors from pods with no model loaded -- not a stress-test " +
+      "bug. See Error Analysis for why not every pod always has the trained model.",
     distributionHeading: 'Requests per pod ({{count}} Ready)',
   },
   architecture: {

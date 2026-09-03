@@ -3,8 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CassandraGrpcTrainJobStatus } from '../../types';
 import { startCassandraGrpcTraining, getCassandraGrpcTrainStatus } from '../../api/client';
 import { MetricCard } from '../shared/MetricCard';
-import { ConfusionMatrixTable } from './ConfusionMatrixTable';
-import { Target, Play, Loader2 } from 'lucide-react';
+import { Target, Play, Loader2, Info } from 'lucide-react';
 import { useTranslation } from '../../i18n/I18nContext';
 
 export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ onTrainingComplete }) => {
@@ -84,28 +83,25 @@ export const TrainingPanel: React.FC<{ onTrainingComplete?: () => void }> = ({ o
         {job && <span className="text-xs text-slate-500 font-mono">{t('cassandraGrpc.training.statusLine', { status: statusText! })}</span>}
       </div>
 
+      <p className="flex items-start gap-1.5 text-[11px] text-slate-500 max-w-2xl">
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-600" />
+        <span>{t('cassandraGrpc.training.perPodNote')}</span>
+      </p>
+
       {hasStartError && <p className="text-xs text-red-400">{t('cassandraGrpc.training.startErrorFallback')}</p>}
       {job?.status === 'failed' && <p className="text-xs text-red-400">{job.error}</p>}
 
       {job?.result && (
-        <div className="space-y-4 pt-2 border-t border-slate-800">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MetricCard label={t('cassandraGrpc.training.accuracyLabel')} value={`${(job.result.accuracy * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.training.macroF1Label')} value={job.result.macroF1.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard label={t('cassandraGrpc.training.microF1Label')} value={job.result.microF1.toFixed(3)} icon={Target} color="text-cyan-300" />
-            <MetricCard
-              label={t('cassandraGrpc.training.trainingTimeLabel')}
-              value={`${job.result.trainingTimeSeconds.toFixed(1)}s @ ${job.result.trainRows.toLocaleString()} rows`}
-              icon={Target}
-              color="text-cyan-300"
-            />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-200 mb-2">
-              {t('cassandraGrpc.training.confusionMatrixHeading', { shown: job.result.topClasses.length, total: job.result.numClasses })}
-            </h3>
-            <ConfusionMatrixTable topClasses={job.result.topClasses} confusionMatrix={job.result.confusionMatrix} />
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
+          <MetricCard label={t('cassandraGrpc.training.accuracyLabel')} value={`${(job.result.accuracy * 100).toFixed(1)}%`} icon={Target} color="text-cyan-300" />
+          <MetricCard label={t('cassandraGrpc.training.macroF1Label')} value={job.result.macroF1.toFixed(3)} icon={Target} color="text-cyan-300" />
+          <MetricCard label={t('cassandraGrpc.training.microF1Label')} value={job.result.microF1.toFixed(3)} icon={Target} color="text-cyan-300" />
+          <MetricCard
+            label={t('cassandraGrpc.training.trainingTimeLabel')}
+            value={`${job.result.trainingTimeSeconds.toFixed(1)}s @ ${job.result.trainRows.toLocaleString()} rows`}
+            icon={Target}
+            color="text-cyan-300"
+          />
         </div>
       )}
     </div>

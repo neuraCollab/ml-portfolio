@@ -397,7 +397,7 @@ export interface CassandraGrpcTrainJobStatus {
 }
 
 export interface CassandraGrpcBenchmarkResult {
-  rpc: 'GetStatus';
+  rpc: 'Predict';
   requests: number;
   concurrency: number;
   readyPods: number;

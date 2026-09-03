@@ -122,12 +122,12 @@ class PredictResult(BaseModel):
 
 
 class BenchmarkRequestBody(BaseModel):
-    requests: int = Field(200, ge=1, le=2000)
+    requests: int = Field(200, ge=1, le=15000)
     concurrency: int = Field(20, ge=1, le=100)
 
 
 class BenchmarkResult(BaseModel):
-    rpc: Literal["GetStatus"]
+    rpc: Literal["Predict"]
     requests: int
     concurrency: int
     readyPods: int

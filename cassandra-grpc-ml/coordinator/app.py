@@ -66,7 +66,7 @@ class ScaleBody(BaseModel):
 
 
 class BenchmarkBody(BaseModel):
-    requests: int = Field(200, ge=1, le=2000)
+    requests: int = Field(200, ge=1, le=15000)
     concurrency: int = Field(20, ge=1, le=100)
 
 
@@ -168,13 +168,18 @@ def pool_status(core_v1=Depends(get_core_v1)):
     return {"pods": pods, "replicas": len(pods)}
 
 
+BENCHMARK_TEXT = "Подбери синонимы к слову веселый"
+
+
 @app.post("/benchmark")
 def benchmark(body: BenchmarkBody, core_v1=Depends(get_core_v1)):
-    """Real concurrent gRPC stress test against the live worker pool --
-    GetStatus rather than Predict, deliberately: it exercises the exact same
-    pod-discovery + round-robin dispatch + real network hop this project is
-    about, without depending on whether a model has been trained. Every
-    request is a real RPC to a real pod; nothing here is simulated."""
+    """Real concurrent gRPC stress test against the live worker pool -- a
+    real Predict call per request, so the load is the actual ML workload
+    (vectorizer + classifier forward pass) each pod would serve in
+    production, not just a cheap health check. Every request is a real RPC
+    to a real pod; nothing here is simulated. A pod with no trained model
+    genuinely fails with FAILED_PRECONDITION -- that shows up as a real
+    error here rather than being hidden."""
     endpoints = list_worker_endpoints(core_v1)
     if not endpoints:
         raise HTTPException(status_code=503, detail="No worker pods are currently Ready")
@@ -183,7 +188,7 @@ def benchmark(body: BenchmarkBody, core_v1=Depends(get_core_v1)):
         address = _dispatcher.pick(endpoints)
         start = time.perf_counter()
         try:
-            get_worker_stub(address).GetStatus(ml_worker_pb2.StatusRequest(), timeout=5)
+            get_worker_stub(address).Predict(ml_worker_pb2.PredictRequest(text=BENCHMARK_TEXT), timeout=10)
             return time.perf_counter() - start, address, None
         except grpc.RpcError as exc:
             return time.perf_counter() - start, address, _rpc_detail(exc)
@@ -204,7 +209,7 @@ def benchmark(body: BenchmarkBody, core_v1=Depends(get_core_v1)):
         return round(latencies_ms[idx], 2)
 
     return {
-        "rpc": "GetStatus",
+        "rpc": "Predict",
         "requests": body.requests,
         "concurrency": body.concurrency,
         "readyPods": len(endpoints),

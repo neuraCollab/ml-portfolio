@@ -3,7 +3,6 @@ import React from 'react';
 import cassandraGrpcResults from '../../data/staticResults/cassandraGrpcResults.json';
 import { MetricCard } from '../shared/MetricCard';
 import { ConfusionMatrixTable } from './ConfusionMatrixTable';
-import { BenchmarkPanel } from './BenchmarkPanel';
 import { ClipboardCheck, Target, Gauge, Timer, ShieldCheck, TrendingUp } from 'lucide-react';
 import { useTranslation } from '../../i18n/I18nContext';
 
@@ -107,8 +106,6 @@ export const StaticResultsSection: React.FC = () => {
               {data.benchmarkNote && <p className="text-[11px] text-slate-500 mt-2">{data.benchmarkNote}</p>}
             </div>
           )}
-
-          <BenchmarkPanel />
 
           <div className="border-t border-slate-800 pt-4">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2">{t('cassandraGrpc.staticResults.workloadIdentityHeading')}</h3>

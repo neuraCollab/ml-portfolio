@@ -3,14 +3,16 @@ import React, { useState } from 'react';
 import { CassandraGrpcBenchmarkResult } from '../../types';
 import { runCassandraGrpcBenchmark, ApiError } from '../../api/client';
 import { MetricCard } from '../shared/MetricCard';
-import { Zap, Loader2, Gauge, Timer, ShieldCheck, Network } from 'lucide-react';
+import { Zap, Loader2, Gauge, Timer, ShieldCheck, Network, Info } from 'lucide-react';
 import { useTranslation } from '../../i18n/I18nContext';
 
-const REQUEST_COUNT = 300;
+const MIN_REQUESTS = 1;
+const MAX_REQUESTS = 15000;
 const CONCURRENCY = 30;
 
 export const BenchmarkPanel: React.FC = () => {
   const { t } = useTranslation();
+  const [requestsCount, setRequestsCount] = useState(300);
   const [result, setResult] = useState<CassandraGrpcBenchmarkResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export const BenchmarkPanel: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await runCassandraGrpcBenchmark(REQUEST_COUNT, CONCURRENCY);
+      const res = await runCassandraGrpcBenchmark(requestsCount, CONCURRENCY);
       setResult(res);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('cassandraGrpc.benchmark.errorFallback'));
@@ -36,18 +38,39 @@ export const BenchmarkPanel: React.FC = () => {
           {t('cassandraGrpc.benchmark.title')}
         </h2>
         <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-          {t('cassandraGrpc.benchmark.description', { requests: REQUEST_COUNT, concurrency: CONCURRENCY })}
+          {t('cassandraGrpc.benchmark.description', { concurrency: CONCURRENCY })}
         </p>
       </div>
 
-      <button
-        onClick={handleRun}
-        disabled={loading}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-700 text-white text-sm font-medium disabled:opacity-50"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-        <span>{loading ? t('cassandraGrpc.benchmark.runningLabel') : t('cassandraGrpc.benchmark.runButtonLabel')}</span>
-      </button>
+      <p className="flex items-start gap-1.5 text-[11px] text-slate-500 max-w-2xl">
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-600" />
+        <span>{t('cassandraGrpc.benchmark.whatIsACallNote')}</span>
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-xs text-slate-400 font-mono">
+          {t('cassandraGrpc.benchmark.requestsLabel')}
+          <input
+            type="number"
+            min={MIN_REQUESTS}
+            max={MAX_REQUESTS}
+            value={requestsCount}
+            onChange={(e) =>
+              setRequestsCount(Math.max(MIN_REQUESTS, Math.min(MAX_REQUESTS, Number(e.target.value))))
+            }
+            className="ml-2 w-24 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200"
+            disabled={loading}
+          />
+        </label>
+        <button
+          onClick={handleRun}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-700 text-white text-sm font-medium disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+          <span>{loading ? t('cassandraGrpc.benchmark.runningLabel') : t('cassandraGrpc.benchmark.runButtonLabel')}</span>
+        </button>
+      </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
 
@@ -64,6 +87,12 @@ export const BenchmarkPanel: React.FC = () => {
               color={result.errorCount === 0 ? 'text-emerald-300' : 'text-red-300'}
             />
           </div>
+          {result.errorCount > 0 && (
+            <p className="flex items-start gap-1.5 text-[11px] text-amber-300/90 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{t('cassandraGrpc.benchmark.errorsExplainerNote')}</span>
+            </p>
+          )}
           <div>
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
               {t('cassandraGrpc.benchmark.distributionHeading', { count: result.readyPods })}

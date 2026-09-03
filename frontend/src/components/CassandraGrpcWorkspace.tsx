@@ -7,6 +7,7 @@ import { OverviewPanel } from './cassandragrpc/OverviewPanel';
 import { DatasetPanel } from './cassandragrpc/DatasetPanel';
 import { TrainingPanel } from './cassandragrpc/TrainingPanel';
 import { InferencePanel } from './cassandragrpc/InferencePanel';
+import { BenchmarkPanel } from './cassandragrpc/BenchmarkPanel';
 import { StaticResultsSection } from './cassandragrpc/StaticResultsSection';
 import { SystemStatusPanel } from './cassandragrpc/SystemStatusPanel';
 import { WorkerPool } from './cassandragrpc/WorkerPool';
@@ -91,6 +92,8 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               </h3>
               <WorkerPool status={poolStatus} onStatusChange={setPoolStatus} />
             </div>
+
+            <BenchmarkPanel />
           </div>
         </ProjectSection>
 
