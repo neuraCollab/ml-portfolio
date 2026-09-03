@@ -14,15 +14,14 @@ import { StaticResultsSection } from './ecg/StaticResultsSection';
 import { ArchitectureDiagram } from './ecg/ArchitectureDiagram';
 import { ElectrodePlacementDiagram } from './ecg/ElectrodePlacementDiagram';
 import { BaselineComparisonPanel } from './ecg/BaselineComparisonPanel';
-import { RpiRuntimePanel } from './ecg/RpiRuntimePanel';
 import { ProjectSection } from './shared/ProjectSection';
 import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation } from '../i18n/I18nContext';
 import {
   HeartPulse, Play, Upload, Radio, FlaskConical, ShieldAlert,
   Cpu, Waves, Sliders, Info, ChevronDown, ChevronUp, ClipboardCheck,
-  Layers, Database, Workflow, GitCompare, Brain, Target, Bug, ShieldCheck,
-  Camera, CheckCircle2, ListChecks, Wrench,
+  Layers, Database, Workflow, GitCompare, Brain, Target, Bug,
+  Camera, ListChecks, Wrench,
 } from 'lucide-react';
 
 const HARDWARE_PHOTO_PATH = 'static-results/ecg/hardware.jpg';
@@ -66,7 +65,6 @@ export const ECGWorkspace: React.FC = () => {
       { id: 'model', label: t('common.projectSections.model'), icon: Brain },
       { id: 'metrics', label: t('common.projectSections.metrics'), icon: Target },
       { id: 'errorAnalysis', label: t('common.projectSections.errorAnalysis'), icon: Bug },
-      { id: 'regressionTests', label: t('common.projectSections.regressionTests'), icon: ShieldCheck },
       { id: 'results', label: t('common.projectSections.results'), icon: ClipboardCheck },
     ],
     [t]
@@ -222,11 +220,6 @@ export const ECGWorkspace: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2 mt-6">
-            <h3 className="text-base font-bold text-slate-100">{t('common.projectSections.roleContribution')}</h3>
-            <p className="text-sm text-slate-400 max-w-3xl">{t('ecg.roleContribution.body')}</p>
           </div>
         </ProjectSection>
 
@@ -583,25 +576,7 @@ export const ECGWorkspace: React.FC = () => {
               <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.metricsSection.intro')}</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {([
-                'macroF1Label', 'microF1Label', 'macroPrecisionLabel', 'macroRecallLabel',
-                'microPrecisionLabel', 'microRecallLabel', 'prAucMacroLabel', 'prAucMicroLabel',
-                'subsetAccuracyLabel', 'hammingAccuracyLabel',
-              ] as const).map((labelKey) => {
-                const tooltipKey = labelKey.replace('Label', 'Tooltip') as
-                  | 'subsetAccuracyTooltip' | 'hammingAccuracyTooltip' | 'microPrecisionTooltip' | 'microRecallTooltip' | 'microF1Tooltip'
-                  | 'macroPrecisionTooltip' | 'macroRecallTooltip' | 'macroF1Tooltip' | 'prAucMacroTooltip' | 'prAucMicroTooltip';
-                return (
-                  <div key={labelKey} className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
-                    <div className="text-xs font-semibold text-slate-200">{t(`ecg.evaluation.${labelKey}` as any)}</div>
-                    <p className="text-[11px] text-slate-500 mt-1">{t(`ecg.evaluation.${tooltipKey}` as any)}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="border-t border-slate-800 pt-4">
+            <div>
               <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('ecg.metricsSection.referenceHeading')}</h3>
               <div className="overflow-x-auto rounded-xl border border-slate-800">
                 <table className="w-full text-left text-[11px] text-slate-300">
@@ -638,20 +613,6 @@ export const ECGWorkspace: React.FC = () => {
               </div>
               <p className="text-[10px] text-slate-500 mt-2">{t('ecg.metricsSection.referenceNote')}</p>
             </div>
-
-            <p className="text-[11px] text-rose-300/80">{t('ecg.metricsSection.pointerNote')}</p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 mt-6">
-            <div>
-              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
-                <Cpu className="w-4 h-4" />
-                <span>{t('ecg.runtime.eyebrow')}</span>
-              </div>
-              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.runtime.title')}</h2>
-              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.runtime.intro')}</p>
-            </div>
-            <RpiRuntimePanel />
           </div>
         </ProjectSection>
 
@@ -674,7 +635,7 @@ export const ECGWorkspace: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {(['bug1', 'bug2', 'bug3'] as const).map((key) => (
+              {(['bug1', 'bug2'] as const).map((key) => (
                 <div key={key} className="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-4">
                   <h4 className="text-xs font-bold text-amber-300">{t(`ecg.errorAnalysisSection.${key}Title` as any)}</h4>
                   <p className="text-[11px] text-slate-400 mt-1.5">{t(`ecg.errorAnalysisSection.${key}Body` as any)}</p>
@@ -686,48 +647,6 @@ export const ECGWorkspace: React.FC = () => {
               <h3 className="text-sm font-semibold text-slate-200">{t('ecg.errorAnalysisSection.modelWeaknessHeading')}</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('ecg.errorAnalysisSection.modelWeaknessBody')}</p>
             </div>
-          </div>
-        </ProjectSection>
-
-        <ProjectSection id="regressionTests" title={t('common.projectSections.regressionTests')} icon={ShieldCheck} accentClassName={ACCENT}>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <div>
-              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
-                <ShieldCheck className="w-4 h-4" />
-                <span>{t('ecg.regressionTestsSection.eyebrow')}</span>
-              </div>
-              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.regressionTestsSection.title')}</h2>
-              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.regressionTestsSection.intro')}</p>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('ecg.regressionTestsSection.testListHeading')}</h3>
-              <ul className="space-y-1.5">
-                {(['test1', 'test2', 'test3', 'test4', 'test5'] as const).map((key) => (
-                  <li key={key} className="flex items-start gap-2 text-xs text-slate-400">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>{t(`ecg.regressionTestsSection.${key}` as any)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
-              <div>
-                <div className="text-sm font-bold text-emerald-300">19 / 19 passed</div>
-                <div className="text-[11px] text-slate-500">
-                  backend/tests/test_ecg_pipeline.py + test_ecg_schemas.py -- last run 2026-09-02, pytest 9.1.1
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-500">
-              {t('ecg.regressionTestsSection.howToRerun')}
-              <code className="text-slate-400 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
-                pytest backend/tests/test_ecg_pipeline.py backend/tests/test_ecg_schemas.py -v
-              </code>
-            </p>
           </div>
         </ProjectSection>
 

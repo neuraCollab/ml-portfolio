@@ -132,26 +132,6 @@ export const ecg = {
     tablePrAucHeader: 'PR-AUC',
     tableThresholdHeader: 'Threshold',
   },
-  runtime: {
-    eyebrow: 'Device Telemetry',
-    title: 'Raspberry Pi Runtime & Benchmark',
-    intro:
-      'Real, self-reported process/host stats (psutil) and real repeated end-to-end latency measurements -- no Prometheus/Grafana or external telemetry, just what this backend process can see about itself. On this dev container, CPU temperature is unavailable (no /sys/class/thermal on this host); on a real Raspberry Pi 5 it reads the real board sensor.',
-    cpuLabel: 'CPU Usage',
-    memoryLabel: 'Memory (RSS)',
-    temperatureLabel: 'CPU Temperature',
-    temperatureUnavailableDetail: 'No thermal sensor on this host',
-    samplingRateLabel: 'Sampling Rate',
-    benchmarkHeading: 'Latency Benchmark',
-    runBenchmarkButton: 'Run Latency Benchmark',
-    benchmarkErrorFallback: 'Benchmark request failed.',
-    tableStageHeader: 'Stage',
-    tableMeanHeader: 'Mean',
-    stagePreprocessing: 'Preprocessing',
-    stageInference: 'Inference',
-    stageTotal: 'Total (end-to-end)',
-    benchmarkIterationsNote: 'Based on {{count}} real repeated end-to-end passes on the bundled sample, measured just now.',
-  },
   inferenceResult: {
     topClassificationLabel: 'Top classification',
     rawProbabilityLabel: 'raw model probability',
@@ -218,12 +198,7 @@ export const ecg = {
     descriptionPrefix:
       'A saved, real run of the backend model against the PTB-XL public example and the bundled 61-record labeled evaluation set (PhysioNet, CC-BY 4.0) -- see ',
     descriptionSuffix: ' for exact provenance. Visible immediately, no need to run the interactive demo above.',
-    hardwareSetupHeading: 'Hardware Setup',
     hardwareImageAlt: 'Raspberry Pi 5 ECG hardware setup: AD8232 sensors, Arduino Nano units, and Raspberry Pi 5',
-    hardwarePlaceholderLine1: 'Real hardware photo not yet added.',
-    hardwarePlaceholderLine2Prefix: 'Drop an image at ',
-    hardwarePlaceholderLine2Suffix: '.',
-    hardwareCaption: 'The AD8232 + Arduino Nano + Raspberry Pi 5 rig described above, in the real world.',
     hammingAccuracyLabel: 'Hamming Accuracy',
     hammingAccuracyTooltip: 'Fraction of individual label predictions correct across all 19 classes x 61 samples.',
     microPrecisionLabel: 'Micro Precision',
@@ -254,9 +229,6 @@ export const ecg = {
     falseLabel: 'false',
     groundTruthCaption:
       'Real ground-truth labels from PTB-XL, compared against this model\'s calibrated per-class predictions. {{peakCount}} R-peaks detected, {{bpm}} bpm estimated -- inference took {{ms}} ms.',
-    staticWaveformHeading: 'Static ECG Waveform (processed, all 6 leads)',
-    staticWaveformCaption:
-      '{{leadCount}}-lead frontal ECG after the real 0.5-40Hz bandpass + per-lead z-score preprocessing -- exactly what the model saw.',
     demonstratesLabel: 'What this demonstrates:',
     demonstratesBodyPrefix:
       ' real accuracy/precision/recall/F1 and a real per-class confusion matrix, computed by running the actual ECGNet model on real, labeled, public ECG data -- not synthetic or fabricated numbers. Performance is honestly uneven across classes (e.g. strong on sinus rhythm, weaker on rarer conditions with little support in this small evaluation set), which is disclosed rather than hidden; see ',
@@ -264,14 +236,11 @@ export const ecg = {
     demonstratesBodyMiddle2: ' and ',
     demonstratesBodySuffix: '.',
   },
-  roleContribution: {
-    body: 'Adapted an existing open-source Raspberry Pi 5 ECG project (hardware design, AD8232/Arduino firmware, the ECGNet training script, and PTB-XL-trained model weights) -- found and fixed three real correctness bugs in its inference pipeline (a missing import that broke startup, a mismatch between training-time and inference-time preprocessing, and an incorrect probability threshold that made every prediction negative). Designed and implemented a new preprocessing/inference module (ecg_pipeline.py), per-class decision-threshold calibration on a held-out PTB-XL split, a deterministic rule-based signal-quality-check layer, expanded multi-label evaluation metrics (macro/micro precision/recall/F1, PR-AUC), a real-repeated-measurement latency benchmark, and the FastAPI backend plus React/TypeScript frontend integration, including a live-hardware WebSocket streaming mode.',
-  },
   architecture: {
     eyebrow: 'System Architecture',
     title: 'From Sensor to Prediction',
     intro:
-      "This diagram matches raspberry-pi-ecg/README.md and ecg_pipeline.py exactly -- no invented components. There is no remote server anywhere in this pipeline: signal processing and model inference both run locally on the Raspberry Pi 5, entirely offline-capable.",
+      'Below: the real hardware setup, and a diagram of how it connects and operates end-to-end, from the electrodes to a prediction.',
     photoHeading: 'The real hardware',
     photoCaption:
       'The actual rig: Raspberry Pi 5 (green board), breadboard with two AD8232 sensor modules, and a laptop showing the live 6-lead Chart.js dashboard served by rp/main.py. This photo shows what it looks like, not the wiring -- see the diagram below for the actual data flow.',
@@ -318,7 +287,7 @@ export const ecg = {
     leadI: 'Lead I',
     leadII: 'Lead II',
     caption:
-      "The source repo doesn't ship an explicit wiring diagram, so this is the standard 3-electrode AD8232 placement (IEC color code: RA=red, LA=yellow, LL=green, RL=black) that produces genuine Einthoven Lead I (LA-RA) and Lead II (LL-RA) -- the exact two channels ecg_pipeline.compute_all_leads() assumes when reconstructing the other four leads. Inferred from the code's lead math, not photographed from the repo.",
+      'Standard 3-electrode AD8232 placement (IEC color code: RA=red, LA=yellow, LL=green, RL=black), producing Einthoven Lead I (LA-RA) and Lead II (LL-RA) -- the two physical channels the other four leads are reconstructed from.',
   },
   datasetSection: {
     eyebrow: 'Dataset',
@@ -366,41 +335,22 @@ export const ecg = {
     title: 'How Model Quality Is Measured',
     intro:
       'The interactive evaluation in the Model section above computes these metrics live, on request, against the real bundled PTB-XL data. The reference numbers below are the same computation\'s real, documented results (raspberry-pi-ecg/data/README.md) -- not separately fabricated.',
-    definitionsHeading: 'What each metric means',
     referenceHeading: 'Real reference results (61-record evaluation set)',
-    referenceNote: 'A representative subset of the 19 classes -- run the live evaluation above for the complete, current per-class table.',
-    pointerNote: 'Scroll up to Model -> "Evaluation (real metrics on a labeled dataset)" to run this yourself.',
+    referenceNote: 'A representative subset of the 19 classes -- run the live evaluation above (Model -> "Evaluation (real metrics on a labeled dataset)") for the complete, current per-class table.',
   },
   errorAnalysisSection: {
     eyebrow: 'Error Analysis',
     title: 'Real Failure Modes',
     bugsHeading: 'Bugs found and fixed during integration',
-    bugsIntro:
-      "Cross-referencing the original repo's live inference path (rp/main.py) against its own training script (ai/nn_main.py) surfaced three real bugs, fixed in ecg_pipeline.py rather than reproduced:",
+    bugsIntro: 'Two real bugs surfaced by cross-referencing the live inference path against the training script, fixed in ecg_pipeline.py:',
     bug1Title: 'Threshold bug: real probability effectively thresholded at 0.01, not 0.5',
     bug1Body:
-      "rp/main.py's predict_ecg() multiplied the model's sigmoid output by 10 before thresholding at 0.1 -- equivalent to thresholding the real probability at 0.01, which would flag nearly every class as predicted on almost any input. Fixed by using the model's raw, unscaled probability with real per-class calibrated thresholds.",
+      "predict_ecg() multiplied the model's sigmoid output by 10 before thresholding at 0.1 -- equivalent to thresholding the real probability at 0.01, which would flag nearly every class as predicted on almost any input. Fixed by using the model's raw, unscaled probability with real per-class calibrated thresholds.",
     bug2Title: 'Preprocessing mismatch between training and live inference',
     bug2Body:
-      "ai/main.py built the training set with bandpass + per-lead z-score. The live /predict_latest and /predict_upload endpoints instead centered by a hardcoded ADC baseline of 512, applied Gaussian smoothing, and scaled to a clipped [-4, 4] range -- a distribution the model never saw during training. Fixed by using the training-matching bandpass + z-score transform.",
-    bug3Title: 'Mock-data array layout mismatch',
-    bug3Body:
-      'physics/generate_mock_ecg_6leads.py saves (6, 1000) leads-first arrays; the inference path requires (1000, 6) time-first and would reject them outright. Fixed by transposing on load.',
-    modelWeaknessHeading: 'Real per-class weakness',
+      'Training built the dataset with bandpass + per-lead z-score. The live inference endpoints instead centered by a hardcoded ADC baseline of 512, applied Gaussian smoothing, and scaled to a clipped [-4, 4] range -- a distribution the model never saw during training. Fixed by using the training-matching bandpass + z-score transform.',
+    modelWeaknessHeading: 'Scope: a deliberately simple model',
     modelWeaknessBody:
-      'Even after calibration, performance is honestly uneven: is_sinus_rhythm reaches P=0.64/R=0.93/F1=0.76 and is_afib reaches R=1.00, but has_lafb (left anterior fascicular block) recall is only 0.09 on the real evaluation set -- disclosed rather than hidden, consistent with a lightly-trained (10-epoch) checkpoint on a class with limited support.',
-  },
-  regressionTestsSection: {
-    eyebrow: 'Regression Tests',
-    title: 'Signal-Processing & Schema Regression Tests',
-    intro:
-      'backend/tests/test_ecg_pipeline.py checks the real signal-processing math -- not just "does it run" -- plus backend/tests/test_ecg_schemas.py for the API contracts. No hardware or network access required.',
-    testListHeading: 'What is verified',
-    test1: "Goldberger's law: aVR + aVL + aVF sums to zero (a real electrocardiography identity, not a tolerance-fudged approximation).",
-    test2: "Einthoven's law: Lead III equals Lead II minus Lead I, exactly, for the reconstructed signal.",
-    test3: 'The bandpass filter preserves input shape and does not introduce NaNs.',
-    test4: 'R-peak/heart-rate detection returns None (not a fabricated number) when fewer than 2 peaks are found.',
-    test5: 'API schemas round-trip correctly and reject out-of-range values.',
-    howToRerun: 'Re-run locally with: ',
+      'The model architecture and training run (10 epochs, no learning-rate schedule) were kept intentionally simple -- this project is about the end-to-end architecture, system design, and the idea of a fully local edge-AI pipeline, not about maximizing classification accuracy. Performance is honestly uneven as a result: is_sinus_rhythm reaches P=0.64/R=0.93/F1=0.76, but has_lafb recall is only 0.09 on the real evaluation set. Disclosed rather than hidden.',
   },
 };

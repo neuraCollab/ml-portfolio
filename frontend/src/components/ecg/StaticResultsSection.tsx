@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ecgResults from '../../data/staticResults/ecgResults.json';
 import { MetricCard } from '../shared/MetricCard';
-import { ECGChart } from './ECGChart';
-import { ECG_LEAD_NAMES } from '../../types';
-import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info, Camera } from 'lucide-react';
+import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { formatProbability } from '../../utils/formatProbability';
 import { useTranslation } from '../../i18n/I18nContext';
-
-const HARDWARE_IMAGE_PATH = 'static-results/ecg/hardware.jpg';
 
 interface PerClassMetric {
   className: string; label: string; support: number;
@@ -51,8 +47,6 @@ export const StaticResultsSection: React.FC = () => {
   const gtEntries = Object.entries(data.publicExample.groundTruthLabels).filter(
     ([name, isPositive]) => isPositive || !data.publicExample.groundTruthCorrect[name]
   );
-  const [hardwareImageFailed, setHardwareImageFailed] = useState(false);
-  const hardwareImageSrc = `${(import.meta as any).env.BASE_URL}${HARDWARE_IMAGE_PATH}`;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
@@ -66,36 +60,6 @@ export const StaticResultsSection: React.FC = () => {
           {t('ecg.staticResults.descriptionPrefix')}
           <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code>
           {t('ecg.staticResults.descriptionSuffix')}
-        </p>
-      </div>
-
-      {/* Hardware photo -- medium-sized, real-world photo of the physical rig
-          (AD8232 x2 + Arduino Nano x2 + Raspberry Pi 5). Reserved spot: drop
-          the real photo at frontend/public/static-results/ecg/hardware.jpg
-          and it appears automatically, no code change needed. */}
-      <div className="space-y-2">
-        <div className="text-sm font-semibold text-slate-200">{t('ecg.staticResults.hardwareSetupHeading')}</div>
-        <div className="max-w-md">
-          {!hardwareImageFailed ? (
-            <img
-              src={hardwareImageSrc}
-              alt={t('ecg.staticResults.hardwareImageAlt')}
-              className="w-full h-auto rounded-xl border border-slate-800 object-cover"
-              onError={() => setHardwareImageFailed(true)}
-            />
-          ) : (
-            <div className="aspect-video rounded-xl border border-dashed border-slate-700 bg-slate-950 flex flex-col items-center justify-center text-center p-4 gap-2">
-              <Camera className="w-6 h-6 text-slate-600" />
-              <p className="text-xs text-slate-500">
-                {t('ecg.staticResults.hardwarePlaceholderLine1')}
-                <br />
-                {t('ecg.staticResults.hardwarePlaceholderLine2Prefix')}<code className="text-slate-400">frontend/public/{HARDWARE_IMAGE_PATH}</code>{t('ecg.staticResults.hardwarePlaceholderLine2Suffix')}
-              </p>
-            </div>
-          )}
-        </div>
-        <p className="text-[10px] text-slate-500">
-          {t('ecg.staticResults.hardwareCaption')}
         </p>
       </div>
 
@@ -188,8 +152,8 @@ export const StaticResultsSection: React.FC = () => {
         )}
       </div>
 
-      {/* Example prediction + static waveform */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Example prediction */}
+      <div className="max-w-md">
         <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
             <HeartPulse className="w-4 h-4 text-rose-400" />
@@ -229,14 +193,6 @@ export const StaticResultsSection: React.FC = () => {
               bpm: data.publicExample.rPeaks.heartRateBpm?.toFixed(1) ?? '--',
               ms: data.publicExample.inferenceTimeMs,
             })}
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-slate-950 border border-slate-800 p-4 space-y-2">
-          <div className="text-sm font-semibold text-slate-200">{t('ecg.staticResults.staticWaveformHeading')}</div>
-          <ECGChart leads={data.publicExample.processedLeads} samplingRateHz={data.publicExample.samplingRateHz} selectedLead="all" />
-          <p className="text-[10px] text-slate-500">
-            {t('ecg.staticResults.staticWaveformCaption', { leadCount: ECG_LEAD_NAMES.length })}
           </p>
         </div>
       </div>
