@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ecgResults from '../../data/staticResults/ecgResults.json';
 import { MetricCard } from '../shared/MetricCard';
-import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { ClipboardCheck, Target, HeartPulse, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatProbability } from '../../utils/formatProbability';
 import { useTranslation } from '../../i18n/I18nContext';
 
@@ -44,6 +44,7 @@ const notableClasses = data.evaluation.perClass.filter(
 
 export const StaticResultsSection: React.FC = () => {
   const { t } = useTranslation();
+  const [showDetails, setShowDetails] = useState(false);
   const gtEntries = Object.entries(data.publicExample.groundTruthLabels).filter(
     ([name, isPositive]) => isPositive || !data.publicExample.groundTruthCorrect[name]
   );
@@ -56,101 +57,16 @@ export const StaticResultsSection: React.FC = () => {
       </div>
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.staticResults.title')}</h2>
-        <p className="text-sm text-slate-400 max-w-3xl mt-1">
-          {t('ecg.staticResults.descriptionPrefix')}
-          <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code>
-          {t('ecg.staticResults.descriptionSuffix')}
-        </p>
+        <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.staticResults.description')}</p>
       </div>
 
-      {/* Evaluation metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <MetricCard
-          label={t('ecg.staticResults.hammingAccuracyLabel')}
-          value={`${(data.evaluation.hammingAccuracy * 100).toFixed(1)}%`}
-          icon={Target}
-          color="text-rose-300"
-          tooltip={t('ecg.staticResults.hammingAccuracyTooltip')}
-        />
-        <MetricCard
-          label={t('ecg.staticResults.microPrecisionLabel')}
-          value={`${(data.evaluation.microPrecision * 100).toFixed(1)}%`}
-          icon={Target}
-          color="text-rose-300"
-          tooltip={t('ecg.staticResults.microPrecisionTooltip')}
-        />
-        <MetricCard
-          label={t('ecg.staticResults.microRecallLabel')}
-          value={`${(data.evaluation.microRecall * 100).toFixed(1)}%`}
-          icon={Target}
-          color="text-rose-300"
-          tooltip={t('ecg.staticResults.microRecallTooltip')}
-        />
-        <MetricCard
-          label={t('ecg.staticResults.microF1Label')}
-          value={data.evaluation.microF1.toFixed(3)}
-          icon={Target}
-          color="text-rose-300"
-          tooltip={t('ecg.staticResults.microF1Tooltip')}
-        />
-        <MetricCard
-          label={t('ecg.staticResults.subsetAccuracyLabel')}
-          value={`${(data.evaluation.subsetAccuracy * 100).toFixed(1)}%`}
-          icon={Target}
-          color="text-rose-300"
-          tooltip={t('ecg.staticResults.subsetAccuracyTooltip')}
-        />
-      </div>
-
-      {/* Confusion matrix */}
-      <div>
-        <h3 className="text-sm font-bold text-slate-100 mb-2">
-          {t('ecg.staticResults.confusionMatrixHeading', { count: data.evaluation.numSamples })}
-        </h3>
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
-          <table className="w-full text-left text-[11px] text-slate-300 min-w-[560px]">
-            <thead className="bg-slate-950 text-slate-400 font-mono uppercase border-b border-slate-800">
-              <tr>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableClassHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableSupportHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableTpHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableFpHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableFnHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableTnHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tablePrecisionHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableRecallHeader')}</th>
-                <th className="py-2 px-3">{t('ecg.staticResults.tableF1Header')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
-              {notableClasses.map((c) => (
-                <tr key={c.className}>
-                  <td className="py-1.5 px-3 font-sans">{c.label}</td>
-                  <td className="py-1.5 px-3">{c.support}</td>
-                  <td className="py-1.5 px-3">{c.truePositives}</td>
-                  <td className="py-1.5 px-3">{c.falsePositives}</td>
-                  <td className="py-1.5 px-3">{c.falseNegatives}</td>
-                  <td className="py-1.5 px-3">{c.trueNegatives}</td>
-                  <td className="py-1.5 px-3">{c.precision.toFixed(2)}</td>
-                  <td className="py-1.5 px-3">{c.recall.toFixed(2)}</td>
-                  <td className="py-1.5 px-3">{c.f1.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {notableClasses.length < data.evaluation.perClass.length && (
-          <p className="text-[10px] text-slate-500 mt-1.5 flex items-start gap-1">
-            <Info className="w-3 h-3 shrink-0 mt-0.5" />
-            <span>
-              {t('ecg.staticResults.notableClassesNote', {
-                remaining: data.evaluation.perClass.length - notableClasses.length,
-                total: data.evaluation.numClasses,
-              })}
-            </span>
-          </p>
-        )}
-      </div>
+      <p className="text-sm text-slate-300 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3">
+        {t('ecg.staticResults.summaryLine', {
+          microF1: data.evaluation.microF1.toFixed(3),
+          hamming: (data.evaluation.hammingAccuracy * 100).toFixed(1),
+          count: data.evaluation.numSamples,
+        })}
+      </p>
 
       {/* Example prediction */}
       <div className="max-w-md">
@@ -197,16 +113,105 @@ export const StaticResultsSection: React.FC = () => {
         </div>
       </div>
 
-      <p className="text-xs text-slate-400 border-t border-slate-800 pt-4">
-        <strong className="text-slate-300">{t('ecg.staticResults.demonstratesLabel')}</strong>
-        {t('ecg.staticResults.demonstratesBodyPrefix')}
-        <code className="text-slate-500">raspberry-pi-ecg/data/README.md</code>
-        {t('ecg.staticResults.demonstratesBodyMiddle')}
-        <code className="text-slate-500">POST /api/ecg/demo</code>
-        {t('ecg.staticResults.demonstratesBodyMiddle2')}
-        <code className="text-slate-500">/evaluate-bundled</code>
-        {t('ecg.staticResults.demonstratesBodySuffix')}
-      </p>
+      <button
+        onClick={() => setShowDetails((v) => !v)}
+        className="w-full flex items-center justify-between text-sm font-semibold text-slate-300 pt-2 border-t border-slate-800"
+      >
+        <span>{showDetails ? t('ecg.staticResults.hideDetailsButton') : t('ecg.staticResults.showDetailsButton')}</span>
+        {showDetails ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-6">
+          {/* Evaluation metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <MetricCard
+              label={t('ecg.staticResults.hammingAccuracyLabel')}
+              value={`${(data.evaluation.hammingAccuracy * 100).toFixed(1)}%`}
+              icon={Target}
+              color="text-rose-300"
+              tooltip={t('ecg.staticResults.hammingAccuracyTooltip')}
+            />
+            <MetricCard
+              label={t('ecg.staticResults.microPrecisionLabel')}
+              value={`${(data.evaluation.microPrecision * 100).toFixed(1)}%`}
+              icon={Target}
+              color="text-rose-300"
+              tooltip={t('ecg.staticResults.microPrecisionTooltip')}
+            />
+            <MetricCard
+              label={t('ecg.staticResults.microRecallLabel')}
+              value={`${(data.evaluation.microRecall * 100).toFixed(1)}%`}
+              icon={Target}
+              color="text-rose-300"
+              tooltip={t('ecg.staticResults.microRecallTooltip')}
+            />
+            <MetricCard
+              label={t('ecg.staticResults.microF1Label')}
+              value={data.evaluation.microF1.toFixed(3)}
+              icon={Target}
+              color="text-rose-300"
+              tooltip={t('ecg.staticResults.microF1Tooltip')}
+            />
+            <MetricCard
+              label={t('ecg.staticResults.subsetAccuracyLabel')}
+              value={`${(data.evaluation.subsetAccuracy * 100).toFixed(1)}%`}
+              icon={Target}
+              color="text-rose-300"
+              tooltip={t('ecg.staticResults.subsetAccuracyTooltip')}
+            />
+          </div>
+
+          {/* Confusion matrix */}
+          <div>
+            <h3 className="text-sm font-bold text-slate-100 mb-2">
+              {t('ecg.staticResults.confusionMatrixHeading', { count: data.evaluation.numSamples })}
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-slate-800">
+              <table className="w-full text-left text-[11px] text-slate-300 min-w-[560px]">
+                <thead className="bg-slate-950 text-slate-400 font-mono uppercase border-b border-slate-800">
+                  <tr>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableClassHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableSupportHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableTpHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableFpHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableFnHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableTnHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tablePrecisionHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableRecallHeader')}</th>
+                    <th className="py-2 px-3">{t('ecg.staticResults.tableF1Header')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {notableClasses.map((c) => (
+                    <tr key={c.className}>
+                      <td className="py-1.5 px-3 font-sans">{c.label}</td>
+                      <td className="py-1.5 px-3">{c.support}</td>
+                      <td className="py-1.5 px-3">{c.truePositives}</td>
+                      <td className="py-1.5 px-3">{c.falsePositives}</td>
+                      <td className="py-1.5 px-3">{c.falseNegatives}</td>
+                      <td className="py-1.5 px-3">{c.trueNegatives}</td>
+                      <td className="py-1.5 px-3">{c.precision.toFixed(2)}</td>
+                      <td className="py-1.5 px-3">{c.recall.toFixed(2)}</td>
+                      <td className="py-1.5 px-3">{c.f1.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {notableClasses.length < data.evaluation.perClass.length && (
+              <p className="text-[10px] text-slate-500 mt-1.5">
+                {t('ecg.staticResults.notableClassesNote', {
+                  remaining: data.evaluation.perClass.length - notableClasses.length,
+                  total: data.evaluation.numClasses,
+                })}
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-slate-400 border-t border-slate-800 pt-4">{t('ecg.staticResults.demonstratesNote')}</p>
+        </div>
+      )}
     </div>
   );
 };
