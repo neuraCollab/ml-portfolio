@@ -3,8 +3,6 @@ import {
   KittiFrame,
   RLAction,
   RLLogStep,
-  RLPenaltyPart,
-  CameraCalibration,
 } from '../types';
 import {
   KITTI_FRAMES_DATA,
@@ -14,8 +12,6 @@ import {
 } from '../data/autopilotData';
 import { runUndistort, runLidarOverlay, predictAction, ApiError, UndistortResponse, LidarOverlayResponse, PredictActionResponse } from '../api/client';
 import { MetricCard } from './shared/MetricCard';
-import { StaticResultsSection } from './autopilot/StaticResultsSection';
-import { BaselineComparisonPanel } from './autopilot/BaselineComparisonPanel';
 import { ProjectSection } from './shared/ProjectSection';
 import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation, TranslationKey } from '../i18n/I18nContext';
@@ -41,10 +37,7 @@ import {
   BrainCircuit,
   AlertTriangle,
   Layers,
-  GitCompare,
   Brain,
-  ShieldCheck,
-  ClipboardCheck,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -66,36 +59,15 @@ const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
 
 const ACCENT = 'text-emerald-400';
 
-// Renders a penalty event's structured parts into display text at call time,
-// so it always reflects the current language (see RLPenaltyPart in types.ts).
-const formatPenalty = (t: ReturnType<typeof useTranslation>['t'], parts: RLPenaltyPart[]): string =>
-  parts
-    .map((part) => {
-      switch (part.kind) {
-        case 'harshSteeringFull':
-          return t('autopilot.safetyLog.penalty.harshSteering', { magnitude: part.magnitude.toFixed(3) });
-        case 'overspeedFull':
-          return t('autopilot.safetyLog.penalty.overspeed');
-        case 'overspeedSuffix':
-          return t('autopilot.safetyLog.penalty.overspeedSuffix');
-        case 'collision':
-          return t('autopilot.safetyLog.penalty.collision', { distance: part.distance });
-        case 'highYawFull':
-          return t('autopilot.safetyLog.penalty.highYaw');
-        case 'highYawSuffix':
-          return t('autopilot.safetyLog.penalty.highYawSuffix');
-        default:
-          return '';
-      }
-    })
-    .join(' ');
-
 export const AutopilotWorkspace: React.FC = () => {
   const { t } = useTranslation();
   const [frameIdx, setFrameIdx] = useState(0);
   const [isPlayingSequence, setIsPlayingSequence] = useState(false);
   const [isUndistorted, setIsUndistorted] = useState(true);
-  const [calib, setCalib] = useState<CameraCalibration>(DEFAULT_KITTI_CALIBRATION);
+  // Calibration is fixed at the real KITTI defaults -- the editable calibration
+  // panel was removed to keep this dashboard focused; runUndistort/
+  // runLidarOverlay below still use these exact real values.
+  const calib = DEFAULT_KITTI_CALIBRATION;
   const [usePretrainedPolicy, setUsePretrainedPolicy] = useState(true);
 
   // Manual actions
@@ -109,10 +81,6 @@ export const AutopilotWorkspace: React.FC = () => {
   const [currentReward, setCurrentReward] = useState(0.1);
   const [cumulativeReward, setCumulativeReward] = useState(0.1);
   const [rlLogs, setRlLogs] = useState<RLLogStep[]>([]);
-  // Stores structured penalty parts + frameId (not pre-formatted text) so
-  // entries already in the feed retranslate immediately on language switch
-  // instead of getting stuck in whichever language was active when they fired.
-  const [penaltyFeed, setPenaltyFeed] = useState<{ frameId: number; parts: RLPenaltyPart[] }[]>([]);
 
   const cameraCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const bevCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -141,8 +109,6 @@ export const AutopilotWorkspace: React.FC = () => {
     () => [
       { id: 'overview', label: t('common.projectSections.overview'), icon: Car },
       { id: 'model', label: t('common.projectSections.model'), icon: Brain },
-      { id: 'technical', label: t('common.projectSections.technicalDetails'), icon: Layers },
-      { id: 'results', label: t('common.projectSections.results'), icon: ClipboardCheck },
     ],
     [t]
   );
@@ -216,13 +182,6 @@ export const AutopilotWorkspace: React.FC = () => {
     setCumulativeReward(stepLog.cumulativeReward);
 
     setRlLogs((prev) => [...prev.slice(-30), stepLog]);
-
-    if (stepLog.penalty) {
-      setPenaltyFeed((prev) => [
-        { frameId: currentFrame.frameId, parts: stepLog.penalty as RLPenaltyPart[] },
-        ...prev.slice(0, 15),
-      ]);
-    }
   }, [frameIdx, activeAction.steering, activeAction.throttle, activeAction.brake]);
 
   // Render Camera View Canvas
@@ -751,91 +710,20 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
               </div>
 
-              {/* Camera Calibration Parameters ($K_{00}, D_{00}$) */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-                    <Sliders className="w-4 h-4 text-purple-400" />
-                    <span>{t('autopilot.calibration.heading')}</span>
-                  </div>
-                  <span className="text-xs text-slate-500 font-mono">calib_cam_to_cam.txt</span>
+              {/* Architecture + Reward Shaping -- compact technical reference,
+                  in place of the camera-calibration control panel (moved out
+                  to reduce this dashboard to the essentials). */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm pb-3 border-b border-slate-800">
+                  <Layers className="w-4 h-4 text-emerald-400" />
+                  <span>{t('common.projectSections.architecture')}</span>
                 </div>
-
-                <p className="text-[11px] text-slate-500">
-                  {t('autopilot.calibration.instructions')}
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  {(['fx', 'fy', 'cx', 'cy', 'k1', 'k2', 'p1', 'p2'] as const).map((key) => (
-                    <label key={key} className="flex items-center justify-between bg-slate-950 rounded-lg border border-slate-800 px-2 py-1.5">
-                      <span className="text-slate-500">{key}</span>
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={calib[key]}
-                        onChange={(e) => setCalib({ ...calib, [key]: Number(e.target.value) })}
-                        className="w-16 bg-transparent text-right text-indigo-300 focus:outline-none"
-                      />
-                    </label>
-                  ))}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3.5">
+                  <p className="text-[11px] text-slate-400 font-mono">{t('autopilot.technical.archSummary')}</p>
                 </div>
-                <button
-                  onClick={() => setCalib(DEFAULT_KITTI_CALIBRATION)}
-                  className="text-[11px] text-slate-500 hover:text-slate-300 underline"
-                >
-                  {t('autopilot.calibration.resetButton')}
-                </button>
-              </div>
-
-              {/* Safety Violation & Penalty Event Feed */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between pb-2">
-                  <div className="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
-                    <ShieldAlert className="w-4 h-4 text-red-400" />
-                    <span>{t('autopilot.safetyLog.heading')}</span>
-                  </div>
-                  <span className="text-xs text-slate-500 font-mono">{t('autopilot.safetyLog.eventsCount', { count: penaltyFeed.length })}</span>
-                </div>
-
-                {/* Real LiDAR proximity warning (from "Live Backend Demo" -> Run
-                    LiDAR below) -- lives here so all safety-relevant signals are
-                    in one place. Only appears once that real backend call has run. */}
-                {lidarResult && lidarResult.nearestDistanceM !== null && (
-                  <div
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                      lidarResult.warningActive
-                        ? 'bg-red-500/10 border-red-500/40 animate-pulse'
-                        : 'bg-emerald-500/10 border-emerald-500/30'
-                    }`}
-                  >
-                    {lidarResult.warningActive ? (
-                      <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-                    ) : (
-                      <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <div className={`text-sm font-bold ${lidarResult.warningActive ? 'text-red-300' : 'text-emerald-300'}`}>
-                        {lidarResult.warningActive
-                          ? t('autopilot.warnings.objectDetected', { distance: lidarResult.nearestDistanceM.toFixed(1) })
-                          : t('autopilot.warnings.clear', { distance: lidarResult.nearestDistanceM.toFixed(1) })}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {t('autopilot.safetyLog.noticeDescription', { threshold: lidarResult.warningThresholdM })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="h-44 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px]">
-                  {penaltyFeed.length === 0 ? (
-                    <div className="text-slate-500 text-center py-8">{t('autopilot.safetyLog.emptyState')}</div>
-                  ) : (
-                    penaltyFeed.map((entry, i) => (
-                      <div key={i} className="p-2 rounded-lg bg-red-950/40 border border-red-500/20 text-red-300">
-                        {t('autopilot.safetyLog.feedEntry', { frameId: entry.frameId, message: formatPenalty(t, entry.parts) })}
-                      </div>
-                    ))
-                  )}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3.5">
+                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-teal-400" /> {t('autopilot.technical.rewardTitle')}</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5">{t('autopilot.technical.rewardSummary')}</p>
                 </div>
               </div>
 
@@ -1059,61 +947,6 @@ export const AutopilotWorkspace: React.FC = () => {
             </div>
             )}
           </div>
-        </ProjectSection>
-
-        <ProjectSection id="technical" title={t('common.projectSections.technicalDetails')} icon={Layers} accentClassName={ACCENT}>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-            <p className="text-xs text-slate-500">{t('autopilot.technical.intro')}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-emerald-400" /> {t('autopilot.technical.archTitle')}</h4>
-                <p className="text-[11px] text-slate-400 mt-1.5 font-mono">{t('autopilot.technical.archSummary')}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-teal-400" /> {t('autopilot.technical.rewardTitle')}</h4>
-                <p className="text-[11px] text-slate-400 mt-1.5">{t('autopilot.technical.rewardSummary')}</p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5"><GitCompare className="w-3.5 h-3.5 text-indigo-400" /> {t('autopilot.baselineSection.title')}</h4>
-              <p className="text-[11px] text-slate-400 mt-1.5 mb-3">{t('autopilot.baselineSection.intro')}</p>
-              <BaselineComparisonPanel
-                state={{
-                  speed: currentFrame.vf,
-                  yawRate: currentFrame.yaw,
-                  nearestObstacleDist: Math.min(...currentFrame.tracklets.map((t2) => t2.distance)),
-                  laneOffset: currentFrame.tracklets.find((t2) => t2.objectType === 'Car')?.ty ?? 0,
-                }}
-                heuristicAction={predictPolicyAction(currentFrame)}
-              />
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <h4 className="text-xs font-bold text-slate-200">{t('autopilot.technical.limitationsTitle')}</h4>
-              <p className="text-[11px] text-slate-400 mt-1.5">{t('autopilot.technical.limitationsSummary')}</p>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <ShieldCheck className="w-7 h-7 text-emerald-400 shrink-0" />
-              <div>
-                <div className="text-sm font-bold text-emerald-300">15 / 15 {t('autopilot.technical.regressionTitle')}</div>
-                <div className="text-[11px] text-slate-500">{t('autopilot.technical.regressionCaption')}</div>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-500">
-              {t('autopilot.technical.howToRerun')}
-              <code className="text-slate-400 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
-                pytest backend/tests/test_autopilot_kitti_vision.py backend/tests/test_autopilot_policy.py -v
-              </code>
-            </p>
-          </div>
-        </ProjectSection>
-
-        <ProjectSection id="results" title={t('common.projectSections.results')} icon={ClipboardCheck} accentClassName={ACCENT}>
-          <StaticResultsSection />
         </ProjectSection>
       </div>
     </div>
