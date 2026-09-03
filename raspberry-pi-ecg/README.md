@@ -110,6 +110,67 @@ as they are in the source repo.
   actually safe as shipped (no `allow_pickle=True`, so it can't deserialize arbitrary pickled
   objects), but it has no upload size limit. The portfolio backend's equivalent endpoint adds one.
 
+## Scope: why the model only trains for 10 epochs
+
+`ai/nn_main.py` trains `ECGNet` for a literal `for _e in range(10):` with no
+learning-rate schedule, early stopping, or calibration step. That is a
+deliberate scope choice for this portfolio project, not an oversight: the
+goal here is demonstrating a complete, honest edge-AI pipeline (real hardware
+signal reconstruction, real hardware-realistic preprocessing, a real trained
+model, real threshold calibration on held-out data, real evaluation with
+correct multi-label statistics) end-to-end, not chasing state-of-the-art
+accuracy on PTB-XL. See `data/README.md`'s "Why per-class thresholds" section
+for exactly what 10 epochs of training produces (raw sigmoid outputs that
+never approach 0.5) and how that's measured and corrected rather than hidden.
+
+## Signal-quality layer (deterministic, not a second ML model)
+
+`ecg_pipeline.assess_signal_quality()` runs a handful of scale-invariant,
+rule-based checks directly on the raw and filtered signal -- value-uniqueness
+fraction (flatline), fraction of samples at the observed min/max (clipping),
+raw-vs-filtered residual RMS ratio (noise), moving-average drift range
+(baseline instability), and R-peak count against a physiologically plausible
+minimum -- plus one AD8232-specific check for a signal sitting at the
+lead-off rail (512, ADC-scale data only). No ML model, no training data,
+no learned thresholds -- every constant is documented in the module and
+checked against real data (this scale-invariant design replaced an earlier
+absolute-std check that misflagged every one of the 61 real PTB-XL
+evaluation records as "flatline" purely because their physical-unit values
+are numerically small). The result (`GOOD`/`WARNING`/`POOR` + which checks
+fired) is included in every `/demo`, `/analyze`, and `/evaluate*` response,
+and the frontend shows an explicit prediction-reliability warning when a
+result comes back `POOR` -- this is a presentation-layer caution, not a
+change to `run_inference()` itself.
+
+## Runtime info and latency benchmarking
+
+`GET /api/ecg/runtime` reports real, self-reported process/host stats
+(`psutil` CPU%/RSS memory, plus a Linux-only CPU-temperature read from
+`/sys/class/thermal/thermal_zone0/temp` -- real on an actual Raspberry Pi 5,
+`null` elsewhere rather than a fabricated value) alongside the sampling rate
+and the most recent request's real preprocessing/inference timings.
+`POST /api/ecg/benchmark` runs 50 real repeated end-to-end passes on the
+bundled sample and reports real P50/P95/P99/mean latency, broken out by
+preprocessing/inference/total -- the same "N real repeated measurements"
+technique already used elsewhere in this portfolio for benchmark numbers, no
+distributed benchmarking infrastructure and no synthetic timing estimates.
+No Prometheus/Grafana/external telemetry anywhere in this path.
+
+## Expanded evaluation metrics
+
+`POST /api/ecg/evaluate` and `/evaluate-bundled` now also report macro
+precision/recall/F1 (averaged only over classes with real positive support
+in that evaluation set -- see `data/README.md` for exactly which classes
+that is for the bundled 61-record set) and per-class + micro/macro PR-AUC.
+Classes with zero positive support report `null` ("N/A") for precision/
+recall/F1/PR-AUC rather than scikit-learn's `zero_division=0` default of
+`0.0`, which would otherwise look like a measured failure rather than "never
+evaluated" -- `numEvaluatedClasses` in the response says exactly how many of
+the 19 classes were actually scored. Hamming accuracy is still reported, but
+is not the headline number: with 19 mostly-easy-to-get-right-by-predicting-
+nothing classes it's easy to inflate, so the response text and the frontend
+both lead with macro/micro F1 instead.
+
 ## Live mode vs. demo mode (this portfolio)
 
 `rp/main.py` needs two USB serial devices, an Arduino per lead, and a Raspberry Pi -- none of

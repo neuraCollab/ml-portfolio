@@ -274,7 +274,7 @@ _THRESHOLD_CALIBRATION_NOTE = (
 )
 
 
-def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
+def _evaluate(X: np.ndarray, y: np.ndarray, source_note: str) -> EcgEvaluationResponse:
     """Shared metric computation for evaluate_dataset() and
     evaluate_bundled_dataset(): runs the actual model on every sample and
     compares to ground-truth labels with scikit-learn's standard metric
@@ -290,9 +290,12 @@ def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
     zero_division=0 default of 0.0 -- a 0.0 looks like a measured failure,
     but a class that was never evaluated wasn't measured at all. Macro
     metrics are averaged only over classes that DO have real support, for
-    the same reason: including 12 unevaluated all-zero classes in a raw
-    19-class macro average would understate the model's real (if weak)
-    performance on the 7 classes this set can actually measure.
+    the same reason: including the unevaluated all-zero classes in a raw
+    macro average would understate the model's real (if weak) performance
+    on the classes this set can actually measure. The exact split (how many
+    of the 19 classes have real support) depends on which evaluation set is
+    passed in -- read it from the returned numEvaluatedClasses, don't assume
+    a fixed number here.
     """
     from sklearn.metrics import accuracy_score, average_precision_score, hamming_loss, precision_recall_fscore_support
 
@@ -343,6 +346,25 @@ def _evaluate(X: np.ndarray, y: np.ndarray, note: str) -> EcgEvaluationResponse:
         float(average_precision_score(y_true[:, evaluated_mask], probs[:, evaluated_mask], average="micro"))
         if num_evaluated > 0
         else None
+    )
+
+    # Built from the real computed num_evaluated/n_classes rather than a
+    # hardcoded count -- an earlier version of this note hardcoded "7 of 19"
+    # for the bundled set, which drifted from reality (the actual bundled
+    # 61-record set has positive support for 12 classes, several with just
+    # 1-2 examples) as soon as it was checked against a live run.
+    coverage_note = (
+        f"Only {num_evaluated} of {n_classes} classes have any positive examples in this "
+        f"evaluation set -- the other {n_classes - num_evaluated} report precision/recall/F1/"
+        "PR-AUC as null (not evaluated, not a measured 0) and are excluded from the macro "
+        "averages."
+    )
+    note = (
+        f"{source_note} Subset accuracy = exact match across all {n_classes} labels per sample "
+        "(strict). Hamming accuracy = fraction of individual label predictions correct (lenient) "
+        f"-- with {n_classes} mostly-easy-to-get-right-by-predicting-nothing classes, this is easy "
+        "to inflate and should not be read as the primary quality indicator; macro F1 and micro F1 "
+        f"are more informative for this multi-label, imbalanced problem. {coverage_note}"
     )
 
     per_class = []
@@ -425,17 +447,11 @@ def evaluate_dataset(npz_bytes: bytes) -> EcgEvaluationResponse:
     return _evaluate(
         X,
         y,
-        note=(
+        source_note=(
             "Computed from real model predictions vs. your uploaded ground-truth labels "
             "(scikit-learn precision_recall_fscore_support / average_precision_score / "
             "accuracy_score / hamming_loss), using the same calibrated per-class thresholds "
-            "as live inference. Subset accuracy = exact match across all 19 labels per sample "
-            "(strict). Hamming accuracy = fraction of individual label predictions correct "
-            "(lenient) -- with 19 mostly-easy-to-get-right-by-predicting-nothing classes, this "
-            "is easy to inflate and should not be read as the primary quality indicator; macro "
-            "F1 and micro F1 are more informative for this multi-label, imbalanced problem. "
-            "Classes with zero positive examples in your uploaded labels report precision/"
-            "recall/F1/PR-AUC as null (not evaluated), and are excluded from the macro averages."
+            "as live inference."
         ),
     )
 
@@ -451,21 +467,12 @@ def evaluate_bundled_dataset() -> EcgEvaluationResponse:
     return _evaluate(
         X,
         y,
-        note=(
+        source_note=(
             "Computed from real model predictions vs. real PTB-XL ground-truth labels "
             "on the bundled 61-record evaluation set (raspberry-pi-ecg/data/README.md), "
             "using per-class thresholds calibrated on a disjoint 48-record calibration "
             "set (scikit-learn precision_recall_fscore_support / average_precision_score / "
-            "accuracy_score / hamming_loss). Subset accuracy = exact match across all 19 "
-            "labels per sample (strict). Hamming accuracy = fraction of individual label "
-            "predictions correct (lenient) -- with 19 mostly-easy-to-get-right-by-predicting-"
-            "nothing classes, this is easy to inflate and should not be read as the primary "
-            "quality indicator; macro F1 and micro F1 are more informative for this "
-            "multi-label, imbalanced problem. Only 7 of 19 classes have any positive "
-            "examples in this 61-record set -- the other 12 report precision/recall/F1/"
-            "PR-AUC as null (not evaluated, not a measured 0) and are excluded from the "
-            "macro averages. See the README for why some of the 7 evaluated classes score "
-            "far better than others."
+            "accuracy_score / hamming_loss)."
         ),
     )
 

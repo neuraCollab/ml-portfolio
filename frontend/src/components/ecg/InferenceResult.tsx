@@ -1,6 +1,6 @@
 import React from 'react';
 import { EcgAnalysisResult } from '../../types';
-import { BrainCircuit, HelpCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { BrainCircuit, HelpCircle, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
 import { ProbabilityBarChart } from './ProbabilityBarChart';
 import { formatProbability } from '../../utils/formatProbability';
 import { useTranslation } from '../../i18n/I18nContext';
@@ -11,9 +11,17 @@ interface InferenceResultProps {
 
 export const InferenceResult: React.FC<InferenceResultProps> = ({ result }) => {
   const { t } = useTranslation();
+  const isPoorSignal = result.signalQuality?.status === 'POOR';
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+      {isPoorSignal && (
+        <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{t('ecg.inferenceResult.abstentionWarning')}</span>
+        </div>
+      )}
+
+      <div className={`p-4 rounded-xl bg-slate-950 border flex items-center justify-between ${isPoorSignal ? 'border-red-500/30 opacity-70' : 'border-slate-800'}`}>
         <div>
           <div className="text-[11px] text-slate-500 font-mono uppercase">{t('ecg.inferenceResult.topClassificationLabel')}</div>
           <div className="text-lg font-bold text-rose-300">{result.topLabel}</div>

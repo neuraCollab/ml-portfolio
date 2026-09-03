@@ -37,7 +37,7 @@ export const overview = {
         item2: 'Velodyne LiDAR 3D Point Cloud Projection (Tr_velo_to_cam)',
         item3Prefix: 'Custom OpenAI Gym Environment (',
         item3Suffix: ')',
-        item4: 'Stable-Baselines3 (SAC & DDPG MultiInputPolicy)',
+        item4: 'Stable-Baselines3 (SAC MultiInputPolicy)',
         item5: 'Tracklet 3D Bounding Boxes (tx, ty, tz) & Anomaly Detection',
       },
     },

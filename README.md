@@ -114,6 +114,15 @@ each project's existing Python code so the UI calls real ML code, not mocked dat
   - The source repo's `frp/` reverse-tunnel setup (committed binaries, a real VPS IP, an SSH
     port-forward, no auth token) was deliberately **not** brought into this repo -- see that same
     README's "Security findings" section.
+  - **Evaluation, signal quality, and benchmarking**: evaluation now reports macro/micro
+    precision/recall/F1 and PR-AUC, with `null` ("N/A") rather than a misleading `0.0` for the
+    classes with zero positive support in a given evaluation set (`numEvaluatedClasses` says
+    exactly how many of the 19 were actually scored). A deterministic, rule-based signal-quality
+    check (flatline/clipping/noise/baseline-instability/insufficient-R-peaks, no second ML model)
+    runs on every prediction and drives a prediction-reliability warning in the UI when a signal
+    is `POOR`. Real device telemetry (`psutil` CPU/RAM, Linux-only CPU temperature) and a real
+    50-repetition P50/P95/P99 latency benchmark are exposed via `GET /api/ecg/runtime` and
+    `POST /api/ecg/benchmark` -- see `raspberry-pi-ecg/README.md` for details.
 
 ### 4. Cassandra + gRPC ML (`cassandra-grpc-ml/`)
 

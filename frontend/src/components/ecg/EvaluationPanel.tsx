@@ -93,35 +93,20 @@ export const EvaluationPanel: React.FC = () => {
 
       {result && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <MetricCard label={t('ecg.evaluation.samplesLabel')} value={result.numSamples} icon={FlaskConical} color="text-rose-300" />
+          <p className="text-[11px] text-slate-400 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+            {t('ecg.evaluation.coverageNote', { evaluated: result.numEvaluatedClasses, total: result.numClasses })}
+          </p>
+
+          {/* Macro/Micro F1 first and larger -- these are the primary quality
+              signal, not Hamming accuracy (misleadingly high on a 19-way
+              multi-label problem where most labels are true-negative). */}
+          <div className="grid grid-cols-2 gap-3">
             <MetricCard
-              label={t('ecg.evaluation.subsetAccuracyLabel')}
-              value={`${(result.subsetAccuracy * 100).toFixed(1)}%`}
+              label={t('ecg.evaluation.macroF1Label')}
+              value={result.macroF1.toFixed(3)}
               icon={Target}
               color="text-rose-300"
-              tooltip={t('ecg.evaluation.subsetAccuracyTooltip')}
-            />
-            <MetricCard
-              label={t('ecg.evaluation.hammingAccuracyLabel')}
-              value={`${(result.hammingAccuracy * 100).toFixed(1)}%`}
-              icon={Target}
-              color="text-rose-300"
-              tooltip={t('ecg.evaluation.hammingAccuracyTooltip')}
-            />
-            <MetricCard
-              label={t('ecg.evaluation.microPrecisionLabel')}
-              value={`${(result.microPrecision * 100).toFixed(1)}%`}
-              icon={Target}
-              color="text-rose-300"
-              tooltip={t('ecg.evaluation.microPrecisionTooltip')}
-            />
-            <MetricCard
-              label={t('ecg.evaluation.microRecallLabel')}
-              value={`${(result.microRecall * 100).toFixed(1)}%`}
-              icon={Target}
-              color="text-rose-300"
-              tooltip={t('ecg.evaluation.microRecallTooltip')}
+              tooltip={t('ecg.evaluation.macroF1Tooltip')}
             />
             <MetricCard
               label={t('ecg.evaluation.microF1Label')}
@@ -129,6 +114,46 @@ export const EvaluationPanel: React.FC = () => {
               icon={Target}
               color="text-rose-300"
               tooltip={t('ecg.evaluation.microF1Tooltip')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricCard label={t('ecg.evaluation.macroPrecisionLabel')} value={result.macroPrecision.toFixed(3)} icon={Target} color="text-rose-300" tooltip={t('ecg.evaluation.macroPrecisionTooltip')} />
+            <MetricCard label={t('ecg.evaluation.macroRecallLabel')} value={result.macroRecall.toFixed(3)} icon={Target} color="text-rose-300" tooltip={t('ecg.evaluation.macroRecallTooltip')} />
+            <MetricCard label={t('ecg.evaluation.microPrecisionLabel')} value={`${(result.microPrecision * 100).toFixed(1)}%`} icon={Target} color="text-rose-300" tooltip={t('ecg.evaluation.microPrecisionTooltip')} />
+            <MetricCard label={t('ecg.evaluation.microRecallLabel')} value={`${(result.microRecall * 100).toFixed(1)}%`} icon={Target} color="text-rose-300" tooltip={t('ecg.evaluation.microRecallTooltip')} />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricCard
+              label={t('ecg.evaluation.prAucMacroLabel')}
+              value={result.prAucMacro != null ? result.prAucMacro.toFixed(3) : t('common.shared.notAvailable')}
+              icon={Target}
+              color="text-indigo-300"
+              tooltip={t('ecg.evaluation.prAucMacroTooltip')}
+            />
+            <MetricCard
+              label={t('ecg.evaluation.prAucMicroLabel')}
+              value={result.prAucMicro != null ? result.prAucMicro.toFixed(3) : t('common.shared.notAvailable')}
+              icon={Target}
+              color="text-indigo-300"
+              tooltip={t('ecg.evaluation.prAucMicroTooltip')}
+            />
+            {/* Subset/Hamming shown last, muted -- secondary indicators, not
+                the headline quality metric on this multi-label problem. */}
+            <MetricCard
+              label={t('ecg.evaluation.subsetAccuracyLabel')}
+              value={`${(result.subsetAccuracy * 100).toFixed(1)}%`}
+              icon={FlaskConical}
+              color="text-slate-400"
+              tooltip={t('ecg.evaluation.subsetAccuracyTooltip')}
+            />
+            <MetricCard
+              label={t('ecg.evaluation.hammingAccuracyLabel')}
+              value={`${(result.hammingAccuracy * 100).toFixed(1)}%`}
+              icon={FlaskConical}
+              color="text-slate-400"
+              tooltip={t('ecg.evaluation.hammingAccuracyTooltip')}
             />
           </div>
 
@@ -145,6 +170,8 @@ export const EvaluationPanel: React.FC = () => {
                   <th className="py-2 px-3">{t('ecg.evaluation.tablePrecisionHeader')}</th>
                   <th className="py-2 px-3">{t('ecg.evaluation.tableRecallHeader')}</th>
                   <th className="py-2 px-3">{t('ecg.evaluation.tableF1Header')}</th>
+                  <th className="py-2 px-3">{t('ecg.evaluation.tablePrAucHeader')}</th>
+                  <th className="py-2 px-3">{t('ecg.evaluation.tableThresholdHeader')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -156,15 +183,18 @@ export const EvaluationPanel: React.FC = () => {
                     <td className="py-1.5 px-3">{c.falsePositives}</td>
                     <td className="py-1.5 px-3">{c.falseNegatives}</td>
                     <td className="py-1.5 px-3">{c.trueNegatives}</td>
-                    <td className="py-1.5 px-3">{c.precision.toFixed(2)}</td>
-                    <td className="py-1.5 px-3">{c.recall.toFixed(2)}</td>
-                    <td className="py-1.5 px-3">{c.f1.toFixed(2)}</td>
+                    <td className="py-1.5 px-3">{c.precision != null ? c.precision.toFixed(2) : t('common.shared.notAvailable')}</td>
+                    <td className="py-1.5 px-3">{c.recall != null ? c.recall.toFixed(2) : t('common.shared.notAvailable')}</td>
+                    <td className="py-1.5 px-3">{c.f1 != null ? c.f1.toFixed(2) : t('common.shared.notAvailable')}</td>
+                    <td className="py-1.5 px-3">{c.prAuc != null ? c.prAuc.toFixed(2) : t('common.shared.notAvailable')}</td>
+                    <td className="py-1.5 px-3">{c.threshold.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
+          <p className="text-[10px] text-slate-500">{result.thresholdCalibrationNote}</p>
           <p className="text-[10px] text-slate-500">{result.note}</p>
         </div>
       )}

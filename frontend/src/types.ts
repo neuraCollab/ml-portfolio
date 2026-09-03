@@ -191,6 +191,23 @@ export interface EcgRPeakInfo {
   note: string;
 }
 
+export interface EcgSignalQualityMetrics {
+  globalStd: number;
+  uniqueValueFraction: number;
+  clippedFraction: number;
+  noiseRatio: number;
+  baselineInstabilityRatio: number;
+  peakCount: number;
+  expectedMinPeaks: number;
+}
+
+export interface EcgSignalQuality {
+  status: 'GOOD' | 'WARNING' | 'POOR';
+  issues: string[];
+  metrics: EcgSignalQualityMetrics;
+  note: string;
+}
+
 export interface EcgAnalysisResult {
   leads: Record<EcgLeadName, number[]>;
   filteredLeads: Record<EcgLeadName, number[]>;
@@ -198,6 +215,7 @@ export interface EcgAnalysisResult {
   samplingRateHz: number;
   signalMetrics: EcgSignalMetrics;
   rPeaks: EcgRPeakInfo;
+  signalQuality: EcgSignalQuality;
   predictions: Record<string, EcgClassPrediction>;
   topClass: string;
   topLabel: string;
@@ -225,20 +243,67 @@ export interface EcgPerClassMetric {
   falsePositives: number;
   falseNegatives: number;
   trueNegatives: number;
-  precision: number;
-  recall: number;
-  f1: number;
+  /** null ("N/A") for classes with zero positive support in this evaluation
+   * set -- never a misleading measured 0.0 for "never evaluated". */
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  prAuc: number | null;
+  threshold: number;
+}
+
+export interface EcgThresholdInfo {
+  className: string;
+  label: string;
+  threshold: number;
+  isCalibrated: boolean;
 }
 
 export interface EcgEvaluationResult {
   numSamples: number;
   numClasses: number;
+  numEvaluatedClasses: number;
   subsetAccuracy: number;
   hammingAccuracy: number;
   microPrecision: number;
   microRecall: number;
   microF1: number;
+  macroPrecision: number;
+  macroRecall: number;
+  macroF1: number;
+  prAucMicro: number | null;
+  prAucMacro: number | null;
   perClass: EcgPerClassMetric[];
+  thresholds: EcgThresholdInfo[];
+  thresholdCalibrationNote: string;
+  note: string;
+}
+
+export interface EcgRuntimeInfo {
+  cpuPercent: number | null;
+  memoryUsedMb: number | null;
+  memoryTotalMb: number | null;
+  cpuTemperatureCelsius: number | null;
+  samplingRateHz: number;
+  lastInferenceTimeMs: number | null;
+  lastPreprocessingTimeMs: number | null;
+  platform: string;
+  note: string;
+}
+
+export interface EcgLatencyPercentiles {
+  p50: number;
+  p95: number;
+  p99: number;
+  mean: number;
+}
+
+export interface EcgBenchmarkResult {
+  iterations: number;
+  preprocessing: EcgLatencyPercentiles;
+  inference: EcgLatencyPercentiles;
+  total: EcgLatencyPercentiles;
+  platform: string;
   note: string;
 }
 

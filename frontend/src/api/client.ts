@@ -1,4 +1,4 @@
-import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgEvaluationResult, EcgHealth, PoolScaleResult } from '../types';
+import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, CassandraGrpcTrainMetrics, EcgAnalysisResult, EcgBenchmarkResult, EcgEvaluationResult, EcgHealth, EcgRuntimeInfo, PoolScaleResult } from '../types';
 
 const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL: string = API_BASE_URL.replace(/^http/, 'ws');
@@ -167,6 +167,14 @@ export function evaluateEcgDataset(file: File): Promise<EcgEvaluationResult> {
 
 export function evaluateEcgBundledDataset(): Promise<EcgEvaluationResult> {
   return request<EcgEvaluationResult>('/api/ecg/evaluate-bundled', { method: 'POST' });
+}
+
+export function getEcgRuntimeInfo(): Promise<EcgRuntimeInfo> {
+  return request<EcgRuntimeInfo>('/api/ecg/runtime');
+}
+
+export function runEcgBenchmark(): Promise<EcgBenchmarkResult> {
+  return request<EcgBenchmarkResult>('/api/ecg/benchmark', { method: 'POST' });
 }
 
 export function openEcgLiveSocket(onMessage: (data: any) => void, onClose?: () => void): WebSocket {

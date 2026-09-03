@@ -24,9 +24,14 @@ MIMIC, requires no data use agreement).
   chosen deliberately, as the least ambiguous single example).
 - **`ptbxl_labeled_eval.npz`** -- 61 real records (`X`: `(61, 1000, 6)` raw mV
   signals, `y`: `(61, 19)` multi-label binary ground truth, `ecg_ids`,
-  `target_cols`), used by `POST /api/ecg/evaluate-bundled`. Spans 7 of the 19
-  classes with real support: `is_sinus_rhythm` (40), `has_lbbb` (15),
-  `has_irbbb` (14), `is_afib` (13), `has_lafb` (11), `has_1avb` (9), `is_pvc` (9).
+  `target_cols`), used by `POST /api/ecg/evaluate-bundled`. Spans 12 of the 19
+  classes with real positive support (verified against a live evaluation run,
+  not estimated): `is_sinus_rhythm` (40), `has_lbbb` (15), `has_irbbb` (14),
+  `is_afib` (13), `has_lafb` (11), `has_1avb` (9), `is_pvc` (9),
+  `is_sinus_arrhythmia` (2), `is_pac` (1), `has_rbbb` (1), `has_ilbbb` (1),
+  `has_bigeminy` (1). The other 7 classes have zero positive examples in this
+  set and are reported as N/A (not evaluated), not a misleading measured 0 --
+  see `EcgEvaluationResponse.numEvaluatedClasses`.
 - **`per_class_thresholds.npy`** -- see "Why per-class thresholds" below.
 
 ## How the labels were built

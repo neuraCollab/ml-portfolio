@@ -11,6 +11,10 @@ import { SignalStatus } from './ecg/SignalStatus';
 import { SignalMetricsPanel } from './ecg/SignalMetricsPanel';
 import { EvaluationPanel } from './ecg/EvaluationPanel';
 import { StaticResultsSection } from './ecg/StaticResultsSection';
+import { ArchitectureDiagram } from './ecg/ArchitectureDiagram';
+import { ElectrodePlacementDiagram } from './ecg/ElectrodePlacementDiagram';
+import { BaselineComparisonPanel } from './ecg/BaselineComparisonPanel';
+import { RpiRuntimePanel } from './ecg/RpiRuntimePanel';
 import { ProjectSection } from './shared/ProjectSection';
 import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation } from '../i18n/I18nContext';
@@ -18,7 +22,11 @@ import {
   HeartPulse, Play, Upload, Radio, FlaskConical, ShieldAlert,
   Cpu, Waves, Sliders, Info, ChevronDown, ChevronUp, ClipboardCheck,
   Layers, Database, Workflow, GitCompare, Brain, Target, Bug, ShieldCheck,
+  Camera, CheckCircle2, ListChecks, Wrench,
 } from 'lucide-react';
+
+const HARDWARE_PHOTO_PATH = 'static-results/ecg/hardware.jpg';
+const ARCHITECTURE_STEP_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6'] as const;
 
 type Mode = 'demo' | 'live';
 type LiveStatusKind = 'connecting' | 'streaming' | 'noHardware' | 'streamingData' | 'unreachable';
@@ -217,14 +225,64 @@ export const ECGWorkspace: React.FC = () => {
           </div>
         </ProjectSection>
 
-        <ProjectSection
-          id="architecture"
-          title={t('common.projectSections.architecture')}
-          icon={Layers}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="architecture" title={t('common.projectSections.architecture')} icon={Layers} accentClassName={ACCENT}>
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider">
+                <Layers className="w-4 h-4" />
+                <span>{t('ecg.architecture.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.architecture.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl">{t('ecg.architecture.intro')}</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <figure className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                  <Camera className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{t('ecg.architecture.photoHeading')}</span>
+                </div>
+                <img
+                  src={`${(import.meta as any).env.BASE_URL}${HARDWARE_PHOTO_PATH}`}
+                  alt={t('ecg.staticResults.hardwareImageAlt')}
+                  className="w-full h-auto rounded-xl border border-slate-800 object-cover"
+                />
+                <figcaption className="text-[11px] text-slate-500">{t('ecg.architecture.photoCaption')}</figcaption>
+              </figure>
+
+              <figure className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                  <Workflow className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{t('ecg.architecture.diagramHeading')}</span>
+                </div>
+                <ArchitectureDiagram />
+              </figure>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
+                <ListChecks className="w-4 h-4 text-rose-400" />
+                <span>{t('ecg.architecture.howItWorksHeading')}</span>
+              </div>
+              <ol className="space-y-3">
+                {ARCHITECTURE_STEP_KEYS.map((key, idx) => (
+                  <li key={key} className="flex items-start gap-3 text-xs text-slate-400">
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-bold font-mono flex items-center justify-center mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{t(`ecg.architecture.steps.${key}` as any)}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <figure className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-200 mb-3">{t('ecg.electrodes.heading')}</h3>
+              <ElectrodePlacementDiagram />
+              <figcaption className="text-[11px] text-slate-500 mt-3 max-w-xl mx-auto">{t('ecg.electrodes.caption')}</figcaption>
+            </figure>
+          </div>
+        </ProjectSection>
 
         {/* Dataset: the demo-mode source picker (recorded sample / synthetic /
             public / upload) is real dataset-selection content, but it lives
@@ -234,36 +292,80 @@ export const ECGWorkspace: React.FC = () => {
             relative to the Demo/Live toggle, so per the "don't force an
             extraction that risks a layout/behavior bug" rule it stays in
             place and this section is a stub. */}
-        <ProjectSection
-          id="dataset"
-          title={t('common.projectSections.dataset')}
-          icon={Database}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="dataset" title={t('common.projectSections.dataset')} icon={Database} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <Database className="w-4 h-4" />
+                <span>{t('ecg.datasetSection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.datasetSection.title')}</h2>
+              <p className="text-xs text-slate-500 mt-1 italic">{t('ecg.datasetSection.citation')}</p>
+              <p className="text-xs text-slate-500">{t('ecg.datasetSection.licenseNote')}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+                <h3 className="text-xs font-bold text-slate-200">{t('ecg.datasetSection.trainingHeading')}</h3>
+                <p className="text-[11px] text-slate-500 mt-1">{t('ecg.datasetSection.trainingBody')}</p>
+              </div>
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+                <h3 className="text-xs font-bold text-slate-200">{t('ecg.datasetSection.evalHeading')}</h3>
+                <p className="text-[11px] text-slate-500 mt-1">{t('ecg.datasetSection.evalBody')}</p>
+              </div>
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+                <h3 className="text-xs font-bold text-slate-200">{t('ecg.datasetSection.calibrationHeading')}</h3>
+                <p className="text-[11px] text-slate-500 mt-1">{t('ecg.datasetSection.calibrationBody')}</p>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-xs font-bold text-slate-200">{t('ecg.datasetSection.labelRuleHeading')}</h3>
+              <p className="text-[11px] text-slate-500 mt-1 max-w-3xl">{t('ecg.datasetSection.labelRuleBody')}</p>
+            </div>
+          </div>
+        </ProjectSection>
 
         {/* Methodology: likewise, the "technical details" model-card block
             (preprocessing steps, input shape, device) is nested inside the
             same mode-gated demo grid and only appears after a result -- left
             in place for the same reason as Dataset above. */}
-        <ProjectSection
-          id="methodology"
-          title={t('common.projectSections.methodology')}
-          icon={Workflow}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="methodology" title={t('common.projectSections.methodology')} icon={Workflow} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <Workflow className="w-4 h-4" />
+                <span>{t('ecg.methodologySection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.methodologySection.title')}</h2>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">{t('ecg.methodologySection.pipelineHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('ecg.methodologySection.pipelineBody')}</p>
+            </div>
+            <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-sm font-semibold text-slate-200">{t('ecg.methodologySection.thresholdHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('ecg.methodologySection.thresholdBody')}</p>
+            </div>
+          </div>
+        </ProjectSection>
 
-        <ProjectSection
-          id="baseline"
-          title={t('common.projectSections.baseline')}
-          icon={GitCompare}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="baseline" title={t('common.projectSections.baseline')} icon={GitCompare} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <GitCompare className="w-4 h-4" />
+                <span>{t('ecg.baselineSection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.baselineSection.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.baselineSection.intro')}</p>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 text-xs text-slate-400">
+              {t('ecg.baselineSection.caveat')}
+            </div>
+            <BaselineComparisonPanel />
+          </div>
+        </ProjectSection>
 
         <ProjectSection id="model" title={t('common.projectSections.model')} icon={Brain} accentClassName={ACCENT}>
           {mode === 'live' ? (
@@ -465,32 +567,164 @@ export const ECGWorkspace: React.FC = () => {
             (chart / metrics / inference / evaluation). Splitting that panel
             out on its own would break up that "all results appear together"
             cluster, so it stays there and this section is a stub. */}
-        <ProjectSection
-          id="metrics"
-          title={t('common.projectSections.metrics')}
-          icon={Target}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+        <ProjectSection id="metrics" title={t('common.projectSections.metrics')} icon={Target} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <Target className="w-4 h-4" />
+                <span>{t('ecg.metricsSection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.metricsSection.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.metricsSection.intro')}</p>
+            </div>
 
-        <ProjectSection
-          id="errorAnalysis"
-          title={t('common.projectSections.errorAnalysis')}
-          icon={Bug}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {([
+                'macroF1Label', 'microF1Label', 'macroPrecisionLabel', 'macroRecallLabel',
+                'microPrecisionLabel', 'microRecallLabel', 'prAucMacroLabel', 'prAucMicroLabel',
+                'subsetAccuracyLabel', 'hammingAccuracyLabel',
+              ] as const).map((labelKey) => {
+                const tooltipKey = labelKey.replace('Label', 'Tooltip') as
+                  | 'subsetAccuracyTooltip' | 'hammingAccuracyTooltip' | 'microPrecisionTooltip' | 'microRecallTooltip' | 'microF1Tooltip'
+                  | 'macroPrecisionTooltip' | 'macroRecallTooltip' | 'macroF1Tooltip' | 'prAucMacroTooltip' | 'prAucMicroTooltip';
+                return (
+                  <div key={labelKey} className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
+                    <div className="text-xs font-semibold text-slate-200">{t(`ecg.evaluation.${labelKey}` as any)}</div>
+                    <p className="text-[11px] text-slate-500 mt-1">{t(`ecg.evaluation.${tooltipKey}` as any)}</p>
+                  </div>
+                );
+              })}
+            </div>
 
-        <ProjectSection
-          id="regressionTests"
-          title={t('common.projectSections.regressionTests')}
-          icon={ShieldCheck}
-          accentClassName={ACCENT}
-          unavailable
-          unavailableReason={t('common.projectSections.comingSoonReason')}
-        />
+            <div className="border-t border-slate-800 pt-4">
+              <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('ecg.metricsSection.referenceHeading')}</h3>
+              <div className="overflow-x-auto rounded-xl border border-slate-800">
+                <table className="w-full text-left text-[11px] text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 font-mono uppercase border-b border-slate-800">
+                    <tr>
+                      <th className="py-2 px-3">{t('ecg.evaluation.tableClassHeader')}</th>
+                      <th className="py-2 px-3">{t('ecg.evaluation.tableSupportHeader')}</th>
+                      <th className="py-2 px-3">{t('ecg.evaluation.tablePrecisionHeader')}</th>
+                      <th className="py-2 px-3">{t('ecg.evaluation.tableRecallHeader')}</th>
+                      <th className="py-2 px-3">{t('ecg.evaluation.tableF1Header')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {[
+                      // Only raspberry-pi-ecg/data/README.md's explicitly documented
+                      // numbers -- is_afib's F1 is the exact harmonic mean of its cited
+                      // P/R (2*0.21*1.00/(0.21+1.00) = 0.347), not a separate citation.
+                      // has_lafb's precision/F1 were never documented, so they show as
+                      // not available rather than a guessed number.
+                      { name: 'is_sinus_rhythm', support: 40, p: '0.64', r: '0.93', f1: '0.76' },
+                      { name: 'is_afib', support: 13, p: '0.21', r: '1.00', f1: '0.35' },
+                      { name: 'has_lafb', support: 11, p: null, r: '0.09', f1: null },
+                    ].map((row) => (
+                      <tr key={row.name}>
+                        <td className="py-1.5 px-3 font-sans">{row.name}</td>
+                        <td className="py-1.5 px-3">{row.support}</td>
+                        <td className="py-1.5 px-3">{row.p ?? t('common.shared.notAvailable')}</td>
+                        <td className="py-1.5 px-3">{row.r}</td>
+                        <td className="py-1.5 px-3">{row.f1 ?? t('common.shared.notAvailable')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">{t('ecg.metricsSection.referenceNote')}</p>
+            </div>
+
+            <p className="text-[11px] text-rose-300/80">{t('ecg.metricsSection.pointerNote')}</p>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 mt-6">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <Cpu className="w-4 h-4" />
+                <span>{t('ecg.runtime.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.runtime.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.runtime.intro')}</p>
+            </div>
+            <RpiRuntimePanel />
+          </div>
+        </ProjectSection>
+
+        <ProjectSection id="errorAnalysis" title={t('common.projectSections.errorAnalysis')} icon={Bug} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <Bug className="w-4 h-4" />
+                <span>{t('ecg.errorAnalysisSection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.errorAnalysisSection.title')}</h2>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <Wrench className="w-3.5 h-3.5 text-rose-400" />
+                {t('ecg.errorAnalysisSection.bugsHeading')}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('ecg.errorAnalysisSection.bugsIntro')}</p>
+            </div>
+
+            <div className="space-y-3">
+              {(['bug1', 'bug2', 'bug3'] as const).map((key) => (
+                <div key={key} className="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-4">
+                  <h4 className="text-xs font-bold text-amber-300">{t(`ecg.errorAnalysisSection.${key}Title` as any)}</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5">{t(`ecg.errorAnalysisSection.${key}Body` as any)}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-800 pt-3">
+              <h3 className="text-sm font-semibold text-slate-200">{t('ecg.errorAnalysisSection.modelWeaknessHeading')}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-3xl">{t('ecg.errorAnalysisSection.modelWeaknessBody')}</p>
+            </div>
+          </div>
+        </ProjectSection>
+
+        <ProjectSection id="regressionTests" title={t('common.projectSections.regressionTests')} icon={ShieldCheck} accentClassName={ACCENT}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{t('ecg.regressionTestsSection.eyebrow')}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight">{t('ecg.regressionTestsSection.title')}</h2>
+              <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('ecg.regressionTestsSection.intro')}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 mb-2">{t('ecg.regressionTestsSection.testListHeading')}</h3>
+              <ul className="space-y-1.5">
+                {(['test1', 'test2', 'test3', 'test4', 'test5'] as const).map((key) => (
+                  <li key={key} className="flex items-start gap-2 text-xs text-slate-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{t(`ecg.regressionTestsSection.${key}` as any)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
+              <div>
+                <div className="text-sm font-bold text-emerald-300">19 / 19 passed</div>
+                <div className="text-[11px] text-slate-500">
+                  backend/tests/test_ecg_pipeline.py + test_ecg_schemas.py -- last run 2026-09-02, pytest 9.1.1
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              {t('ecg.regressionTestsSection.howToRerun')}
+              <code className="text-slate-400 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
+                pytest backend/tests/test_ecg_pipeline.py backend/tests/test_ecg_schemas.py -v
+              </code>
+            </p>
+          </div>
+        </ProjectSection>
 
         <ProjectSection id="results" title={t('common.projectSections.results')} icon={ClipboardCheck} accentClassName={ACCENT}>
           <StaticResultsSection />

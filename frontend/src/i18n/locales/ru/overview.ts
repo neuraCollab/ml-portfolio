@@ -37,7 +37,7 @@ export const overview = {
         item2: 'Проекция 3D-облака точек Velodyne LiDAR (Tr_velo_to_cam)',
         item3Prefix: 'Собственная среда OpenAI Gym (',
         item3Suffix: ')',
-        item4: 'Stable-Baselines3 (SAC и DDPG MultiInputPolicy)',
+        item4: 'Stable-Baselines3 (SAC MultiInputPolicy)',
         item5: '3D-ограничивающие рамки объектов (tx, ty, tz) и обнаружение аномалий',
       },
     },
