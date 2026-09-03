@@ -14,7 +14,8 @@ import ml_worker_pb2
 import ml_worker_pb2_grpc
 from ml_core import predict_one, train_and_evaluate
 from model_store import (
-    load_model, load_latest_model_from_cassandra, save_model, save_model_to_cassandra,
+    load_model, load_latest_model_from_object_storage, save_model, save_model_to_object_storage,
+    get_minio_client,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -24,7 +25,13 @@ CASSANDRA_HOST = os.environ.get("CASSANDRA_HOST", "cassandra")
 GRPC_PORT = int(os.environ.get("GRPC_PORT", "50061"))
 MODEL_STORE_DIR = Path(os.environ.get("MODEL_STORE_DIR", "/app/model_store"))
 KEYSPACE = "cassandra_grpc_ml"
-MODEL_PERSISTENCE = os.environ.get("MODEL_PERSISTENCE", "local")  # "local" | "cassandra"
+# "local" (filesystem, dev/test-only) | "shared" (Cassandra metadata pointer
+# + MinIO object storage for the actual artifact -- see model_store.py).
+MODEL_PERSISTENCE = os.environ.get("MODEL_PERSISTENCE", "local")
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "cassandra-grpc-ml-minio:9000")
+MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
+MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "cassandra-grpc-ml-models")
 _MODEL_REFRESH_INTERVAL_SECONDS = 30
 
 
@@ -41,8 +48,9 @@ def _cassandra_session():
 class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
     def __init__(self):
         self._last_refresh_check = 0.0
-        if MODEL_PERSISTENCE == "cassandra":
-            self._model = self._load_from_cassandra()
+        self._minio_client = get_minio_client(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY) if MODEL_PERSISTENCE == "shared" else None
+        if MODEL_PERSISTENCE == "shared":
+            self._model = self._load_shared_model()
         else:
             self._model = load_model(MODEL_STORE_DIR)
         if self._model:
@@ -55,30 +63,30 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
         # returns a real, non-degenerate reading.
         self._process.cpu_percent(interval=None)
 
-    def _load_from_cassandra(self):
+    def _load_shared_model(self):
         try:
             cluster, session = _cassandra_session()
             try:
-                return load_latest_model_from_cassandra(session)
+                return load_latest_model_from_object_storage(session, self._minio_client)
             finally:
                 cluster.shutdown()
         except Exception:
-            logger.exception("Could not load model from Cassandra")
+            logger.exception("Could not load model (Cassandra metadata + MinIO artifact)")
             return None
 
     def _maybe_refresh_model(self):
-        """Real, lazy re-check against Cassandra -- at most once per
+        """Real, lazy re-check -- at most once per
         _MODEL_REFRESH_INTERVAL_SECONDS -- so a Train on a different pod
         eventually reaches this one too, without a background thread."""
-        if MODEL_PERSISTENCE != "cassandra":
+        if MODEL_PERSISTENCE != "shared":
             return
         now = time.time()
         if now - self._last_refresh_check < _MODEL_REFRESH_INTERVAL_SECONDS:
             return
         self._last_refresh_check = now
-        latest = self._load_from_cassandra()
+        latest = self._load_shared_model()
         if latest is not None and (self._model is None or latest.trained_at > self._model.trained_at):
-            logger.info(f"Refreshed model from Cassandra (trained_at={latest.trained_at})")
+            logger.info(f"Refreshed model (trained_at={latest.trained_at})")
             self._model = latest
 
     def GetStatus(self, request, context):
@@ -157,38 +165,22 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
             return ml_worker_pb2.TrainResponse(success=False, message=str(exc))
 
         persistence_error = None
-        if MODEL_PERSISTENCE == "cassandra":
+        if MODEL_PERSISTENCE == "shared":
             try:
                 save_cluster, save_session = _cassandra_session()
                 try:
-                    save_model_to_cassandra(model, save_session)
+                    save_model_to_object_storage(model, save_session, self._minio_client, MINIO_BUCKET)
                 finally:
                     save_cluster.shutdown()
             except Exception as exc:
                 # Deliberately non-fatal: this pod already has a working
                 # in-memory model (self._model is set below regardless), so
                 # failing the whole RPC here would turn a real training
-                # success into a reported failure. This is not purely a
-                # hypothetical edge case: gzip compression (see
-                # model_store.py::save_model_to_cassandra) is real and
-                # helps, but does not guarantee staying under Cassandra's
-                # 16MB native-protocol message-size limit at this project's
-                # real default training size. A small sample (sampleSize
-                # 2,000, ~1,825 rows) compresses to ~12.18MB and persists
-                # fine, but the actual UI default (sampleSize 40,000)
-                # compresses to ~18.9MB -- the compression ratio degrades on
-                # a fuller, more realistic model (~1.86x on the small sample
-                # vs. only ~1.18x at the real default) -- and that still
-                # exceeds the limit. This is a real, currently-open
-                # limitation, not something fixed by a config change: this
-                # except block is the intentional, graceful handling of it.
-                # Its message is surfaced in the response (in addition to
-                # the log) so it isn't silently invisible to callers -- the
-                # pod that trained keeps serving correctly from its own
-                # in-memory copy, but other pods will NOT see this model
-                # until a smaller sample size is used or this limitation is
-                # otherwise addressed.
-                logger.exception("Could not save model to Cassandra -- other worker pods will NOT see this model")
+                # success into a reported failure -- e.g. if MinIO or
+                # Cassandra is briefly unreachable. Surfaced in the response
+                # message (in addition to the log) so it isn't silently
+                # invisible to callers.
+                logger.exception("Could not persist model artifact/metadata -- other worker pods will NOT see this model")
                 persistence_error = str(exc)
         else:
             save_model(model, MODEL_STORE_DIR)
@@ -198,7 +190,7 @@ class MLWorkerServicer(ml_worker_pb2_grpc.MLWorkerServicer):
         message = f"Trained on {metrics.train_rows} rows, evaluated on {metrics.test_rows} rows."
         if persistence_error:
             message += (
-                f" WARNING: trained model could NOT be persisted to Cassandra, so other "
+                f" WARNING: trained model could NOT be persisted, so other "
                 f"worker pods will not see it ({persistence_error})."
             )
 

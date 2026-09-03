@@ -2,8 +2,8 @@
   "available": true,
   "datasetSize": 40000,
   "modelType": "TF-IDF + Logistic Regression (One-vs-Rest, n_jobs=-1)",
-  "trainingTimeSeconds": 9.585273265838623,
-  "grpcRoundtripMs": 38.3,
+  "trainingTimeSeconds": 8.190217018127441,
+  "grpcRoundtripMs": 29.35,
   "accuracy": 0.5153420523138833,
   "macroPrecision": 0.6497703143879252,
   "macroRecall": 0.22097512882446582,
@@ -535,42 +535,51 @@
   "examplePrediction": {
     "inputText": "Подбери синонимы к слову веселый",
     "topicName": "Анализ персонажей",
-    "confidence": 0.5127505545922598
+    "confidence": 0.5127505397064284
   },
   "benchmark": {
-    "rpc": "GetStatus",
+    "rpc": "Predict",
     "requests": 600,
     "concurrency": 60,
     "readyPods": 3,
-    "totalTimeSeconds": 5.129,
-    "throughputRps": 117.0,
-    "latencyMsMin": 101.62,
-    "latencyMsMean": 489.11,
-    "latencyMsP50": 509.47,
-    "latencyMsP95": 517.78,
-    "latencyMsP99": 531.38,
-    "latencyMsMax": 544.68,
+    "totalTimeSeconds": 2.412,
+    "throughputRps": 248.7,
+    "latencyMsMin": 16.81,
+    "latencyMsMean": 228.26,
+    "latencyMsP50": 233.59,
+    "latencyMsP95": 272.85,
+    "latencyMsP99": 289.69,
+    "latencyMsMax": 314.73,
     "errorCount": 0,
     "perPodRequestCounts": {
-      "10.244.0.6:50061": 200,
-      "10.244.0.12:50061": 200,
-      "10.244.0.13:50061": 200
+      "10.244.0.18:50061": 200,
+      "10.244.0.7:50061": 200,
+      "10.244.0.17:50061": 200
     }
   },
   "scalingComparison": [
     {
       "replicas": 1,
-      "throughputRps": 38.8,
-      "latencyMsP50": 1531.57,
+      "throughputRps": 87.1,
+      "latencyMsP50": 684.12,
+      "latencyMsP99": 742.69,
       "errorCount": 0
     },
     {
       "replicas": 3,
-      "throughputRps": 115.2,
-      "latencyMsP50": 509.08,
+      "throughputRps": 244.6,
+      "latencyMsP50": 235.2,
+      "latencyMsP99": 281.56,
+      "errorCount": 0
+    },
+    {
+      "replicas": 5,
+      "throughputRps": 346.2,
+      "latencyMsP50": 165.43,
+      "latencyMsP99": 232.76,
       "errorCount": 0
     }
   ],
   "note": "Real training run on 40,000 ingested rows (50 classes), evaluated on a real held-out test split. Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md.",
-  "benchmarkNote": "This snapshot and scalingComparison use real concurrent GetStatus calls, deliberately independent of model-training state -- a pure measurement of the Coordinator-to-pod gRPC path and how it scales with replica count. scalingComparison is one real 600-request/60-concurrency run at 1 worker replica and one at 3, captured by scaling the pool (POST /api/cassandra-grpc/pool/scale) between two runs of this same benchmark. The interactive stress test in the Model section above sends real Predict calls instead -- the actual ML workload under load, including any real failures on pods without a loaded model."
+  "benchmarkNote": "Real concurrent Predict calls dispatched by the Coordinator over real gRPC to the live worker pool -- the actual ML workload under load, not a health check, not simulated. scalingComparison is this same 600-request/60-concurrency benchmark run at 1, 3, and 5 worker replicas, captured by scaling the pool (POST /api/cassandra-grpc/pool/scale) between runs."
 }

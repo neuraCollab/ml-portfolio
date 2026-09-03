@@ -1,4 +1,4 @@
-import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcBenchmarkResult, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, EcgAnalysisResult, EcgBenchmarkResult, EcgEvaluationResult, EcgHealth, EcgRuntimeInfo, PoolScaleResult } from '../types';
+import { AutoTopicConfig, AutoTopicDatasetInfo, AutoTopicFullPipelineStatus, AutoTopicResults, CameraCalibration, CassandraGrpcBenchmarkResult, CassandraGrpcDatasetInfo, CassandraGrpcLogEntry, CassandraGrpcPredictResult, CassandraGrpcStatus, CassandraGrpcTrainJobStatus, EcgAnalysisResult, EcgBenchmarkResult, EcgEvaluationResult, EcgHealth, EcgRuntimeInfo, KillOneResult, PoolScaleResult } from '../types';
 
 const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL: string = API_BASE_URL.replace(/^http/, 'ws');
@@ -200,6 +200,10 @@ export function scaleCassandraGrpcPool(replicas: number): Promise<PoolScaleResul
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ replicas }),
   });
+}
+
+export function killOneCassandraGrpcWorker(): Promise<KillOneResult> {
+  return request<KillOneResult>('/api/cassandra-grpc/pool/kill-one', { method: 'POST' });
 }
 
 export function getCassandraGrpcDatasetInfo(): Promise<CassandraGrpcDatasetInfo> {

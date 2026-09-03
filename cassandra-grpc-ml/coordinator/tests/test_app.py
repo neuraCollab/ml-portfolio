@@ -212,6 +212,24 @@ def test_train_retries_a_different_pod_on_rpc_error(monkeypatch):
     assert call_log == ["10.0.0.1:50061", "10.0.0.2:50061"]
 
 
+def test_kill_one_deletes_a_pod_and_returns_its_name(monkeypatch):
+    fake_core_v1 = MagicMock()
+    monkeypatch.setattr("app.kill_one_worker_pod", lambda core_v1: "cassandra-grpc-ml-worker-abc123")
+    app.dependency_overrides[get_core_v1] = lambda: fake_core_v1
+    client = TestClient(app)
+    resp = client.post("/pool/kill-one")
+    assert resp.status_code == 200
+    assert resp.json() == {"killedPod": "cassandra-grpc-ml-worker-abc123"}
+
+
+def test_kill_one_returns_503_when_no_pod_is_ready(monkeypatch):
+    monkeypatch.setattr("app.kill_one_worker_pod", lambda core_v1: None)
+    app.dependency_overrides[get_core_v1] = lambda: MagicMock()
+    client = TestClient(app)
+    resp = client.post("/pool/kill-one")
+    assert resp.status_code == 503
+
+
 def test_pool_status_reports_per_pod_error_without_failing_the_whole_call(monkeypatch):
     app.dependency_overrides[get_core_v1] = lambda: _fake_core_v1_with_pods(["10.0.0.1"])
 

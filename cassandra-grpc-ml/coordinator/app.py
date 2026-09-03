@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 import ml_worker_pb2
 import ml_worker_pb2_grpc
 from dispatch import RoundRobinDispatcher
-from k8s_client import list_worker_endpoints, scale_worker_deployment
+from k8s_client import kill_one_worker_pod, list_worker_endpoints, scale_worker_deployment
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -224,6 +224,20 @@ def benchmark(body: BenchmarkBody, core_v1=Depends(get_core_v1)):
         "errorCount": len(errors),
         "perPodRequestCounts": per_pod_counts,
     }
+
+
+@app.post("/pool/kill-one")
+def kill_one(core_v1=Depends(get_core_v1)):
+    """Real failure injection: deletes one live worker pod. The next
+    /pool or /predict call re-discovers Ready pods from the k8s API, so a
+    killed pod simply stops appearing -- no special-case code needed for
+    the Coordinator to stop routing to it. Kubernetes' own Deployment
+    controller replaces the pod on its own; polling /pool afterward shows
+    it recover."""
+    killed = kill_one_worker_pod(core_v1)
+    if killed is None:
+        raise HTTPException(status_code=503, detail="No Ready worker pod to kill")
+    return {"killedPod": killed}
 
 
 @app.post("/pool/scale")

@@ -51,6 +51,10 @@ class PoolScaleResult(BaseModel):
     readyReplicas: int
 
 
+class KillOneResult(BaseModel):
+    killedPod: str
+
+
 class ClassDistributionEntry(BaseModel):
     topicId: int
     topicName: str

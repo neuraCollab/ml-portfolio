@@ -343,6 +343,10 @@ export interface PoolScaleResult {
   readyReplicas: number;
 }
 
+export interface KillOneResult {
+  killedPod: string;
+}
+
 export interface ClassDistributionEntry {
   topicId: number;
   topicName: string;

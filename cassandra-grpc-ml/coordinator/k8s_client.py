@@ -38,3 +38,20 @@ def scale_worker_deployment(apps_v1, replicas: int) -> None:
         WORKER_NAMESPACE,
         body={"spec": {"replicas": replicas}},
     )
+
+
+def kill_one_worker_pod(core_v1) -> str | None:
+    """Real failure-injection: deletes one Ready worker pod outright (not a
+    graceful scale-down) so callers can observe the Coordinator's existing
+    pod-discovery + retry behavior handle a mid-flight failure. The
+    Deployment controller notices the missing replica and starts a
+    replacement on its own -- no extra code needed for that self-healing
+    half, it's stock Kubernetes. Returns the killed pod's name, or None if
+    no Ready worker pod was found."""
+    pods = core_v1.list_namespaced_pod(WORKER_NAMESPACE, label_selector=f"app={WORKER_DEPLOYMENT_NAME}")
+    for pod in pods.items:
+        is_ready = any(c.type == "Ready" and c.status == "True" for c in (pod.status.conditions or []))
+        if pod.status.phase == "Running" and is_ready:
+            core_v1.delete_namespaced_pod(pod.metadata.name, WORKER_NAMESPACE)
+            return pod.metadata.name
+    return None

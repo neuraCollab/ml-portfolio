@@ -5,8 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.cassandra_grpc import (
-    BenchmarkRequestBody, BenchmarkResult, CassandraGrpcStatus, DatasetInfo, GrpcLogEntry, PoolScaleRequest,
-    PoolScaleResult, PredictRequestBody, PredictResult, TrainJobStatus, TrainMetrics, TrainRequestBody,
+    BenchmarkRequestBody, BenchmarkResult, CassandraGrpcStatus, DatasetInfo, GrpcLogEntry, KillOneResult,
+    PoolScaleRequest, PoolScaleResult, PredictRequestBody, PredictResult, TrainJobStatus, TrainMetrics,
+    TrainRequestBody,
 )
 from app.services import cassandra_grpc_service as svc
 from app.services.cassandra_grpc_service import CassandraGrpcError
@@ -24,6 +25,14 @@ def status():
 def benchmark(request: BenchmarkRequestBody):
     try:
         return svc.run_benchmark(request.requests, request.concurrency)
+    except CassandraGrpcError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/pool/kill-one", response_model=KillOneResult)
+def kill_one():
+    try:
+        return svc.kill_one_worker()
     except CassandraGrpcError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 

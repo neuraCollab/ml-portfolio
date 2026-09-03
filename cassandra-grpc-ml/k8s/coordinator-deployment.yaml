@@ -44,6 +44,11 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments/scale"]
     verbs: ["get", "patch"]
+  # For POST /pool/kill-one's real failure-injection demo (see k8s_client.py's
+  # kill_one_worker_pod): list Ready worker pods and delete one of them.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

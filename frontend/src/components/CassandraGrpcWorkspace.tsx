@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Database, Info, Layers, Workflow, GitCompare, Brain, Bug, ShieldCheck, ClipboardCheck,
-  CheckCircle2, Server, Boxes,
+  CheckCircle2, Server, Boxes, Sparkles,
 } from 'lucide-react';
 import { OverviewPanel } from './cassandragrpc/OverviewPanel';
 import { DatasetPanel } from './cassandragrpc/DatasetPanel';
@@ -18,7 +18,7 @@ import { ProjectSectionNav } from './shared/ProjectSectionNav';
 import { useTranslation } from '../i18n/I18nContext';
 
 const ACCENT = 'text-cyan-400';
-const ARCHITECTURE_STEP_KEYS = ['s1', 's2', 's3', 's4', 's5'] as const;
+const ARCHITECTURE_STEP_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6'] as const;
 
 export const CassandraGrpcWorkspace: React.FC = () => {
   const { t } = useTranslation();
@@ -63,6 +63,10 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               <p className="text-sm text-slate-400 max-w-3xl mt-1">
                 {t('cassandraGrpc.workspace.description')}
               </p>
+              <div className="flex items-start gap-2 text-xs text-cyan-300 bg-cyan-500/5 border border-cyan-500/20 rounded-lg px-3 py-2 mt-3 max-w-3xl">
+                <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{t('cassandraGrpc.workspace.positioningNote')}</span>
+              </div>
             </div>
             <OverviewPanel />
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
@@ -212,7 +216,7 @@ export const CassandraGrpcWorkspace: React.FC = () => {
               <p className="text-sm text-slate-400 max-w-3xl mt-1">{t('cassandraGrpc.errorAnalysisSection.intro')}</p>
             </div>
             <div className="space-y-3">
-              {(['majorityBias', 'cassandraPersistence', 'clusterAvailability'] as const).map((key) => (
+              {(['cassandraPersistence', 'clusterAvailability'] as const).map((key) => (
                 <div key={key} className="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-4">
                   <h4 className="text-xs font-bold text-amber-300">{t(`cassandraGrpc.errorAnalysisSection.${key}Title` as any)}</h4>
                   <p className="text-[11px] text-slate-400 mt-1.5">{t(`cassandraGrpc.errorAnalysisSection.${key}Body` as any)}</p>
@@ -236,9 +240,9 @@ export const CassandraGrpcWorkspace: React.FC = () => {
             <div className="flex items-center gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
               <CheckCircle2 className="w-12 h-12 text-emerald-400 shrink-0" />
               <div>
-                <div className="text-2xl font-bold text-emerald-300">55 / 55 passed</div>
+                <div className="text-2xl font-bold text-emerald-300">63 / 63 passed</div>
                 <div className="text-xs text-slate-400 mt-0.5">
-                  cassandra-grpc-ml/worker/tests/ (11) + cassandra-grpc-ml/coordinator/tests/ (19) + backend/tests/test_cassandra_grpc_*.py (25) -- last run 2026-09-02, pytest 9.1.1
+                  cassandra-grpc-ml/worker/tests/ (12) + cassandra-grpc-ml/coordinator/tests/ (23) + backend/tests/test_cassandra_grpc_*.py (28) -- last run 2026-09-03, pytest 9.1.1
                 </div>
               </div>
             </div>

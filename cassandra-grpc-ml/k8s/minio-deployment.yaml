@@ -1,0 +1,53 @@
+# Object storage for trained-model artifacts (see worker/model_store.py).
+# Single instance, dev credentials, no auth beyond MinIO's own root user --
+# same "single dev node, no external auth" posture as this project's own
+# Cassandra deployment. Not exposed outside the cluster (no NodePort): only
+# worker pods (and the coordinator, never) need to reach it, over the
+# in-cluster Service DNS name.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cassandra-grpc-ml-minio
+  labels:
+    app: cassandra-grpc-ml-minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra-grpc-ml-minio
+  template:
+    metadata:
+      labels:
+        app: cassandra-grpc-ml-minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+          args: ["server", "/data"]
+          ports:
+            - containerPort: 9000
+          env:
+            - name: MINIO_ROOT_USER
+              value: "minioadmin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "minioadmin"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: cassandra-grpc-ml-minio-pvc

@@ -41,6 +41,7 @@ from app.schemas.cassandra_grpc import (
     ConfusionMatrixEntry,
     DatasetInfo,
     GrpcLogEntry,
+    KillOneResult,
     PodStatus,
     PoolScaleResult,
     PredictResult,
@@ -84,8 +85,11 @@ _SCHEMA_STATEMENTS = [
     "macro_precision double, macro_recall double, macro_f1 double, "
     "micro_precision double, micro_recall double, micro_f1 double, "
     "training_time_seconds double, trained_at timestamp)",
+    # Metadata only -- the model artifact itself lives in MinIO (see
+    # cassandra-grpc-ml/worker/model_store.py). Cassandra's role here is
+    # tracking which artifact is current, not storing the large blob.
     f"CREATE TABLE IF NOT EXISTS {KEYSPACE}.models ("
-    "id timeuuid PRIMARY KEY, trained_at timestamp, model_blob blob)",
+    "id timeuuid PRIMARY KEY, trained_at timestamp, artifact_uri text, num_classes int, size_bytes int)",
 ]
 
 
@@ -445,6 +449,16 @@ def run_benchmark(requests: int, concurrency: int) -> BenchmarkResult:
     if resp.status_code != 200:
         raise CassandraGrpcError(resp.json().get("detail", resp.text))
     return BenchmarkResult(**resp.json())
+
+
+def kill_one_worker() -> KillOneResult:
+    try:
+        resp = httpx.post(f"{CASSANDRA_GRPC_COORDINATOR_URL}/pool/kill-one", timeout=15)
+    except httpx.HTTPError as exc:
+        raise CassandraGrpcError(f"Coordinator unreachable: {exc}")
+    if resp.status_code != 200:
+        raise CassandraGrpcError(resp.json().get("detail", resp.text))
+    return KillOneResult(**resp.json())
 
 
 def scale_pool(replicas: int) -> PoolScaleResult:

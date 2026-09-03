@@ -33,7 +33,9 @@ Client (browser)
           -> gRPC (round-robin, retries once per remaining pod on RpcError)
               -> one of N real worker pods (Deployment, 1-5 replicas)
                   -> cassandra-driver -> Cassandra (k8s pod; Train reads `requests`,
-                     writes the trained model to `models`; Predict reads neither)
+                     writes a small model-metadata row to `models`; Predict reads neither)
+                  -> minio client -> MinIO (k8s pod; the actual model artifact -- joblib +
+                     gzip -- lives here, never in Cassandra)
                   -> scikit-learn (TF-IDF + LogisticRegression train / predict)
       <- gRPC response
   <- HTTP response
@@ -55,10 +57,21 @@ scales the real `cassandra-grpc-ml-worker` Deployment via `POST /pool/scale` (bo
 
 ## Cassandra's role
 
-Stores the ingested labeled sample (`requests`), a log of every real inference made through the
-UI (`predictions`), and the history of real training runs (`training_runs`) in the
+Distributed application state and metadata, never large ML artifacts: the ingested labeled sample
+(`requests`), a log of every inference made through the UI (`predictions`), the history of
+training runs (`training_runs`), and, in `models`, only a pointer to the current model artifact
+(id, `trained_at`, `artifact_uri`, `num_classes`, `size_bytes`) -- not the model itself. All in the
 `cassandra_grpc_ml` keyspace (`SimpleStrategy`, replication factor 1 -- single dev node, no auth,
 matches the original repo's own dev-mode setup).
+
+## MinIO's role
+
+Object storage for the trained model artifact itself (`joblib`-serialized, gzip-compressed). A
+worker uploads it after training and every worker (including newly-scaled ones) downloads it at
+startup and on periodic refresh, using the artifact URI recorded in Cassandra to find it. This is
+a minimal, real model-registry pattern -- not a production-ready one: no versioning UI, no
+rollback, no access control beyond MinIO's own root credentials. See "Model storage: Cassandra
+metadata + MinIO artifacts" below for why this replaced storing the blob directly in Cassandra.
 
 ## gRPC's role
 
@@ -98,8 +111,8 @@ bash cassandra-grpc-ml/k8s/setup-kind.sh
 docker compose up -d --build backend frontend
 ```
 
-This starts a real local Kubernetes cluster (Cassandra + a real Coordinator + one real worker
-pod), then the existing docker-compose backend/frontend, which talk to that cluster over
+This starts a real local Kubernetes cluster (Cassandra + MinIO + a real Coordinator + one real
+worker pod), then the existing docker-compose backend/frontend, which talk to that cluster over
 `host.docker.internal`. Open `http://localhost:3000`, select "Cassandra gRPC ML", and use the
 Architecture section's worker pool controls to scale real worker pods up/down (1-5) -- this
 patches a real `Deployment`'s replica count via the Coordinator's k8s API calls, not a
@@ -141,10 +154,11 @@ curl -X POST http://localhost:8000/api/cassandra-grpc/predict -H "Content-Type: 
 
 `cassandra-grpc-ml/k8s/` contains real manifests, deployed and verified end-to-end against a real
 local `kind` cluster (`bash cassandra-grpc-ml/k8s/setup-kind.sh`): a `cassandra-grpc-ml-cassandra`
-Deployment, a `cassandra-grpc-ml-coordinator` Deployment (NodePort `:30080`), and a
-`cassandra-grpc-ml-worker` Deployment (ClusterIP, gRPC `:50061`) that the Coordinator scales
-between 1 and 5 replicas on request. This is the only supported way to run the worker-pool parts
-of this project -- see `## How to run` above.
+Deployment, a `cassandra-grpc-ml-minio` Deployment (ClusterIP, S3 API `:9000`, in-cluster only), a
+`cassandra-grpc-ml-coordinator` Deployment (NodePort `:30080`), and a `cassandra-grpc-ml-worker`
+Deployment (ClusterIP, gRPC `:50061`) that the Coordinator scales between 1 and 5 replicas on
+request. This is the only supported way to run the worker-pool parts of this project -- see
+`## How to run` above.
 
 Verified real, end-to-end, against this cluster:
 - The Coordinator discovers Ready worker pods via the real k8s API and round-robins real gRPC
@@ -154,55 +168,40 @@ Verified real, end-to-end, against this cluster:
   requests outside `[1, 5]` are rejected with HTTP 422.
 - Scaling the pool up starts real new pods (`kubectl get pods -l app=cassandra-grpc-ml-worker`
   reflects the change), and scaling down real-terminates the extra ones.
+- `POST /api/cassandra-grpc/pool/kill-one` deletes a real Ready pod; the Coordinator's next call
+  simply doesn't see it (pod discovery re-queries the k8s API every time), and the Deployment
+  controller replaces it on its own within seconds -- no special-case code for either half.
 
-**Cassandra-backed model sharing (`MODEL_PERSISTENCE=cassandra`)** was found broken during an
-earlier verification pass, and has since been fixed and re-verified live against this cluster.
-The worker serializes the trained `TrainedModel` (a `TfidfVectorizer` with `max_features=50000`,
-`ngram_range=(1, 2)`, plus a 50-class `LogisticRegression`) with `joblib` into a single CQL blob
-column (`cassandra-grpc-ml/worker/model_store.py::save_model_to_cassandra`). Two compounding bugs
-made the INSERT fail for this project's real dataset:
+### Model storage: Cassandra metadata + MinIO artifacts
 
-1. The raw joblib dump for a 50-class model is ~22.7MB (measured: 22,667,923 bytes) -- already
-   close to Cassandra's default 16MB native-protocol message limit, and pushed well over it once
-   the second bug (below) doubled it on the wire.
-2. The INSERT used `session.execute(query_with_%s_placeholders, params)` (a "simple statement"),
-   which makes the Cassandra Python driver inline the blob into the CQL text client-side as a
-   `0x...` hex literal -- doubling its size on the wire. That's why the original failure reported
-   a message size around 45.3MB (measured: 45,335,967 bytes) rather than the blob's real ~22.7MB:
-   the reported number was already hex-doubled by this encoding.
+`MODEL_PERSISTENCE=shared` (the real in-cluster setting): a worker that finishes training
+joblib-serializes and gzip-compresses the model, uploads it to MinIO as one object, then writes a
+small metadata row to Cassandra's `models` table (`id`, `trained_at`, `artifact_uri`,
+`num_classes`, `size_bytes`) -- never the blob. Every worker pod (including ones scaled up after
+training) reads that metadata at startup and on a periodic refresh, then downloads the artifact
+from MinIO by its URI. Verified live at this project's actual UI default (`sampleSize=40000`,
+50 classes): all pods in a 3- and 5-replica pool converged on `modelLoaded: true` with a matching
+`trainedAt`, and real `Predict` calls succeeded on every one of them.
 
-Fixed by combining gzip compression (`gzip.compress`/`gzip.decompress` around the joblib bytes,
-still one blob column, no schema change) with switching the INSERT to a real prepared statement
-(`session.prepare(...)` + `?` placeholders), which sends the blob as raw binary instead of a hex
-literal. Real measurement (small sample, `sampleSize=2000`, ~1,825 real training rows): the
-~22.7MB raw blob compresses to ~11.6MB (measured: 12,180,193 bytes, 1.86x) -- comfortably under
-16MB once sent as raw binary. Re-verified live end-to-end after the fix at this sample size: a
-real training run's `INSERT` succeeded (`SELECT COUNT(*) FROM cassandra_grpc_ml.models` returned 1
-row, where it previously returned 0), and `GET /api/cassandra-grpc/status` showed `modelLoaded:
-true` with a `trainedAt` matching the persisted row, and all 3 pods converged on the same model.
-Round-robin dispatch, pod discovery, and Deployment scaling remain real and verified as described
-above.
-
-**Known limitation: this fix does not fully hold at this project's actual UI default sample size
-(`sampleSize=40000`).** The 1.86x compression ratio above was measured on a small dev sample and
-does not generalize -- a real training run at the default 40,000 rows measured a raw joblib dump
-of ~22.4MB compressing to only ~18.9MB (a much worse ~1.18x ratio: a fuller, more realistic
-model's vectorizer/classifier weights compress less well than the small sample's). That ~18.9MB
-still exceeds Cassandra's 16MB native-protocol message limit even compressed and even as raw
-binary, so the `INSERT` fails with the same class of error as before
-(`cassandra.InvalidRequest: ... CQL Message of size 18920227 bytes exceeds allowed maximum of
-16777216 bytes`). This is handled gracefully and non-fatally: the training pod that ran the job
-keeps serving the freshly-trained model correctly from its own in-memory copy, and the failure is
-surfaced in the training response's `message` field (`"...other worker pods will NOT see this
-model..."`) rather than silently dropped -- but other (or newly-scaled) worker pods will not
-receive that model via Cassandra until either a smaller sample size is used (2,000 rows is
-confirmed to work end-to-end) or this limitation is otherwise addressed.
+**Historical: this used to store the blob directly in Cassandra, and that broke at real scale.**
+The worker originally serialized the trained `TrainedModel` (`TfidfVectorizer` with
+`max_features=50000` + a 50-class `LogisticRegression`) straight into a single CQL blob column.
+Two compounding bugs made the INSERT fail: (1) the raw joblib dump is ~22.7MB, already close to
+Cassandra's 16MB native-protocol message limit; (2) a `session.execute(query_with_%s_placeholders,
+params)` "simple statement" made the driver inline the blob as a `0x...` hex literal client-side,
+doubling it on the wire (the original failure reported ~45.3MB for this reason, not the blob's
+real ~22.7MB). Switching to a prepared statement plus gzip compression fixed the encoding bug and
+worked at a small dev sample size (~1.86x compression, comfortably under 16MB) -- but at this
+project's actual 40,000-row default, a fuller, more realistic model compresses far less well
+(~18.9MB, ~1.18x), still over the limit. That's what motivated moving the artifact to MinIO
+entirely rather than continuing to work around Cassandra's message-size ceiling.
 
 ## Tech Stack
 
 | Component | Technology |
 |---|---|
-| Storage | Apache Cassandra 5 |
+| Application state / metadata | Apache Cassandra 5 |
+| Model artifact storage | MinIO (S3-compatible object storage) |
 | Inter-service communication | gRPC + Protocol Buffers |
 | ML model | scikit-learn (TfidfVectorizer + LogisticRegression, One-vs-Rest with `n_jobs=-1`) |
 | Worker runtime | Python 3.11, grpcio, cassandra-driver |

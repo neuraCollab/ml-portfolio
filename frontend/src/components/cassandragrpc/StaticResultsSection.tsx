@@ -22,6 +22,7 @@ interface ScalingComparisonEntry {
   replicas: number;
   throughputRps: number;
   latencyMsP50: number;
+  latencyMsP99: number;
   errorCount: number;
 }
 
@@ -48,6 +49,8 @@ const data = cassandraGrpcResults as unknown as StaticResults;
 
 export const StaticResultsSection: React.FC = () => {
   const { t } = useTranslation();
+  const maxThroughput = data.scalingComparison ? Math.max(...data.scalingComparison.map((e) => e.throughputRps)) : 1;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-2 text-cyan-400 text-xs font-mono font-semibold uppercase tracking-wider">
@@ -65,21 +68,39 @@ export const StaticResultsSection: React.FC = () => {
         </p>
       ) : (
         <>
+          {/* Primary visual: real throughput/latency scaling across the
+              worker pool, 1 -> 3 -> 5 replicas -- the central evidence for
+              this project's actual subject (distributed serving), not the
+              ML workload below. */}
           {data.scalingComparison && (
-            <div>
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-5">
+              <h3 className="text-sm font-bold text-cyan-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4" />
                 {t('cassandraGrpc.staticResults.scalingHeading')}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 {data.scalingComparison.map((entry) => (
-                  <div key={entry.replicas} className="rounded-xl bg-slate-950/60 border border-slate-800 p-4">
-                    <div className="text-xs font-mono text-slate-400">
-                      {t('cassandraGrpc.staticResults.replicaCountLabel', { count: entry.replicas })}
+                  <div key={entry.replicas} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 text-[11px] font-mono">
+                      <span className="text-slate-300 font-bold">
+                        {t('cassandraGrpc.staticResults.replicaCountLabel', { count: entry.replicas })}
+                      </span>
+                      <span className="text-slate-500">
+                        {t('cassandraGrpc.staticResults.p50P99ErrorsLabel', {
+                          p50: entry.latencyMsP50,
+                          p99: entry.latencyMsP99,
+                          errors: entry.errorCount,
+                        })}
+                      </span>
                     </div>
-                    <div className="text-xl font-bold text-cyan-300 mt-1">{entry.throughputRps} req/s</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      {t('cassandraGrpc.staticResults.p50AndErrorsLabel', { p50: entry.latencyMsP50, errors: entry.errorCount })}
+                    <div className="h-8 w-full bg-slate-950 rounded-lg overflow-hidden border border-slate-800 relative">
+                      <div
+                        className="h-full bg-cyan-500/60 rounded-lg transition-all"
+                        style={{ width: `${(entry.throughputRps / maxThroughput) * 100}%` }}
+                      />
+                      <span className="absolute inset-0 flex items-center px-3 text-xs font-bold font-mono text-white">
+                        {entry.throughputRps} req/s
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -88,7 +109,7 @@ export const StaticResultsSection: React.FC = () => {
           )}
 
           {data.benchmark && (
-            <div className="border-t border-slate-800 pt-4">
+            <div>
               <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2">
                 {t('cassandraGrpc.staticResults.benchmarkHeading', { requests: data.benchmark.requests, concurrency: data.benchmark.concurrency })}
               </h3>

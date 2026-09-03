@@ -23,13 +23,17 @@ kind load docker-image cassandra-grpc-ml-coordinator:latest --name "$CLUSTER_NAM
 kubectl apply -f cassandra-grpc-ml/k8s/cassandra-pvc.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/cassandra-deployment.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/cassandra-service.yaml
+kubectl apply -f cassandra-grpc-ml/k8s/minio-pvc.yaml
+kubectl apply -f cassandra-grpc-ml/k8s/minio-deployment.yaml
+kubectl apply -f cassandra-grpc-ml/k8s/minio-service.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/grpc-worker-deployment.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/grpc-worker-service.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/coordinator-deployment.yaml
 kubectl apply -f cassandra-grpc-ml/k8s/coordinator-service.yaml
 
-echo "Waiting for cassandra to be Ready (this can take a minute or two)..."
+echo "Waiting for cassandra and minio to be Ready (this can take a minute or two)..."
 kubectl wait --for=condition=Ready pod -l app=cassandra-grpc-ml-cassandra --timeout=180s
+kubectl wait --for=condition=Ready pod -l app=cassandra-grpc-ml-minio --timeout=60s
 
 echo "Waiting for the worker and coordinator to be Ready..."
 kubectl wait --for=condition=Ready pod -l app=cassandra-grpc-ml-worker --timeout=120s

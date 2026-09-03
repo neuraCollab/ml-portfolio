@@ -23,7 +23,15 @@ spec:
             - name: CASSANDRA_HOST
               value: "cassandra-grpc-ml-cassandra"
             - name: MODEL_PERSISTENCE
-              value: "cassandra"
+              value: "shared"
+            - name: MINIO_ENDPOINT
+              value: "cassandra-grpc-ml-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+            - name: MINIO_BUCKET
+              value: "cassandra-grpc-ml-models"
           resources:
             requests:
               memory: "200Mi"

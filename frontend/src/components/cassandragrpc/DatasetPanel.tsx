@@ -40,12 +40,14 @@ export const DatasetPanel: React.FC = () => {
           {info.topicDistribution.slice(0, 10).map((topic) => {
             const pct = (topic.count / info.ingestedRows) * 100;
             return (
-              <div key={topic.topicId} className="flex items-center gap-2 text-xs">
-                <span className="text-slate-300 font-mono w-56 truncate">{topic.topicName}</span>
-                <div className="flex-1 h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div key={topic.topicId} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-300 font-mono truncate">{topic.topicName}</span>
+                  <span className="text-slate-500 shrink-0">{topic.count.toLocaleString()}</span>
+                </div>
+                <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
                   <div className="h-full bg-cyan-500/70 rounded-full" style={{ width: `${pct}%` }} />
                 </div>
-                <span className="text-slate-500 w-14 text-right">{topic.count.toLocaleString()}</span>
               </div>
             );
           })}

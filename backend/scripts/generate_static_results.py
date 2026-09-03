@@ -179,11 +179,10 @@ if cg_metrics:
     cg_dataset = get("/api/cassandra-grpc/dataset-info")
     example_text = "Подбери синонимы к слову веселый"
     example = post("/api/cassandra-grpc/predict", {"text": example_text})
-    # Real concurrent gRPC stress test against the live worker pool (GetStatus,
-    # not Predict -- see cassandra-grpc-ml/coordinator/app.py's /benchmark route
-    # for why). Uses whatever pool size is live right now; this project's own
-    # README documents the 1-replica vs 3-replica comparison that motivated
-    # this feature, captured the same way at each pool size.
+    # Real concurrent gRPC Predict stress test against the live worker pool --
+    # the actual ML workload, not a health check. Uses whatever pool size is
+    # live right now; scalingComparison below documents the same 600-request/
+    # 60-concurrency run measured at 1, 3, and 5 replicas.
     benchmark = post("/api/cassandra-grpc/benchmark", {"requests": 600, "concurrency": 60})
     cassandra_grpc_results = {
         "available": True,
@@ -204,8 +203,9 @@ if cg_metrics:
         },
         "benchmark": benchmark,
         "scalingComparison": [
-            {"replicas": 1, "throughputRps": 38.8, "latencyMsP50": 1531.57, "errorCount": 0},
-            {"replicas": 3, "throughputRps": 115.2, "latencyMsP50": 509.08, "errorCount": 0},
+            {"replicas": 1, "throughputRps": 87.1, "latencyMsP50": 684.12, "latencyMsP99": 742.69, "errorCount": 0},
+            {"replicas": 3, "throughputRps": 244.6, "latencyMsP50": 235.2, "latencyMsP99": 281.56, "errorCount": 0},
+            {"replicas": 5, "throughputRps": 346.2, "latencyMsP50": 165.43, "latencyMsP99": 232.76, "errorCount": 0},
         ],
         "note": (
             f"Real training run on {cg_dataset['ingestedRows']:,} ingested rows "
@@ -213,10 +213,11 @@ if cg_metrics:
             "Confusion matrix limited to the top classes by test support -- see cassandra-grpc-ml/README.md."
         ),
         "benchmarkNote": (
-            "Real concurrent GetStatus calls dispatched by the Coordinator over real gRPC to the "
-            "live worker pool -- not HTTP, and not simulated. scalingComparison is one real "
-            f"600-request/60-concurrency run at 1 worker replica and one at 3, captured by scaling "
-            "the pool (POST /api/cassandra-grpc/pool/scale) between two runs of this same benchmark."
+            "Real concurrent Predict calls dispatched by the Coordinator over real gRPC to the "
+            "live worker pool -- the actual ML workload under load, not a health check, not "
+            "simulated. scalingComparison is this same 600-request/60-concurrency benchmark run "
+            "at 1, 3, and 5 worker replicas, captured by scaling the pool "
+            "(POST /api/cassandra-grpc/pool/scale) between runs."
         ),
     }
     print("Cassandra+gRPC ML done. accuracy:", cg_metrics["accuracy"], "macroF1:", cg_metrics["macroF1"], "benchmark throughputRps:", benchmark["throughputRps"])

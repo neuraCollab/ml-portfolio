@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ml_core import train_and_evaluate
-from model_store import save_model, load_model, save_model_to_cassandra, load_latest_model_from_cassandra
+from model_store import save_model, load_model, save_model_to_object_storage, load_latest_model_from_object_storage
 
 
 def _tiny_trained_model():
@@ -33,18 +33,21 @@ def test_save_then_load_round_trips_predictions(tmp_path):
     assert original_pred == loaded_pred
 
 
+BUCKET = "cassandra-grpc-ml-models"
+
+
 class FakeRow:
-    def __init__(self, trained_at, model_blob):
+    def __init__(self, trained_at, artifact_uri):
         self.trained_at = trained_at
-        self.model_blob = model_blob
+        self.artifact_uri = artifact_uri
 
 
 class FakeSession:
     """Fakes just enough of cassandra.cluster.Session for model_store's real
     usage: plain string execute() for SELECT, and prepare()+execute() for
-    the INSERT (a real PreparedStatement -- see save_model_to_cassandra's
-    docstring for why a prepared statement is used instead of %s-style
-    parameter substitution)."""
+    the INSERT of a small metadata row (id, trained_at, artifact_uri,
+    num_classes, size_bytes) -- the model artifact itself no longer goes
+    through Cassandra at all, see save_model_to_object_storage's docstring."""
 
     def __init__(self):
         self.inserted = []
@@ -58,103 +61,127 @@ class FakeSession:
     def execute(self, query, params=None):
         if query.strip().upper().startswith("INSERT"):
             self.inserted.append(params)
-            trained_at, model_blob = params
-            self._rows.append(FakeRow(trained_at, model_blob))
+            trained_at, artifact_uri, _num_classes, _size_bytes = params
+            self._rows.append(FakeRow(trained_at, artifact_uri))
             return []
         return list(self._rows)
 
 
-def test_load_latest_model_from_cassandra_returns_none_when_no_rows():
-    from model_store import load_latest_model_from_cassandra
+class FakeMinioResponse:
+    def __init__(self, data: bytes):
+        self._data = data
 
-    assert load_latest_model_from_cassandra(FakeSession()) is None
+    def read(self) -> bytes:
+        return self._data
+
+    def close(self):
+        pass
+
+    def release_conn(self):
+        pass
 
 
-def test_save_then_load_from_cassandra_round_trips_predictions():
-    from datetime import datetime, timezone
+class FakeMinioClient:
+    """Fakes just enough of minio.Minio for model_store's real usage:
+    idempotent bucket creation, put_object storing bytes in memory, and
+    get_object returning a stream-like response."""
 
-    from model_store import load_latest_model_from_cassandra, save_model_to_cassandra
+    def __init__(self):
+        self._buckets: set[str] = set()
+        self.objects: dict[tuple[str, str], bytes] = {}
+        self.put_calls: list[tuple[str, str, int]] = []
+
+    def bucket_exists(self, bucket: str) -> bool:
+        return bucket in self._buckets
+
+    def make_bucket(self, bucket: str) -> None:
+        self._buckets.add(bucket)
+
+    def put_object(self, bucket, object_name, data, length, content_type=None):
+        self.objects[(bucket, object_name)] = data.read()
+        self.put_calls.append((bucket, object_name, length))
+
+    def get_object(self, bucket, object_name):
+        return FakeMinioResponse(self.objects[(bucket, object_name)])
+
+
+def test_load_latest_model_from_object_storage_returns_none_when_no_rows():
+    assert load_latest_model_from_object_storage(FakeSession(), FakeMinioClient()) is None
+
+
+def test_save_then_load_from_object_storage_round_trips_predictions():
+    from datetime import datetime
+
     from ml_core import predict_one
 
     model = _tiny_trained_model()
     session = FakeSession()
-    save_model_to_cassandra(model, session)
+    minio_client = FakeMinioClient()
+    artifact_uri = save_model_to_object_storage(model, session, minio_client, BUCKET)
 
+    assert artifact_uri.startswith(f"s3://{BUCKET}/")
     assert len(session.inserted) == 1
-    trained_at_param, blob_param = session.inserted[0]
+    trained_at_param, artifact_uri_param, num_classes_param, size_bytes_param = session.inserted[0]
     assert isinstance(trained_at_param, datetime)
-    assert isinstance(blob_param, (bytes, bytearray))
+    assert artifact_uri_param == artifact_uri
+    assert num_classes_param == len(model.class_labels)
+    assert isinstance(size_bytes_param, int)
     assert len(session.prepared_queries) == 1, (
-        "save_model_to_cassandra must INSERT via a prepared statement, not a "
-        "%s-style simple statement -- a simple statement hex-encodes the blob "
-        "client-side, doubling its size on the wire and re-introducing the "
-        "real Task 8 bug this fix exists to prevent (see the module docstring)"
+        "save_model_to_object_storage must INSERT the metadata row via a "
+        "prepared statement (kept for consistency/safety even though the "
+        "row is now small, see the module docstring for the historical bug "
+        "this pattern originally fixed)"
     )
     assert "?" in session.prepared_queries[0]
+    assert len(minio_client.put_calls) == 1, "the artifact must be uploaded to MinIO exactly once"
 
-    loaded = load_latest_model_from_cassandra(session)
+    loaded = load_latest_model_from_object_storage(session, minio_client)
     assert loaded is not None
     assert loaded.class_labels == model.class_labels
     assert predict_one(model, "cat meow") == predict_one(loaded, "cat meow")
 
 
-def test_load_latest_model_from_cassandra_picks_the_newest_row():
-    from datetime import datetime, timezone
-
-    from model_store import load_latest_model_from_cassandra
-
+def test_load_latest_model_from_object_storage_picks_the_newest_row():
     older_model = _tiny_trained_model()
     older_model.trained_at = "2020-01-01T00:00:00+00:00"
     newer_model = _tiny_trained_model()
     newer_model.trained_at = "2026-01-01T00:00:00+00:00"
 
     session = FakeSession()
-    from model_store import save_model_to_cassandra
+    minio_client = FakeMinioClient()
 
-    save_model_to_cassandra(older_model, session)
-    save_model_to_cassandra(newer_model, session)
+    save_model_to_object_storage(older_model, session, minio_client, BUCKET)
+    save_model_to_object_storage(newer_model, session, minio_client, BUCKET)
 
-    loaded = load_latest_model_from_cassandra(session)
+    loaded = load_latest_model_from_object_storage(session, minio_client)
     assert loaded.trained_at == "2026-01-01T00:00:00+00:00"
 
 
-def test_save_model_to_cassandra_gzip_compresses_the_blob():
-    """Regression test for the real bug found in Task 8 E2E verification:
-    an uncompressed joblib dump of this project's real 50-class model was
-    ~22.7MB raw, which the driver's simple-statement hex-literal encoding
-    then doubled to a ~45MB CQL message, well past Cassandra's default 16MB
-    CQL message limit, so the INSERT silently failed (0 rows persisted) and
-    newly-scaled worker pods never converged on the trained model. Confirms
-    the stored blob is actually gzip-compressed (not a no-op) by checking
-    the gzip magic header, independent of whether that particular model
-    happens to shrink."""
+def test_save_model_to_object_storage_gzip_compresses_the_artifact():
+    """Regression test for the real Cassandra message-size bug this project
+    hit before moving model artifacts to MinIO (see cassandra-grpc-ml/README.md):
+    confirms the object uploaded to MinIO is actually gzip-compressed (not a
+    no-op) by checking the gzip magic header."""
     model = _tiny_trained_model()
     session = FakeSession()
-    save_model_to_cassandra(model, session)
+    minio_client = FakeMinioClient()
+    save_model_to_object_storage(model, session, minio_client, BUCKET)
 
-    _, blob = session.inserted[0]
-    assert bytes(blob[:2]) == b"\x1f\x8b", "stored blob should be gzip-compressed (gzip magic header)"
+    (bucket, object_name, _length), = minio_client.put_calls
+    stored = minio_client.objects[(bucket, object_name)]
+    assert stored[:2] == b"\x1f\x8b", "stored artifact should be gzip-compressed (gzip magic header)"
 
 
-def test_save_model_to_cassandra_round_trips_a_realistic_sized_model():
+def test_save_model_to_object_storage_round_trips_a_realistic_sized_model():
     """Mechanism check at a size shaped like this project's real model
     (TfidfVectorizer with a large vocabulary + a dense LogisticRegression
-    coefficient matrix over many classes) -- the exact shape that produced
-    the real ~22.7MB raw uncompressed blob which, once hex-doubled by the
-    driver's old simple-statement encoding, overflowed Cassandra's 16MB CQL
-    message limit as a ~45MB CQL message in Task 8's live E2E run
-    (`cassandra.InvalidRequest: ... CQL Message of size 45335967 bytes
-    exceeds allowed maximum of 16777216 bytes`).
-
-    This confirms the compress/decompress round trip works correctly at
-    real scale (tens of MB) and that gzip does not simply no-op or corrupt
-    the data. It intentionally does NOT assert a specific compression ratio
-    or that the result lands under 16MB: gauging that requires an array with
-    the actual statistical structure of trained model weights (this test
-    uses independent Gaussian noise, which -- confirmed empirically while
-    writing this test -- gzip barely shrinks, unlike the real trained
-    weights). The real ratio was instead measured against the live cluster
-    with an actual trained model; see task-8-fix-cassandra-report.md."""
+    coefficient matrix over many classes) -- the exact shape that produced a
+    real ~22MB+ raw serialized blob in practice, well past what Cassandra's
+    16MB CQL message limit could ever hold directly (the reason this project
+    moved the artifact to MinIO -- see cassandra-grpc-ml/README.md). MinIO
+    objects have no such ceiling; this test confirms the compress/decompress
+    round trip through MinIO still works correctly at real scale (tens of
+    MB) and that gzip does not simply no-op or corrupt the data."""
     import io
 
     import joblib
@@ -163,7 +190,6 @@ def test_save_model_to_cassandra_round_trips_a_realistic_sized_model():
     from sklearn.linear_model import LogisticRegression
 
     from ml_core import TrainedModel
-    from model_store import save_model_to_cassandra
 
     rng = np.random.RandomState(42)
     num_classes = 50
@@ -190,18 +216,19 @@ def test_save_model_to_cassandra_round_trips_a_realistic_sized_model():
     raw_size = len(raw_buffer.getvalue())
 
     session = FakeSession()
-    save_model_to_cassandra(model, session)
-    _, compressed_blob = session.inserted[0]
-    compressed_size = len(compressed_blob)
+    minio_client = FakeMinioClient()
+    save_model_to_object_storage(model, session, minio_client, BUCKET)
+    (bucket, object_name, _length), = minio_client.put_calls
+    compressed_size = len(minio_client.objects[(bucket, object_name)])
 
     # Sanity check this synthetic model is actually in the same ballpark as
-    # the real one that broke in Task 8 (45,335,967 bytes uncompressed).
+    # the real one that motivated the move to MinIO.
     assert raw_size > 15_000_000, f"synthetic model too small to be representative: {raw_size} bytes raw"
     print(f"\n[synthetic large-model check] raw={raw_size:,} bytes, compressed={compressed_size:,} bytes")
 
     # The round trip decompresses/deserializes correctly at this size, with
     # the large numeric arrays intact byte-for-byte.
-    loaded = load_latest_model_from_cassandra(session)
+    loaded = load_latest_model_from_object_storage(session, minio_client)
     assert loaded.class_labels == model.class_labels
     assert loaded.vectorizer.vocabulary_ == model.vectorizer.vocabulary_
     np.testing.assert_array_equal(loaded.classifier.coef_, model.classifier.coef_)

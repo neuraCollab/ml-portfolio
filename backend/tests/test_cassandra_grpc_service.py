@@ -97,6 +97,41 @@ def test_scale_pool_raises_with_detail_on_non_200(monkeypatch):
         svc.scale_pool(9)
 
 
+def test_kill_one_worker_returns_result_on_success(monkeypatch):
+    captured = {}
+
+    def fake_post(url, timeout):
+        captured["url"] = url
+        captured["timeout"] = timeout
+        return _fake_response(200, {"killedPod": "cassandra-grpc-ml-worker-abc123"})
+
+    monkeypatch.setattr(svc.httpx, "post", fake_post)
+    result = svc.kill_one_worker()
+
+    assert result.killedPod == "cassandra-grpc-ml-worker-abc123"
+    assert captured["url"] == f"{svc.CASSANDRA_GRPC_COORDINATOR_URL}/pool/kill-one"
+
+
+def test_kill_one_worker_raises_when_coordinator_unreachable(monkeypatch):
+    def fake_post(url, timeout):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(svc.httpx, "post", fake_post)
+
+    with pytest.raises(svc.CassandraGrpcError, match="Coordinator unreachable"):
+        svc.kill_one_worker()
+
+
+def test_kill_one_worker_raises_with_detail_on_non_200(monkeypatch):
+    def fake_post(url, timeout):
+        return _fake_response(503, {"detail": "No Ready worker pod to kill"})
+
+    monkeypatch.setattr(svc.httpx, "post", fake_post)
+
+    with pytest.raises(svc.CassandraGrpcError, match="No Ready worker pod to kill"):
+        svc.kill_one_worker()
+
+
 # ---------------------------------------------------------------------------
 # get_status() -- maps GET {COORDINATOR_URL}/pool into pods/coordinator/
 # modelLoaded/numClasses/trainedAt (the healthy_pods/latest_pod derivation).
