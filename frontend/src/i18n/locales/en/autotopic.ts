@@ -3,7 +3,7 @@ export const autotopic = {
     eyebrow: 'AutoTopic Pipeline Engine',
     title: 'Automatic Unstructured Text Log Topic Analysis',
     description:
-      'Combines SentenceTransformers embeddings, UMAP dimensionality reduction, HDBSCAN clustering, and c-TF-IDF with Optuna hyperparameter optimization.',
+      'Unsupervised NLP pipeline that discovers and labels topics in unstructured text logs, with no manual annotation. Full technology breakdown and engineering contribution below.',
     executeButtonLabel: 'Execute BERTopic Pipeline',
     analyzeFileLabel: 'Analyze {{fileName}}',
     processingLabel: 'Processing Pipeline...',

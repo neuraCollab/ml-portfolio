@@ -1,5 +1,3 @@
-export type ActiveTab = 'autotopic' | 'autopilot' | 'ecg' | 'cassandragrpc' | 'overview';
-
 // AutoTopic Types
 export interface LogDocument {
   id: string;

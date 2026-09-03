@@ -1,14 +1,14 @@
 import React from 'react';
-import { ActiveTab } from '../types';
+import { NavLink } from 'react-router-dom';
 import { Sparkles, Car, Layers, Github, BookOpen, Activity, HeartPulse, Network } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nContext';
 
-interface HeaderProps {
-  activeTab: ActiveTab;
-  setActiveTab: (tab: ActiveTab) => void;
-}
+const navLinkClass = (isActive: boolean, activeClass: string) =>
+  `flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
+    isActive ? activeClass : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+  }`;
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
+export const Header: React.FC = () => {
   const { t, language, setLanguage } = useTranslation();
   return (
     <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
@@ -35,69 +35,49 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
           {/* Navigation Tabs */}
           <nav className="flex items-center space-x-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto max-w-full sm:max-w-none">
-            <button
-              onClick={() => setActiveTab('autotopic')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                activeTab === 'autotopic'
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-500/25'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+            <NavLink
+              to="/autotopic"
+              className={({ isActive }) => navLinkClass(isActive, 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-500/25')}
             >
               <Sparkles className="w-4 h-4 text-indigo-300" />
               <span className="hidden sm:inline">{t('common.header.nav.autotopicFull')}</span>
               <span className="sm:hidden">{t('common.header.nav.autotopicShort')}</span>
-            </button>
+            </NavLink>
 
-            <button
-              onClick={() => setActiveTab('autopilot')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                activeTab === 'autopilot'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/25'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+            <NavLink
+              to="/autopilot"
+              className={({ isActive }) => navLinkClass(isActive, 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/25')}
             >
               <Car className="w-4 h-4 text-emerald-300" />
               <span className="hidden sm:inline">{t('common.header.nav.autopilotFull')}</span>
               <span className="sm:hidden">{t('common.header.nav.autopilotShort')}</span>
-            </button>
+            </NavLink>
 
-            <button
-              onClick={() => setActiveTab('ecg')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                activeTab === 'ecg'
-                  ? 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-md shadow-rose-500/25'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+            <NavLink
+              to="/ecg"
+              className={({ isActive }) => navLinkClass(isActive, 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-md shadow-rose-500/25')}
             >
               <HeartPulse className="w-4 h-4 text-rose-300" />
               <span className="hidden sm:inline">{t('common.header.nav.ecgFull')}</span>
               <span className="sm:hidden">{t('common.header.nav.ecgShort')}</span>
-            </button>
+            </NavLink>
 
-            <button
-              onClick={() => setActiveTab('cassandragrpc')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                activeTab === 'cassandragrpc'
-                  ? 'bg-gradient-to-r from-cyan-600 to-sky-700 text-white shadow-md shadow-cyan-500/25'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+            <NavLink
+              to="/cassandragrpc"
+              className={({ isActive }) => navLinkClass(isActive, 'bg-gradient-to-r from-cyan-600 to-sky-700 text-white shadow-md shadow-cyan-500/25')}
             >
               <Network className="w-4 h-4 text-cyan-300" />
               <span className="hidden sm:inline">{t('common.header.nav.cassandraGrpcFull')}</span>
               <span className="sm:hidden">{t('common.header.nav.cassandraGrpcShort')}</span>
-            </button>
+            </NavLink>
 
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                activeTab === 'overview'
-                  ? 'bg-slate-800 text-slate-100 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+            <NavLink
+              to="/overview"
+              className={({ isActive }) => navLinkClass(isActive, 'bg-slate-800 text-slate-100 shadow-sm')}
             >
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">{t('common.header.nav.overview')}</span>
-            </button>
+            </NavLink>
           </nav>
 
           {/* Language switcher (always visible, including mobile) */}

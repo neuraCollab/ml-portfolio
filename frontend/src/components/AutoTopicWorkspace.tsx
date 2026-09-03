@@ -288,20 +288,22 @@ export const AutoTopicWorkspace: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-3 mt-4">
-                <a
-                  href="#demo"
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   <span>{t('autotopic.hero.launchDemoButton')}</span>
-                </a>
-                <a
-                  href="#technical"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('technical')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl transition text-sm font-medium"
                 >
                   <ListTree className="w-4 h-4" />
                   <span>{t('autotopic.hero.viewPipelineButton')}</span>
-                </a>
+                </button>
                 <a
                   href={GITHUB_AUTOTOPIC_URL}
                   target="_blank"
