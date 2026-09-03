@@ -52,6 +52,7 @@ export const autopilot = {
     subheading: 'Рассчитывается функцией KITTICarEnv.calculate_reward() в реальном времени',
     rewardSeriesName: 'Вознаграждение',
     obstacleHeadwaySeriesName: 'Дистанция до препятствия (м)',
+    penaltyDotLegend: 'Красная точка = штраф на этом шаге',
   },
   policyPanel: {
     heading: 'Политика и пространство действий',

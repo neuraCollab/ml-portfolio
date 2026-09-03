@@ -25,3 +25,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* Running-line ticker for real-time penalty/warning feeds (e.g. Autopilot's
+   reward-penalty ticker) -- scrolls its content leftward in a seamless loop. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 18s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}

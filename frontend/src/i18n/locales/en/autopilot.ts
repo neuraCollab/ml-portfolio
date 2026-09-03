@@ -52,6 +52,7 @@ export const autopilot = {
     subheading: 'Calculated by KITTICarEnv.calculate_reward() in real time',
     rewardSeriesName: 'Reward',
     obstacleHeadwaySeriesName: 'Obstacle Headway (m)',
+    penaltyDotLegend: 'Red dot = penalty applied this step',
   },
   policyPanel: {
     heading: 'Policy & Action Space',

@@ -3,6 +3,7 @@ import {
   KittiFrame,
   RLAction,
   RLLogStep,
+  RLPenaltyPart,
 } from '../types';
 import {
   KITTI_FRAMES_DATA,
@@ -58,6 +59,30 @@ const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
 };
 
 const ACCENT = 'text-emerald-400';
+
+// Renders a penalty event's structured parts into display text at call time,
+// so it always reflects the current language (see RLPenaltyPart in types.ts).
+const formatPenalty = (t: ReturnType<typeof useTranslation>['t'], parts: RLPenaltyPart[]): string =>
+  parts
+    .map((part) => {
+      switch (part.kind) {
+        case 'harshSteeringFull':
+          return t('autopilot.safetyLog.penalty.harshSteering', { magnitude: part.magnitude.toFixed(3) });
+        case 'overspeedFull':
+          return t('autopilot.safetyLog.penalty.overspeed');
+        case 'overspeedSuffix':
+          return t('autopilot.safetyLog.penalty.overspeedSuffix');
+        case 'collision':
+          return t('autopilot.safetyLog.penalty.collision', { distance: part.distance });
+        case 'highYawFull':
+          return t('autopilot.safetyLog.penalty.highYaw');
+        case 'highYawSuffix':
+          return t('autopilot.safetyLog.penalty.highYawSuffix');
+        default:
+          return '';
+      }
+    })
+    .join(' ');
 
 export const AutopilotWorkspace: React.FC = () => {
   const { t } = useTranslation();
@@ -163,6 +188,15 @@ export const AutopilotWorkspace: React.FC = () => {
   const activeAction: RLAction = usePretrainedPolicy
     ? predictPolicyAction(currentFrame)
     : manualAction;
+
+  // Real penalty events from the reward log (rlLogs[i].penalty is set by the
+  // same stepKittiEnv/calculate_reward logic the chart below plots) -- most
+  // recent first, for the running-line ticker.
+  const recentPenalties = rlLogs
+    .filter((log) => log.penalty)
+    .slice(-8)
+    .reverse()
+    .map((log) => t('autopilot.safetyLog.feedEntry', { frameId: log.frameId, message: formatPenalty(t, log.penalty as RLPenaltyPart[]) }));
 
   // Auto sequence playback loop
   useEffect(() => {
@@ -571,6 +605,31 @@ export const AutopilotWorkspace: React.FC = () => {
                 </div>
               </div>
 
+              {/* Running-line ticker: real penalty events from the reward log
+                  below, so a penalty firing (e.g. from cranking manual
+                  steering to the max) is legible, not just an unexplained
+                  dip in the reward number. */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl h-9 flex items-center overflow-hidden relative">
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-900 to-transparent z-10 pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900 to-transparent z-10 pointer-events-none" />
+                {recentPenalties.length === 0 ? (
+                  <p className="w-full text-center text-[11px] text-slate-500 font-mono">{t('autopilot.safetyLog.emptyState')}</p>
+                ) : (
+                  <div className="flex whitespace-nowrap animate-marquee">
+                    {[0, 1].map((dup) => (
+                      <div key={dup} className="flex items-center shrink-0" aria-hidden={dup === 1}>
+                        {recentPenalties.map((msg, i) => (
+                          <span key={i} className="flex items-center gap-1.5 text-[11px] font-mono text-red-300 px-4">
+                            <ShieldAlert className="w-3 h-3 text-red-400 shrink-0" />
+                            {msg}
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* RL Reward History Curve Chart */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
@@ -581,6 +640,10 @@ export const AutopilotWorkspace: React.FC = () => {
                     </h3>
                     <p className="text-xs text-slate-400">{t('autopilot.rewardChart.subheading')}</p>
                   </div>
+                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-red-300/80">
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                    {t('autopilot.rewardChart.penaltyDotLegend')}
+                  </span>
                 </div>
 
                 <div className="h-48 w-full">
@@ -589,8 +652,40 @@ export const AutopilotWorkspace: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                       <XAxis dataKey="step" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                       <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
-                      <Line type="monotone" dataKey="reward" stroke="#10b981" strokeWidth={2} dot={false} name={t('autopilot.rewardChart.rewardSeriesName')} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const log = payload[0].payload as RLLogStep;
+                          return (
+                            <div className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs space-y-1 max-w-[240px]">
+                              <div className="text-slate-400 font-mono">{t('autopilot.timeline.frameCounter', { frameId: log.frameId, total: KITTI_FRAMES_DATA.length - 1 })}</div>
+                              <div className="text-emerald-300 font-mono">{t('autopilot.rewardChart.rewardSeriesName')}: {log.reward.toFixed(3)}</div>
+                              <div className="text-amber-300 font-mono">{t('autopilot.rewardChart.obstacleHeadwaySeriesName')}: {log.nearestObstacleDist.toFixed(1)} m</div>
+                              {log.penalty && (
+                                <div className="text-red-300 flex items-start gap-1.5 pt-1 border-t border-slate-800">
+                                  <ShieldAlert className="w-3 h-3 shrink-0 mt-0.5" />
+                                  <span>{formatPenalty(t, log.penalty)}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="reward"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={({ cx, cy, payload, index }: any) =>
+                          payload.penalty ? (
+                            <circle key={`penalty-${index}`} cx={cx} cy={cy} r={4} fill="#ef4444" stroke="#020617" strokeWidth={1} />
+                          ) : (
+                            <React.Fragment key={`nopenalty-${index}`} />
+                          )
+                        }
+                        name={t('autopilot.rewardChart.rewardSeriesName')}
+                      />
                       <Line type="monotone" dataKey="nearestObstacleDist" stroke="#f59e0b" strokeWidth={1.5} dot={false} name={t('autopilot.rewardChart.obstacleHeadwaySeriesName')} />
                     </LineChart>
                   </ResponsiveContainer>
