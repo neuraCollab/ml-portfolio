@@ -651,7 +651,11 @@ export const AutopilotWorkspace: React.FC = () => {
                     <LineChart data={rlLogs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                       <XAxis dataKey="step" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                      <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                      {/* Separate scale for reward (~0-0.2) from obstacle distance (~0-40m) --
+                          sharing one axis flattened the reward line (and its penalty dots)
+                          to a near-invisible sliver at the bottom of the chart. */}
+                      <YAxis yAxisId="obstacle" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                      <YAxis yAxisId="reward" orientation="right" stroke="#10b981" tick={{ fill: '#10b981', fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
                         content={({ active, payload }) => {
@@ -672,21 +676,24 @@ export const AutopilotWorkspace: React.FC = () => {
                           );
                         }}
                       />
+                      <Line yAxisId="obstacle" type="monotone" dataKey="nearestObstacleDist" stroke="#f59e0b" strokeWidth={1.5} dot={false} name={t('autopilot.rewardChart.obstacleHeadwaySeriesName')} />
+                      {/* Rendered last so its penalty dots always draw on top of the
+                          obstacle-distance line rather than being painted over by it. */}
                       <Line
+                        yAxisId="reward"
                         type="monotone"
                         dataKey="reward"
                         stroke="#10b981"
                         strokeWidth={2}
                         dot={({ cx, cy, payload, index }: any) =>
                           payload.penalty ? (
-                            <circle key={`penalty-${index}`} cx={cx} cy={cy} r={4} fill="#ef4444" stroke="#020617" strokeWidth={1} />
+                            <circle key={`penalty-${index}`} cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#fef2f2" strokeWidth={1.5} />
                           ) : (
                             <React.Fragment key={`nopenalty-${index}`} />
                           )
                         }
                         name={t('autopilot.rewardChart.rewardSeriesName')}
                       />
-                      <Line type="monotone" dataKey="nearestObstacleDist" stroke="#f59e0b" strokeWidth={1.5} dot={false} name={t('autopilot.rewardChart.obstacleHeadwaySeriesName')} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
