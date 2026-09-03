@@ -19,9 +19,18 @@ interface ResultsPanelProps {
   /** Overrides the "Classified Log Documents" heading count -- use this to
    * make clear when the table is a preview sample rather than everything. */
   documentsHeading?: string;
+  /** The static Results section drops the topic-map scatter plot and the
+   * Optuna trial-history chart -- both stay in the interactive Demo section. */
+  showTopicMap?: boolean;
+  showOptunaTrials?: boolean;
 }
 
-export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHeading }) => {
+export const ResultsPanel: React.FC<ResultsPanelProps> = ({
+  results,
+  documentsHeading,
+  showTopicMap = true,
+  showOptunaTrials = true,
+}) => {
   const { t } = useTranslation();
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [searchDocFilter, setSearchDocFilter] = useState('');
@@ -98,7 +107,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
       </div>
 
       {/* Topic Map: real 2D UMAP projection of each document's embedding */}
-      <TopicScatterPlot documents={results.documents} topics={results.topics} />
+      {showTopicMap && <TopicScatterPlot documents={results.documents} topics={results.topics} />}
 
       {/* Topic Size Distribution Bar Chart */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
@@ -209,38 +218,40 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, documentsHe
       </div>
 
       {/* Optuna Hyperparameter Optimization Trials Chart */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span>{t('autotopic.resultsPanel.optuna.heading')}</span>
-            </h3>
-            <p className="text-xs text-slate-400">{t('autotopic.resultsPanel.optuna.subheading')}</p>
+      {showOptunaTrials && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>{t('autotopic.resultsPanel.optuna.heading')}</span>
+              </h3>
+              <p className="text-xs text-slate-400">{t('autotopic.resultsPanel.optuna.subheading')}</p>
+            </div>
           </div>
-        </div>
 
-        {results.trials.length > 0 ? (
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={results.trials} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="trial" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                />
-                <Line type="monotone" dataKey="compositeScore" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name={t('autotopic.resultsPanel.optuna.compositeScoreSeriesName')} />
-                <Line type="monotone" dataKey="coherenceUci" stroke="#6366f1" strokeWidth={1.5} dot={false} name={t('autotopic.resultsPanel.optuna.coherenceSeriesName')} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-24 flex items-center justify-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-            {t('autotopic.resultsPanel.optuna.emptyStatePrefix')}<code className="text-slate-400">main.py</code>{t('autotopic.resultsPanel.optuna.emptyStateSuffix')}
-          </div>
-        )}
-      </div>
+          {results.trials.length > 0 ? (
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={results.trials} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="trial" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                  <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                  />
+                  <Line type="monotone" dataKey="compositeScore" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name={t('autotopic.resultsPanel.optuna.compositeScoreSeriesName')} />
+                  <Line type="monotone" dataKey="coherenceUci" stroke="#6366f1" strokeWidth={1.5} dot={false} name={t('autotopic.resultsPanel.optuna.coherenceSeriesName')} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-24 flex items-center justify-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+              {t('autotopic.resultsPanel.optuna.emptyStatePrefix')}<code className="text-slate-400">main.py</code>{t('autotopic.resultsPanel.optuna.emptyStateSuffix')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Document Classifier Explorer Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">

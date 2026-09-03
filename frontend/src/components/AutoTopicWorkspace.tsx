@@ -1093,6 +1093,8 @@ export const AutoTopicWorkspace: React.FC = () => {
                   <ResultsPanel
                     results={effectiveResults}
                     documentsHeading={t('autotopic.staticResults.documentsHeadingPreview', { count: effectiveResults.documents.length })}
+                    showTopicMap={false}
+                    showOptunaTrials={false}
                   />
                 )}
               </div>
