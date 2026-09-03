@@ -1,5 +1,7 @@
 ## RL Car Autopilot on KITTI (Sensor Fusion & Reinforcement Learning Playground)
 
+![RL Autopilot overview](../docs/assets/autopilot-preview.png)
+
 ## Overview
 
 This project demonstrates end-to-end work with raw autonomous-driving sensor data (the KITTI

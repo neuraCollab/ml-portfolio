@@ -9,6 +9,8 @@
 
 ---
 
+![AutoTopic overview](../docs/assets/autotopic-preview.png)
+
 ## Overview
 
 The project analyzes text data from CSV files with a `log_text` column. It supports both Russian
@@ -22,6 +24,24 @@ sample.
   interpretability measurable, not just eyeballed.
 - **Why topic modeling**: BERTopic combines semantic embeddings with density-based clustering to
   discover topics automatically, without any pre-labeled training data.
+
+## Project Presentation
+
+The portfolio's AutoTopic page has a "Project Presentation" button controlled by
+`VITE_AUTOTOPIC_PRESENTATION_URL` (see root `.env.example` and
+`frontend/.env.example`):
+
+```
+VITE_AUTOTOPIC_PRESENTATION_URL=<REPLACE_WITH_GOOGLE_DRIVE_URL>
+```
+
+It's a frontend build-time variable (baked in via `frontend/Dockerfile`'s
+`ARG`/`ENV`, wired through `docker-compose.yml`), unlike `AUTOTOPIC_DATA_URL`
+above which is read by the backend at request time. **Replace the placeholder**
+in `.env.example` (or your own `.env` / deployment environment) with the real
+Google Drive share link once the presentation slides are uploaded there. Until
+it's replaced, the button renders disabled with a "not yet configured" tooltip
+instead of linking anywhere.
 
 ## Tech Stack
 

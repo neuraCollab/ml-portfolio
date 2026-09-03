@@ -1,5 +1,7 @@
 # Cassandra + gRPC ML
 
+![Cassandra + gRPC ML overview](../docs/assets/cassandra-preview.png)
+
 ## Overview
 
 A distributed ML pipeline: a real labeled sample of AutoTopic's request corpus is stored in

@@ -15,7 +15,7 @@ inference, and scale a real Kubernetes cluster, right from the browser.
 
 One React frontend, one FastAPI backend, four real Python pipelines wired in end to end.
 
-![RL Autopilot model dashboard](docs/assets/preview.png)
+![Overview & Docs page](docs/assets/preview.png)
 
 ## Architecture
 

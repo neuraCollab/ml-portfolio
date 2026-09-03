@@ -8,6 +8,8 @@
 predictions are model classifications, not medical diagnoses, and must not be used for
 clinical decisions.**
 
+![ECG Edge AI overview](../docs/assets/ecg-preview.png)
+
 ## Overview
 
 A portable edge device that records a 2-channel ECG (via two AD8232 sensor + Arduino Nano
