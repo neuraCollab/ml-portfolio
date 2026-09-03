@@ -1,10 +1,22 @@
 # ML Portfolio
 
-One web interface over four ML projects: an NLP topic-modeling pipeline (**AutoTopic**), an
-RL/computer-vision autonomous-driving project (**RL Car Autopilot**), an edge-AI ECG monitor
-(**Raspberry Pi 5 ECG**), and a distributed Cassandra+gRPC ML pipeline (**Cassandra gRPC ML**).
-The frontend is a React app originally prototyped in Google AI Studio; a FastAPI backend wraps
-each project's existing Python code so the UI calls real ML code, not mocked data.
+**Four real ML systems in one live app** — not slides, not screenshots. Train a model, run
+inference, and scale a real Kubernetes cluster, right from the browser.
+
+🔗 **Live demo:** https://neuracollab.github.io/ml-portfolio/
+🎥 **Video walkthrough:** <!-- TODO: paste YouTube link here -->
+
+| | Project | What it actually does |
+|---|---|---|
+| 🧵 | **[AutoTopic](AutoTopic/README.md)** | Unsupervised topic discovery (BERTopic + UMAP + HDBSCAN) on 370K+ real logs, no manual labeling |
+| 🚗 | **[RL Autopilot](rl_cv_car-autopilot/README.md)** | SAC reinforcement-learning driving policy fusing camera + LiDAR + IMU on real KITTI data |
+| ❤️ | **[ECG Edge AI](raspberry-pi-ecg/README.md)** | Real AD8232 + Raspberry Pi 5 hardware, local PyTorch inference, no cloud |
+| 🌐 | **[Cassandra + gRPC ML](cassandra-grpc-ml/README.md)** | Distributed ML serving on real Kubernetes: pod discovery, load balancing, live failure recovery |
+
+One React frontend, one FastAPI backend, four real Python pipelines wired in end to end.
+Everything below is the engineering detail behind the demo.
+
+---
 
 ## Projects
 
@@ -181,8 +193,11 @@ FastAPI backend (backend/)
                                 |          real network call, not an in-process function)
                                 |               |
                                 |               +--> Cassandra (k8s pod; reads `requests` for
-                                |                    training, persists/loads the trained model)
-                                +--> k8s API --> scales the worker Deployment's replica count
+                                |               |    training, writes/reads model metadata)
+                                |               +--> MinIO (k8s pod; the actual model
+                                |                    artifact -- joblib + gzip)
+                                +--> k8s API --> scales the worker Deployment's replica count,
+                                                 or deletes one pod to demo failure recovery
 ```
 
 The backend is a thin adapter layer (`backend/app/services/*`) around each project's existing
@@ -344,17 +359,18 @@ ECG) to preserve/extend; those were verified by running all three flows end-to-e
 browser: sample-data runs, CSV/`.npy` upload, invalid input, backend-down, and mobile viewport. See
 the final report for the exact scenarios exercised in this session.
 
-The fourth project (Cassandra + gRPC ML) additionally has a real pytest suite, 55 tests total:
+The fourth project (Cassandra + gRPC ML) additionally has a real pytest suite, 63 tests total:
 
-- `cassandra-grpc-ml/worker/tests/` (11: `test_ml_core.py`, `test_model_store.py`) -- pure-function
-  ML training math, stratified sampling, and model (de)serialization logic that needs no live
-  Cassandra/gRPC/k8s.
-- `cassandra-grpc-ml/coordinator/tests/` (19: `test_dispatch.py`, `test_k8s_client.py`,
+- `cassandra-grpc-ml/worker/tests/` (12: `test_ml_core.py`, `test_model_store.py`) -- pure-function
+  ML training math, stratified sampling, and model (de)serialization against MinIO object storage
+  that needs no live Cassandra/gRPC/k8s.
+- `cassandra-grpc-ml/coordinator/tests/` (23: `test_dispatch.py`, `test_k8s_client.py`,
   `test_app.py`) -- the round-robin dispatcher's retry-on-`RpcError` behavior, k8s pod-discovery
-  filtering, and the Coordinator's FastAPI routes, against a mocked k8s API/gRPC layer.
-- `backend/tests/` (25: `test_cassandra_grpc_schemas.py`, `test_cassandra_grpc_ingestion.py`,
+  and failure-injection (`kill_one_worker_pod`), and the Coordinator's FastAPI routes, against a
+  mocked k8s API/gRPC layer.
+- `backend/tests/` (28: `test_cassandra_grpc_schemas.py`, `test_cassandra_grpc_ingestion.py`,
   `test_cassandra_grpc_service.py`) -- request/schema validation, ingestion, and the
-  backend-to-Coordinator HTTP proxying logic.
+  backend-to-Coordinator HTTP proxying logic (including `/pool/kill-one`).
 
 Everything else for this project (the real `kind` cluster, live Cassandra/gRPC/k8s wiring,
 Docker, frontend) is still verified live, the same way as the other three. Run the suites in a

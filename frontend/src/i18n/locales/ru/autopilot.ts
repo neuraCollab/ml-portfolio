@@ -51,9 +51,7 @@ export const autopilot = {
     heading: 'Вознаграждение агента RL за шаг и дистанция до препятствия',
     subheading: 'Рассчитывается функцией KITTICarEnv.calculate_reward() в реальном времени',
     rewardSeriesName: 'Вознаграждение',
-    obstacleHeadwaySeriesName: 'Дистанция до препятствия (м)',
-    penaltyDotLegend: 'Красная точка = штраф на этом шаге',
-  },
+    obstacleHeadwaySeriesName: 'Дистанция до препятствия (м)',  },
   policyPanel: {
     heading: 'Политика и пространство действий',
     sacPretrainedButton: 'Эвристический автопилот',

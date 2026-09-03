@@ -51,9 +51,7 @@ export const autopilot = {
     heading: 'RL Agent Step Reward & Headway Distance',
     subheading: 'Calculated by KITTICarEnv.calculate_reward() in real time',
     rewardSeriesName: 'Reward',
-    obstacleHeadwaySeriesName: 'Obstacle Headway (m)',
-    penaltyDotLegend: 'Red dot = penalty applied this step',
-  },
+    obstacleHeadwaySeriesName: 'Obstacle Headway (m)',  },
   policyPanel: {
     heading: 'Policy & Action Space',
     sacPretrainedButton: 'Heuristic Autopilot',

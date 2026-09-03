@@ -3,7 +3,8 @@ export const overview = {
     eyebrow: 'Repository Overview & Architecture',
     title: 'Machine Learning Portfolio: AutoTopic, RL Autopilot, ECG Edge AI & Cassandra gRPC ML',
     description:
-      "Four projects demonstrating machine learning, deep learning, signal processing, reinforcement learning, distributed systems, and backend/edge-AI engineering, consolidated into one dashboard backed by a FastAPI service that runs each project's real Python code.",
+      "Four projects spanning NLP, reinforcement learning, edge AI, and distributed systems, " +
+      "consolidated into one dashboard backed by a FastAPI service that runs each project's real Python code.",
     tags: {
       nlpTopicModeling: 'NLP / Topic Modeling',
       reinforcementLearning: 'Reinforcement Learning',
@@ -18,8 +19,7 @@ export const overview = {
   projects: {
     autotopic: {
       title: 'Project 1: AutoTopic NLP Pipeline',
-      description:
-        'Automated topic discovery and interpretation in unstructured text logs. Built to accelerate incident resolution and product insights without manual dataset annotation.',
+      description: 'Unsupervised topic discovery in unstructured text logs -- no manual annotation required.',
       stack: {
         item1: 'BERTopic + SentenceTransformers (MiniLM-L12)',
         item2: 'UMAP (cosine) + HDBSCAN density clustering',
@@ -30,21 +30,19 @@ export const overview = {
     },
     autopilot: {
       title: 'Project 2: RL & CV Autonomous Driving',
-      description:
-        'Autonomous driving policy trained with Reinforcement Learning on the KITTI Vision Benchmark dataset, combining camera streams, LiDAR point clouds, and OXTS IMU sensor fusion.',
+      description: 'A driving policy trained with reinforcement learning on KITTI, fusing camera, LiDAR, and IMU sensor data.',
       stack: {
-        item1: 'OpenCV Camera Calibration & Lens Undistortion (K_00, D_00)',
-        item2: 'Velodyne LiDAR 3D Point Cloud Projection (Tr_velo_to_cam)',
-        item3Prefix: 'Custom OpenAI Gym Environment (',
+        item1: 'OpenCV lens undistortion & camera calibration',
+        item2: 'Velodyne LiDAR 3D point cloud projection (Tr_velo_to_cam)',
+        item3Prefix: 'Custom OpenAI Gym environment (',
         item3Suffix: ')',
         item4: 'Stable-Baselines3 (SAC MultiInputPolicy)',
-        item5: 'Tracklet 3D Bounding Boxes (tx, ty, tz) & Anomaly Detection',
+        item5: 'Tracklet 3D bounding boxes & obstacle-proximity reward shaping',
       },
     },
     ecg: {
       title: 'Project 3: Raspberry Pi ECG / Edge AI',
-      description:
-        'Edge device (Raspberry Pi 5 + AD8232 + Arduino Nano) that reconstructs a 6-lead ECG from 2 physical channels and classifies 19 rhythm/conduction patterns locally, on-device.',
+      description: 'A Raspberry Pi 5 edge device that reconstructs a 6-lead ECG from 2 physical channels and classifies 19 rhythm patterns locally.',
       stack: {
         item1: 'AD8232 + Arduino Nano x2 → serial → Raspberry Pi 5',
         item2: 'Butterworth bandpass (0.5-40Hz) + Einthoven/Goldberger reconstruction',
@@ -56,13 +54,16 @@ export const overview = {
     cassandraGrpc: {
       title: 'Project 4: Cassandra + gRPC ML',
       description:
-        'A distributed MLOps / ML serving system: a FastAPI gateway routes requests through a Coordinator pod that discovers and round-robin dispatches gRPC calls across real Kubernetes worker replicas, backed by Apache Cassandra for storage and cross-pod model persistence. The ML workload demonstrating the pipeline is a topic classifier distilled from AutoTopic\'s slower unsupervised BERTopic clustering -- the NLP methodology and model-quality work live on AutoTopic\'s own page.',
+        'A distributed ML serving system: a FastAPI gateway routes requests through a Coordinator ' +
+        'that round-robins gRPC calls across real Kubernetes worker replicas. Cassandra holds ' +
+        'application state and model metadata; MinIO holds the model artifacts. The model itself is ' +
+        'intentionally lightweight -- the point is the serving infrastructure.',
       stack: {
-        item1: 'FastAPI gateway + Coordinator pod: real k8s pod discovery, round-robin routing, retry-on-failure',
+        item1: 'FastAPI gateway + Coordinator: real k8s pod discovery, round-robin routing, retry-on-failure',
         item2: 'gRPC + Protocol Buffers (Predict / Train / GetStatus)',
-        item3: 'Apache Cassandra 5 (storage: requests, predictions, training_runs, cross-pod model persistence)',
-        item4: 'Real Kubernetes Deployment scaling (1-5 worker replicas) via the Coordinator',
-        item5: 'ML workload: TF-IDF + One-vs-Rest LogisticRegression, n_jobs=-1 (scikit-learn)',
+        item3: 'Apache Cassandra 5 (state/metadata) + MinIO (model artifacts)',
+        item4: 'Real Kubernetes Deployment scaling (1-5 worker replicas) + failure injection',
+        item5: 'ML workload: TF-IDF + One-vs-Rest LogisticRegression (scikit-learn)',
       },
     },
   },
@@ -88,13 +89,11 @@ export const overview = {
       },
       reinforcementLearning: {
         component: 'Reinforcement Learning',
-        inApp:
-          'Canvas sim by default; "Live Backend Demo" queries the real pretrained policy (falls back to a heuristic if it can\'t load)',
+        inApp: 'Real pretrained SAC policy, queried live (falls back to a heuristic if it can\'t load)',
       },
       computerVisionSensors: {
         component: 'Computer Vision & Sensors',
-        inApp:
-          'Canvas sim by default; "Live Backend Demo" runs the real undistort/projection code on a sample frame',
+        inApp: 'Real undistort/projection code, run on real KITTI frames',
       },
       ecgSignalProcessing: {
         component: 'ECG Signal Processing',
@@ -106,7 +105,7 @@ export const overview = {
       },
       distributedStorage: {
         component: 'Distributed Storage',
-        inApp: 'Real: Cassandra keyspace ingested and queried live (requests, predictions, training_runs)',
+        inApp: 'Real: Cassandra keyspace ingested and queried live (requests, predictions, training_runs, model metadata)',
       },
       distributedServing: {
         component: 'Distributed Model Serving',

@@ -632,18 +632,12 @@ export const AutopilotWorkspace: React.FC = () => {
 
               {/* RL Reward History Curve Chart */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
-                      <Activity className="w-4 h-4 text-emerald-400" />
-                      <span>{t('autopilot.rewardChart.heading')}</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">{t('autopilot.rewardChart.subheading')}</p>
-                  </div>
-                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-red-300/80">
-                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                    {t('autopilot.rewardChart.penaltyDotLegend')}
-                  </span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
+                    <Activity className="w-4 h-4 text-emerald-400" />
+                    <span>{t('autopilot.rewardChart.heading')}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">{t('autopilot.rewardChart.subheading')}</p>
                 </div>
 
                 <div className="h-48 w-full">
