@@ -17,7 +17,7 @@ standalone — see its own README.
 | 🚗 | **[RL Autopilot](rl_cv_car-autopilot/README.md)** | Reinforcement learning, sensor fusion (camera + LiDAR + IMU), *WIP* |
 | ❤️ | **[ECG Edge AI](raspberry-pi-ecg/README.md)** | Embedded hardware + PyTorch inference + web UI, system design |
 | 🌐 | **[Cassandra + gRPC ML](cassandra-grpc-ml/README.md)** | Distributed ML serving on Kubernetes, DevOps |
-| 🧠 | **[KV-Cache Quantization](kv-cache-small-distill-errors/README.md)** | LLM inference — mechanistic analysis of KV-cache quantization failures in reasoning models (*submodule*) |
+| 🧠 | **[KV-Cache Quantization](kv-cache-quantization-reasoning-study/README.md)** | LLM inference — mechanistic analysis of KV-cache quantization failures in reasoning models (*submodule*) |
 
 ## Stack
 
@@ -38,7 +38,7 @@ Cassandra + gRPC ML additionally needs a local Kubernetes cluster — see its ow
 
 KV-Cache Quantization is a standalone research repository (git submodule, not part of the
 docker-compose app or the frontend) — see
-[its own README](kv-cache-small-distill-errors/README.md) for setup (GPU + vLLM required to
+[its own README](kv-cache-quantization-reasoning-study/README.md) for setup (GPU + vLLM required to
 reproduce the underlying study; some post-hoc analysis scripts run on CPU against the
 checked-in data). If you cloned without `--recurse-submodules`, run
 `git submodule update --init` to pull it in.

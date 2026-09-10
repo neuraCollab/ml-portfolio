@@ -1,3 +1,3 @@
-[submodule "kv-cache-small-distill-errors"]
-	path = kv-cache-small-distill-errors
-	url = https://github.com/neuraCollab/kv-cache-small-distill-errors.git
+[submodule "kv-cache-quantization-reasoning-study"]
+	path = kv-cache-quantization-reasoning-study
+	url = https://github.com/neuraCollab/kv-cache-quantization-reasoning-study.git
